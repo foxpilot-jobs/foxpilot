@@ -1,2 +1,54 @@
-.venv/
+# Secrets and local configuration
 .env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Python environments and build output
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+build/
+
+# Local application data. Never commit resumes, browser sessions, or results.
+data/browser-profile/
+data/resume/
+data/jobs/
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+data/career_profile.json
+data/resume_text.txt
+data/filtered_jobs.json
+data/review_jobs.json
+data/excluded_jobs.json
+data/matches.json
+data/reports/
+data/exports/
+
+# Keep only explicitly safe example/configuration files under data.
+!data/searches.json
+!data/*.example.json
+!data/**/*.example.json
+
+# Local user state
+.career-agent/
+.career_agent/
+*.log
+*.local
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/
+*.swp

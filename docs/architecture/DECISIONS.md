@@ -1,0 +1,21 @@
+# Architecture Decisions
+
+## Local-first AI
+
+Ollama is the default provider because it supports a no-API-key local workflow. OpenAI remains an optional adapter for users who choose higher hosted-model quality and accept cost and data-sharing tradeoffs.
+
+## SQLite before hosted storage
+
+SQLite provides durable querying, history, migrations, backup, and zero hosting cost. A hosted database is deferred until there is a validated multi-user product need.
+
+## Adapter-based sources
+
+Job sources differ in APIs, HTML, authentication, rate limits, and terms. Each source must be isolated behind a common interface rather than embedded in the pipeline.
+
+## CLI before dashboard
+
+The CLI validates the core value proposition and keeps the first release small. A dashboard is an optional presentation layer over the same services and storage, not a second business-logic implementation.
+
+## No autonomous applications
+
+Applications and outreach have external consequences and require user judgment. The product may prepare context or open the source URL, but explicit confirmation is required before any outbound action.
