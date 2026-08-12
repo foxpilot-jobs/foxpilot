@@ -15,12 +15,13 @@ Every phase ends with tests, documentation, and a runnable state. Work is not co
 - Cover current filtering and normalization behavior with tests.
 - Add CI quality gates.
 
-## Phase 2: Local Intelligence
+## Phase 2: Local Intelligence (Foundation Complete)
 
-- Add provider interfaces and Ollama implementation.
-- Add optional OpenAI implementation.
-- Generalize resume/profile ingestion.
-- Validate structured model output and record model metadata.
+- Provider interfaces and Ollama implementation.
+- Optional OpenAI implementation.
+- Shared configuration and generic resume/profile ingestion.
+- Validated structured model output.
+- Follow-up: provider metadata, model evaluation fixtures, and quality benchmarks.
 
 ## Phase 3: Source Platform
 
@@ -34,12 +35,24 @@ Every phase ends with tests, documentation, and a runnable state. Work is not co
 - Migrate from JSON outputs to SQLite.
 - Add saved jobs, application statuses, notes, history, export, and deletion.
 
-## Phase 5: User Experience
+## Phase 5: API And Web Foundation
+
+- Extract reusable application services from compatibility scripts.
+- Add a FastAPI HTTP adapter with versioned endpoints and OpenAPI documentation.
+- Add the React + TypeScript responsive web/PWA under `apps/web`.
+- Keep the web app dependent on the API, never on scrapers or LLM providers directly.
+- Add contract tests between API responses and frontend query types.
+
+## Phase 6: Local And Hosted Deployment
+
+- Add Docker Compose for API, web, SQLite, and Ollama local deployment.
+- Add PostgreSQL configuration without coupling domain services to one database.
+- Add background scan scheduling and job execution controls.
+- Add health checks, structured logs, backups, and secret configuration.
+
+## Phase 7: User Experience And Release
 
 - Ship setup, scan, matches, job, application, and export commands.
-- Add HTML reports and a later optional Streamlit dashboard.
-
-## Phase 6: Automation And Release
-
+- Ship the responsive web/PWA workflow.
 - Add opt-in local scheduling and notifications.
 - Add release automation, sanitized fixtures, documentation publishing, and brand validation.

@@ -1,5 +1,9 @@
+import json
 import subprocess
 import sys
+from pathlib import Path
+
+from career_agent.config import load_config
 
 
 def run_step(
@@ -35,6 +39,19 @@ def run_step(
         sys.exit(
             result.returncode
         )
+
+
+def has_filtered_jobs() -> bool:
+    path = Path("data/filtered_jobs.json")
+    if not path.exists():
+        return False
+
+    try:
+        jobs = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+
+    return isinstance(jobs, list) and bool(jobs)
 
 
 def main():
@@ -77,6 +94,22 @@ def main():
         ],
     )
 
+    if not has_filtered_jobs():
+        print()
+        print("No target jobs were found. Skipping AI matching.")
+        print("If Greenhouse returned redirects, log in with the new browser profile and scan again.")
+        return
+
+    config = load_config()
+    if not config.profile_path.exists():
+        run_step(
+            "Career profile creation",
+            [
+                python,
+                "src/create_profile.py",
+            ],
+        )
+
     # --------------------------------------------------
     # STEP 3 — AI MATCHING
     # --------------------------------------------------
@@ -104,4 +137,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main() or 0)

@@ -4,22 +4,28 @@
 
 ```mermaid
 flowchart LR
-  CLI[Typer CLI] --> Config[Configuration]
-  CLI --> Profile[Resume/Profile]
-  CLI --> Sources[Source Adapters]
+  Web[React Web/PWA] --> API[FastAPI API]
+  CLI[Typer CLI] --> Services[Application Services]
+  API --> Services
+  Services --> Config[Configuration]
+  Services --> Profile[Resume/Profile]
+  Services --> Sources[Source Adapters]
   Sources --> Normalize[Canonical Job Model]
   Normalize --> Store[(SQLite)]
   Store --> Filter[Relevance Engine]
   Filter --> Matcher[LLM Matcher]
   Profile --> Matcher
   Matcher --> Store
-  Store --> Reports[CLI/HTML Reports]
+  Store --> Reports[CLI/Web Reports]
   Store --> Tracker[Application Tracker]
 ```
 
 ## Boundaries
 
 - `cli`: user-facing commands and output formatting.
+- `services`: reusable application workflows shared by CLI and HTTP adapters.
+- `api`: authentication, request validation, serialization, and HTTP concerns only.
+- `apps/web`: React presentation, navigation, accessibility, and responsive/PWA behavior.
 - `config`: validated settings and data-directory resolution.
 - `models`: canonical domain objects and schemas.
 - `profile`: resume extraction and profile construction.
@@ -36,3 +42,7 @@ Source adapters fetch listings, normalize them to the canonical job model, and p
 ## Reliability
 
 The scan pipeline is incremental and resumable. Each source reports its own status. A failed description fetch or provider call is recorded as a recoverable error. Re-running a scan must not duplicate jobs, applications, or notifications.
+
+## Monorepo Boundary
+
+The frontend belongs in this repository but is independently buildable under `apps/web`. It must not import Python modules or call third-party job sources directly. `services/api` is the only browser-facing boundary. Domain logic stays in `src/career_agent` so CLI, API, and background jobs behave identically.

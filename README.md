@@ -44,6 +44,8 @@ The primary product metric is **qualified opportunities reviewed per hour of use
 - pytest, Ruff, and strict type checking
 - GitHub Actions for quality gates
 - Optional Streamlit dashboard after the CLI workflow is stable
+- React + TypeScript + Vite web/PWA in `apps/web`
+- FastAPI service layer in `services/api`
 
 ## Status
 
@@ -66,15 +68,66 @@ The package and CLI migration are part of Phase 1. Until that work lands, the le
 The intended setup will be:
 
 ```bash
-python -m venv .venv
+./scripts/bootstrap.sh
 source .venv/bin/activate
-pip install -e ".[dev]"
 cp .env.example .env
 career-agent init
 career-agent scan
 ```
 
-For local AI, install Ollama separately and pull the configured model. Remote providers are optional and may incur costs.
+The bootstrap script selects public PyPI explicitly and the repository `.npmrc` selects the public npm registry. This avoids relying on machine-level package-manager configuration.
+
+## Local AI With Ollama
+
+Ollama is the default provider and keeps resume data on your machine:
+
+```bash
+brew install ollama
+ollama serve
+ollama pull llama3.1:8b
+ollama list
+```
+
+Keep `ollama serve` running in a separate terminal. In `.env`, use:
+
+```env
+LLM_PROVIDER=ollama
+OLLAMA_BASE_URL=http://localhost:11434
+LLM_MODEL=llama3.1:8b
+```
+
+Then run:
+
+```bash
+source .venv/bin/activate
+career-agent init --resume /absolute/path/to/resume.pdf
+career-agent scan
+```
+
+The first local model request can take a few minutes. Ollama requires local compute and disk space, but no API key. OpenAI remains available as an explicit opt-in provider by setting `LLM_PROVIDER=openai`, `LLM_MODEL=<model>`, and `OPENAI_API_KEY` in `.env`.
+
+See [Local AI](docs/operations/LOCAL_AI.md) for troubleshooting and provider behavior.
+
+## Repository Shape
+
+This is a monorepo by design. The Python domain and application services remain the source of truth. The web app is a separate React workspace under `apps/web`, and the API is a separate deployable service under `services/api`.
+
+```text
+career-agent/
+├── src/career_agent/       # Python domain, providers, sources, storage
+├── services/api/           # FastAPI HTTP adapter over Python services
+├── apps/web/               # React + TypeScript responsive PWA
+├── tests/                  # Python unit and integration tests
+└── docs/                   # Product, architecture, operations, roadmap
+```
+
+## Deployment Modes
+
+- Local CLI: Python package, SQLite, and Ollama on the user's machine.
+- Local web: Docker Compose with the API, web app, SQLite, and Ollama.
+- Hosted web: static React frontend, FastAPI service, PostgreSQL, and an explicitly configured LLM provider.
+
+The local deployment is the privacy-preserving and lifetime-free baseline. Hosted deployment is optional and may require paid infrastructure.
 
 ## Job Sources
 
