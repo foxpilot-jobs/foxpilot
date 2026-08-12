@@ -1,0 +1,5 @@
+# Runtime dependencies for the current prototype.
+openai
+python-dotenv
+pypdf
+playwright

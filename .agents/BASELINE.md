@@ -54,3 +54,10 @@ Every phase must leave the project in a runnable state and include:
 - Do not bypass authentication, CAPTCHAs, robots controls, rate limits, or access restrictions.
 - Do not present third-party job data as owned or guaranteed by the project.
 - Do not make hiring, discrimination, or eligibility claims from protected attributes.
+
+## Toolchain And Registry Rules
+
+- Use `python3` and the repository virtual environment for Python work.
+- Use the repository bootstrap commands so Python dependencies resolve from public PyPI.
+- Use `npm` for JavaScript work; `.npmrc` pins the project to the public npm registry.
+- Do not depend on machine-specific package-manager configuration for installation or deployment.

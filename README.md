@@ -66,15 +66,18 @@ The package and CLI migration are part of Phase 1. Until that work lands, the le
 The intended setup will be:
 
 ```bash
-python -m venv .venv
+./scripts/bootstrap.sh
 source .venv/bin/activate
-pip install -e ".[dev]"
 cp .env.example .env
 career-agent init
 career-agent scan
 ```
 
+The bootstrap script selects public PyPI explicitly and the repository `.npmrc` selects the public npm registry. This avoids relying on machine-level package-manager configuration.
+
 For local AI, install Ollama separately and pull the configured model. Remote providers are optional and may incur costs.
+
+The current `scan` command is a compatibility entry point over the prototype pipeline. It still uses the existing Greenhouse browser flow and OpenAI matcher; those internals are being migrated behind the documented interfaces in later phases.
 
 ## Job Sources
 

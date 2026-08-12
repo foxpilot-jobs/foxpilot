@@ -14,3 +14,4 @@ These rules apply to every agent working in this repository:
 - Keep external job-source integrations isolated, rate-limited, observable, and compliant with their terms.
 - Never submit applications, recruiter messages, or external actions without explicit user confirmation.
 - Do not commit changes. The repository owner handles commits and publishing.
+- Use the repository bootstrap commands for dependencies. They explicitly select public package registries and must not depend on machine-level package-manager configuration.

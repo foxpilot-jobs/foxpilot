@@ -304,7 +304,7 @@ def fetch_single_search(
     context,
     search_url: str,
     search_name: str,
-) -> list[dict]:
+) -> list[dict] | None:
 
     captured_responses = []
 
@@ -377,6 +377,36 @@ def fetch_single_search(
                 captured_responses
             )
         )
+
+        redirected = any(
+            response.status in {301, 302, 303, 307, 308}
+            for response in captured_responses
+        )
+
+        if not raw_jobs and redirected and sys.stdin.isatty():
+            print()
+            print(
+                "Greenhouse redirected the request. "
+                "Log in in the open browser window, then return here."
+            )
+            input("Press Enter to retry this search... ")
+            captured_responses.clear()
+            try:
+                page.reload(
+                    wait_until="domcontentloaded",
+                    timeout=30000,
+                )
+            except Exception as error:
+                print(
+                    "The browser window was closed before the search could be retried: "
+                    f"{error}"
+                )
+                return None
+
+            page.wait_for_timeout(8000)
+            raw_jobs = extract_job_posts_from_responses(
+                captured_responses
+            )
 
         print()
         print(
@@ -455,8 +485,10 @@ def fetch_single_search(
         return jobs
 
     finally:
-
-        page.close()
+        try:
+            page.close()
+        except Exception:
+            pass
 
 
 def fetch_jobs(
@@ -514,11 +546,18 @@ def fetch_jobs(
                 search_name,
             )
 
+            if new_jobs is None:
+                print("Stopping ingestion because the browser is no longer available.")
+                break
+
             all_new_jobs.extend(
                 new_jobs
             )
 
-        context.close()
+        try:
+            context.close()
+        except Exception:
+            pass
 
     return all_new_jobs
 
