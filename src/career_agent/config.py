@@ -27,6 +27,10 @@ class AppConfig:
     def profile_path(self) -> Path:
         return self.data_dir / "career_profile.json"
 
+    @property
+    def database_path(self) -> Path:
+        return self.data_dir / "career_agent.sqlite3"
+
 
 def _path_from_value(value: Any) -> Path | None:
     if not value:

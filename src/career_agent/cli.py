@@ -9,6 +9,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+from .config import load_config
+from .storage import JobStore
+
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DATA_DIR = Path.home() / ".career-agent"
 
@@ -53,6 +56,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--dry-run",
         action="store_true",
         help="Validate local setup without starting the browser pipeline.",
+    )
+
+    subparsers.add_parser(
+        "migrate",
+        help="Import legacy JSON jobs into the local SQLite database.",
     )
 
     return parser
@@ -102,12 +110,22 @@ def scan_project(args: argparse.Namespace) -> int:
     return result.returncode
 
 
+def migrate_project() -> int:
+    config = load_config()
+    with JobStore(config.database_path) as store:
+        imported = store.import_legacy_jobs(REPOSITORY_ROOT / "data" / "jobs")
+    print(f"Imported {imported} legacy job record(s) into {config.database_path}")
+    return 0
+
+
 def main() -> int:
     args = build_parser().parse_args()
     if args.command == "init":
         return init_project(args)
     if args.command == "scan":
         return scan_project(args)
+    if args.command == "migrate":
+        return migrate_project()
     return 1
 
 

@@ -30,9 +30,11 @@ Every phase ends with tests, documentation, and a runnable state. Work is not co
 - Add deduplication, retries, rate limits, fixtures, and source health.
 - Treat Indeed and LinkedIn as optional integrations with explicit limitations.
 
-## Phase 4: Durable Workflow
+## Phase 4: Durable Workflow (In Progress)
 
 - Migrate from JSON outputs to SQLite.
+- Import legacy job files idempotently.
+- Persist relevance, provider/model metadata, and match results.
 - Add saved jobs, application statuses, notes, history, export, and deletion.
 
 ## Phase 5: API And Web Foundation
