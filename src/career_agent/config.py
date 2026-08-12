@@ -10,12 +10,14 @@ from typing import Any
 
 from dotenv import load_dotenv
 
-DEFAULT_CONFIG_PATH = Path.home() / ".career-agent" / "config.json"
+DEFAULT_DATA_DIR = Path.home() / ".foxpilot"
+LEGACY_DATA_DIR = Path.home() / ".career-agent"
+DEFAULT_CONFIG_PATH = DEFAULT_DATA_DIR / "config.json"
 
 
 @dataclass
 class AppConfig:
-    data_dir: Path = Path.home() / ".career-agent"
+    data_dir: Path = DEFAULT_DATA_DIR
     resume_path: Path | None = None
     llm_provider: str = "ollama"
     llm_model: str = "llama3.1:8b"
@@ -29,7 +31,10 @@ class AppConfig:
 
     @property
     def database_path(self) -> Path:
-        return self.data_dir / "career_agent.sqlite3"
+        legacy_database = self.data_dir / "career_agent.sqlite3"
+        if self.data_dir == LEGACY_DATA_DIR and legacy_database.exists():
+            return legacy_database
+        return self.data_dir / "foxpilot.sqlite3"
 
 
 def _path_from_value(value: Any) -> Path | None:
@@ -41,13 +46,17 @@ def _path_from_value(value: Any) -> Path | None:
 def load_config(path: Path | None = None) -> AppConfig:
     load_dotenv()
     config_path = path or Path(
-        os.getenv("CAREER_AGENT_CONFIG", str(DEFAULT_CONFIG_PATH))
+        os.getenv("FOXPILOT_CONFIG", str(DEFAULT_CONFIG_PATH))
     ).expanduser()
+    if path is None and not config_path.exists():
+        legacy_config = LEGACY_DATA_DIR / "config.json"
+        if legacy_config.exists():
+            config_path = legacy_config
     values: dict[str, Any] = {}
     if config_path.exists():
         values = json.loads(config_path.read_text(encoding="utf-8"))
 
-    data_dir = _path_from_value(values.get("data_dir")) or DEFAULT_CONFIG_PATH.parent
+    data_dir = _path_from_value(values.get("data_dir")) or config_path.parent
     return AppConfig(
         data_dir=data_dir,
         resume_path=_path_from_value(values.get("resume_path")),

@@ -201,6 +201,27 @@ class JobStore:
             "match": json.loads(row["result_json"]),
         }
 
+    def list_matches(self) -> list[dict]:
+        rows = self.connection.execute(
+            """
+            SELECT matches.*, jobs.payload_json
+            FROM matches
+            JOIN jobs ON jobs.job_id = matches.job_id
+            ORDER BY matches.updated_at DESC
+            """
+        ).fetchall()
+        return [
+            {
+                "job_id": row["job_id"],
+                "job_hash": row["job_hash"],
+                "provider": row["provider"],
+                "model": row["model"],
+                "job": json.loads(row["payload_json"]),
+                "match": json.loads(row["result_json"]),
+            }
+            for row in rows
+        ]
+
     def save_application(
         self,
         job_id: str,
@@ -221,6 +242,14 @@ class JobStore:
             (job_id, status, notes, utc_now()),
         )
         self.connection.commit()
+
+    def get_application(self, job_id: str) -> dict | None:
+        row = self.connection.execute(
+            "SELECT * FROM applications WHERE job_id = ?", (job_id,)
+        ).fetchone()
+        if not row:
+            return None
+        return dict(row)
 
     @staticmethod
     def _job_from_row(row: sqlite3.Row) -> dict:

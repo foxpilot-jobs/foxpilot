@@ -2,7 +2,7 @@
 
 ## Product Contract
 
-Career Agent is a local-first job discovery and decision-support product. Its job is to help users find fewer, better opportunities and make faster, more informed application decisions. It is not an autonomous applicant or a guarantee of interview outcomes.
+FoxPilot is a local-first job discovery and decision-support product. Its job is to help users find fewer, better opportunities and make faster, more informed application decisions. It is not an autonomous applicant or a guarantee of interview outcomes.
 
 ## Approved Stack
 
@@ -20,7 +20,7 @@ Career Agent is a local-first job discovery and decision-support product. Its jo
 ## Data Rules
 
 - All user data belongs outside the repository by default.
-- Use a configurable data directory, with `~/.career-agent/` as the intended default.
+- Use a configurable data directory, with `~/.foxpilot/` as the intended default. Support the legacy `~/.career-agent/` directory only for migration.
 - Resume files, extracted text, profiles, job descriptions, browser sessions, match results, and application history are local data.
 - Test fixtures must be synthetic or sanitized. The maintainer's current resume is temporary local integration input only.
 - Remote LLM use must be opt-in and clearly disclosed.

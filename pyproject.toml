@@ -3,7 +3,7 @@ requires = ["setuptools>=69"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "career-agent"
+name = "foxpilot"
 version = "0.1.0"
 description = "Local-first job discovery and career decision support"
 readme = "README.md"
@@ -22,9 +22,21 @@ dev = [
   "pytest",
   "ruff",
 ]
+api = [
+  "fastapi",
+  "uvicorn[standard]",
+]
 
 [project.scripts]
+foxpilot = "career_agent.cli:main"
+# Compatibility entry point for existing local installations.
 career-agent = "career_agent.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = [".", "src"]
+
+[tool.ruff.lint]
+extend-ignore = ["B008"]
