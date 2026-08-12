@@ -8,8 +8,7 @@ from pathlib import Path
 from pypdf import PdfReader
 
 from .config import AppConfig
-from .llm import LLMProvider, create_provider
-
+from .llm import LLMError, LLMProvider, create_provider
 
 PROFILE_FIELDS = [
     "summary",
@@ -65,10 +64,24 @@ def create_profile(
             "No resume is configured. Run `career-agent init --resume path/to/resume.pdf`."
         )
     provider = provider or create_provider(config)
-    profile = provider.complete_json(build_profile_prompt(extract_resume_text(config.resume_path)))
+    prompt = build_profile_prompt(extract_resume_text(config.resume_path))
+    try:
+        profile = provider.complete_json(prompt)
+    except LLMError:
+        profile = provider.complete_json(
+            prompt
+            + "\nYour previous response was not valid JSON. Return only the requested JSON object."
+        )
+
     missing = [field for field in PROFILE_FIELDS if field not in profile]
     if missing:
-        raise ValueError(f"Profile response is missing fields: {', '.join(missing)}")
+        profile = provider.complete_json(
+            prompt
+            + "\nYour previous response missed required fields. Return every field exactly as requested."
+        )
+        missing = [field for field in PROFILE_FIELDS if field not in profile]
+        if missing:
+            raise ValueError(f"Profile response is missing fields: {', '.join(missing)}")
     config.data_dir.mkdir(parents=True, exist_ok=True)
     config.profile_path.write_text(
         json.dumps(profile, indent=2, ensure_ascii=False) + "\n",

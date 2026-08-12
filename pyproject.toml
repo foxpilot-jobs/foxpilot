@@ -17,6 +17,12 @@ dependencies = [
   "httpx",
 ]
 
+[project.optional-dependencies]
+dev = [
+  "pytest",
+  "ruff",
+]
+
 [project.scripts]
 career-agent = "career_agent.cli:main"
 

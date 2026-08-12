@@ -10,7 +10,6 @@ from career_agent.config import load_config
 from career_agent.llm import LLMError, create_provider
 from career_agent.matching import match_job
 
-
 FILTERED_JOBS_PATH = Path("data/filtered_jobs.json")
 MATCHES_PATH = Path("data/matches.json")
 

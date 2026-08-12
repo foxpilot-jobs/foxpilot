@@ -19,3 +19,11 @@ The CLI validates the core value proposition and keeps the first release small. 
 ## No autonomous applications
 
 Applications and outreach have external consequences and require user judgment. The product may prepare context or open the source URL, but explicit confirmation is required before any outbound action.
+
+## Same-repository web monorepo
+
+The React web/PWA lives in `apps/web` in the same repository as the Python core and API. This keeps product contracts, security rules, and release changes reviewable together while allowing independent frontend builds.
+
+## Responsive PWA before native mobile
+
+The first browser product targets desktop and mobile layouts through one responsive React application and PWA capabilities. Native mobile apps are deferred until usage demonstrates a need for platform-specific capabilities.

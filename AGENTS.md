@@ -15,3 +15,6 @@ These rules apply to every agent working in this repository:
 - Never submit applications, recruiter messages, or external actions without explicit user confirmation.
 - Do not commit changes. The repository owner handles commits and publishing.
 - Use the repository bootstrap commands for dependencies. They explicitly select public package registries and must not depend on machine-level package-manager configuration.
+- Keep frontend work under `apps/web` and API adapter work under `services/api`; do not put browser logic in Python scrapers or provider modules.
+- The API and CLI must share Python application services. Do not duplicate matching, profile, storage, or source logic in the frontend.
+- Frontend changes must preserve responsive desktop/mobile behavior, accessibility, typed API contracts, and the local-first privacy model.

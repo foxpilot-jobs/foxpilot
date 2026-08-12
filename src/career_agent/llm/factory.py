@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+from ..config import AppConfig
 from .base import LLMError, LLMProvider
 from .ollama import OllamaProvider
 from .openai import OpenAIProvider
-from ..config import AppConfig
 
 
 def create_provider(config: AppConfig) -> LLMProvider:

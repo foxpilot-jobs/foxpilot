@@ -1,6 +1,6 @@
+import json
 import subprocess
 import sys
-import json
 from pathlib import Path
 
 from career_agent.config import load_config
