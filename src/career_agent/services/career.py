@@ -11,7 +11,7 @@ class CareerService:
         self.config = config
 
     def _store(self) -> JobStore:
-        return JobStore(self.config.database_path)
+        return JobStore(self.config.resolved_database_url)
 
     def list_jobs(self, relevance: str | None = None) -> list[dict]:
         with self._store() as store:

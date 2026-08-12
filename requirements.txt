@@ -4,3 +4,4 @@ python-dotenv
 pypdf
 playwright
 httpx
+sqlalchemy

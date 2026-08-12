@@ -25,6 +25,20 @@ Static React frontend -> FastAPI service -> PostgreSQL
 
 PostgreSQL replaces SQLite only at the storage boundary. Domain and application services must not be coupled to a specific database.
 
+Set the hosted database explicitly:
+
+```env
+DATABASE_URL=postgresql+psycopg://user:password@host:5432/foxpilot
+```
+
+Apply schema migrations before starting the API:
+
+```bash
+alembic upgrade head
+```
+
+The local SQLite path remains the default when `DATABASE_URL` is not set.
+
 ## Production Requirements
 
 - Versioned API endpoints.

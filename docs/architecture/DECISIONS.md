@@ -24,6 +24,10 @@ Applications and outreach have external consequences and require user judgment. 
 
 The React web/PWA lives in `apps/web` in the same repository as the Python core and API. This keeps product contracts, security rules, and release changes reviewable together while allowing independent frontend builds.
 
+## Database portability
+
+SQLAlchemy is the repository boundary. SQLite remains the default local database, while PostgreSQL is selected with `DATABASE_URL` for hosted mode. Alembic owns schema changes so hosted deployments do not rely on implicit table creation.
+
 ## Responsive PWA before native mobile
 
 The first browser product targets desktop and mobile layouts through one responsive React application and PWA capabilities. Native mobile apps are deferred until usage demonstrates a need for platform-specific capabilities.

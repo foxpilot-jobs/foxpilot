@@ -1,5 +1,5 @@
 """Durable local storage."""
 
-from .sqlite import JobStore
+from .database import JobStore
 
 __all__ = ["JobStore"]

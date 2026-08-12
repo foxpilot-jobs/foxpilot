@@ -22,6 +22,7 @@ class AppConfig:
     llm_provider: str = "ollama"
     llm_model: str = "llama3.1:8b"
     ollama_base_url: str = "http://localhost:11434"
+    database_url: str | None = None
     target_roles: list[str] = field(default_factory=list)
     locations: list[str] = field(default_factory=list)
 
@@ -35,6 +36,10 @@ class AppConfig:
         if self.data_dir == LEGACY_DATA_DIR and legacy_database.exists():
             return legacy_database
         return self.data_dir / "foxpilot.sqlite3"
+
+    @property
+    def resolved_database_url(self) -> str:
+        return self.database_url or f"sqlite:///{self.database_path}"
 
 
 def _path_from_value(value: Any) -> Path | None:
@@ -69,6 +74,7 @@ def load_config(path: Path | None = None) -> AppConfig:
             "OLLAMA_BASE_URL",
             values.get("ollama_base_url", "http://localhost:11434"),
         ),
+        database_url=os.getenv("DATABASE_URL", values.get("database_url")),
         target_roles=list(values.get("target_roles", [])),
         locations=list(values.get("locations", [])),
     )

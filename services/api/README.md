@@ -18,3 +18,5 @@ uvicorn services.api.app:app --reload --port 8000
 ```
 
 The API is currently intended for local use. Authentication and hosted per-user isolation are required before public deployment.
+
+For hosted database configuration, set `DATABASE_URL` to a PostgreSQL `postgresql+psycopg://...` URL and run `alembic upgrade head` before starting the service.
