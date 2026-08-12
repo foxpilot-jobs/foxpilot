@@ -27,9 +27,13 @@ foxpilot init --resume /absolute/path/to/resume.pdf
 foxpilot migrate
 ```
 
-The resume path in `config.json` is machine-specific. Never copy that config file between machines without updating the path. A cloned repository is clean and runnable, but each user must configure their own resume, preferences, Ollama model, and source authentication.
+The migration command also copies an existing legacy `~/.career-agent` database and profile into `~/.foxpilot` before importing legacy repository job files. The resume path in `config.json` is machine-specific. Never copy that config file between machines without updating the path. A cloned repository is clean and runnable, but each user must configure their own resume, preferences, Ollama model, and source authentication.
 
 Local state is persistent, not temporary. It remains until the user backs it up or deletes `~/.foxpilot/`. Existing `~/.career-agent/` data is supported as a legacy fallback. The future hosted mode will replace this directory with an authenticated per-user storage volume.
+
+## Scan Lock
+
+FoxPilot writes an advisory lock at `~/.foxpilot/scan.lock` while ingestion, filtering, profile extraction, and matching run. A second local scan exits safely instead of competing for browser state, SQLite writes, or LLM capacity. The lock is released when the process exits normally.
 
 ## Existing JSON Data
 
