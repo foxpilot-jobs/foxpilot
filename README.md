@@ -75,9 +75,36 @@ career-agent scan
 
 The bootstrap script selects public PyPI explicitly and the repository `.npmrc` selects the public npm registry. This avoids relying on machine-level package-manager configuration.
 
-For local AI, install Ollama separately and pull the configured model. Remote providers are optional and may incur costs.
+## Local AI With Ollama
 
-The current `scan` command is a compatibility entry point over the prototype pipeline. It still uses the existing Greenhouse browser flow and OpenAI matcher; those internals are being migrated behind the documented interfaces in later phases.
+Ollama is the default provider and keeps resume data on your machine:
+
+```bash
+brew install ollama
+ollama serve
+ollama pull llama3.1:8b
+ollama list
+```
+
+Keep `ollama serve` running in a separate terminal. In `.env`, use:
+
+```env
+LLM_PROVIDER=ollama
+OLLAMA_BASE_URL=http://localhost:11434
+LLM_MODEL=llama3.1:8b
+```
+
+Then run:
+
+```bash
+source .venv/bin/activate
+career-agent init --resume /absolute/path/to/resume.pdf
+career-agent scan
+```
+
+The first local model request can take a few minutes. Ollama requires local compute and disk space, but no API key. OpenAI remains available as an explicit opt-in provider by setting `LLM_PROVIDER=openai`, `LLM_MODEL=<model>`, and `OPENAI_API_KEY` in `.env`.
+
+See [Local AI](docs/operations/LOCAL_AI.md) for troubleshooting and provider behavior.
 
 ## Job Sources
 

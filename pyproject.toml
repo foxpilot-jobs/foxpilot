@@ -14,6 +14,7 @@ dependencies = [
   "python-dotenv",
   "pypdf",
   "playwright",
+  "httpx",
 ]
 
 [project.scripts]

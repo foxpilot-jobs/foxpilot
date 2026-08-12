@@ -2,7 +2,7 @@
 
 ## Local-first AI
 
-Ollama is the default provider because it supports a no-API-key local workflow. OpenAI remains an optional adapter for users who choose higher hosted-model quality and accept cost and data-sharing tradeoffs.
+Ollama is the default provider because it supports a no-API-key local workflow. Profile extraction and matching use a shared provider interface. OpenAI remains an optional adapter for users who choose hosted-model quality and accept cost and data-sharing tradeoffs.
 
 ## SQLite before hosted storage
 

@@ -15,12 +15,13 @@ Every phase ends with tests, documentation, and a runnable state. Work is not co
 - Cover current filtering and normalization behavior with tests.
 - Add CI quality gates.
 
-## Phase 2: Local Intelligence
+## Phase 2: Local Intelligence (In Progress)
 
-- Add provider interfaces and Ollama implementation.
-- Add optional OpenAI implementation.
-- Generalize resume/profile ingestion.
-- Validate structured model output and record model metadata.
+- Provider interfaces and Ollama implementation.
+- Optional OpenAI implementation.
+- Shared configuration and generic resume/profile ingestion.
+- Validated structured model output.
+- Remaining: provider metadata, model evaluation fixtures, and quality benchmarks.
 
 ## Phase 3: Source Platform
 

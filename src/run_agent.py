@@ -3,6 +3,8 @@ import sys
 import json
 from pathlib import Path
 
+from career_agent.config import load_config
+
 
 def run_step(
     name: str,
@@ -98,7 +100,8 @@ def main():
         print("If Greenhouse returned redirects, log in with the new browser profile and scan again.")
         return
 
-    if not Path("data/career_profile.json").exists():
+    config = load_config()
+    if not config.profile_path.exists():
         run_step(
             "Career profile creation",
             [
@@ -134,4 +137,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main() or 0)

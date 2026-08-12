@@ -36,6 +36,15 @@ def build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_DATA_DIR,
         help=f"Local data directory (default: {DEFAULT_DATA_DIR}).",
     )
+    init_parser.add_argument(
+        "--provider",
+        choices=("ollama", "openai"),
+        help="LLM provider to use (default: ollama).",
+    )
+    init_parser.add_argument(
+        "--model",
+        help="LLM model name (default: llama3.1:8b).",
+    )
 
     scan_parser = subparsers.add_parser(
         "scan",
@@ -58,7 +67,8 @@ def init_project(args: argparse.Namespace) -> int:
     config = {
         "data_dir": str(data_dir),
         "resume_path": str(args.resume.expanduser().resolve()) if args.resume else None,
-        "llm_provider": os.getenv("LLM_PROVIDER", "ollama"),
+        "llm_provider": args.provider or os.getenv("LLM_PROVIDER", "ollama"),
+        "llm_model": args.model or os.getenv("LLM_MODEL", "llama3.1:8b"),
         "target_roles": [],
         "locations": [],
     }
