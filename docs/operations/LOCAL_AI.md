@@ -2,7 +2,7 @@
 
 ## Default Provider
 
-Career Agent uses Ollama by default. Profile extraction and job matching send prompts to the local Ollama HTTP API at `http://localhost:11434`. The application does not upload resume data when `LLM_PROVIDER=ollama`.
+FoxPilot uses Ollama by default. Profile extraction and job matching send prompts to the local Ollama HTTP API at `http://localhost:11434`. The application does not upload resume data when `LLM_PROVIDER=ollama`.
 
 ## macOS Setup
 
@@ -31,9 +31,9 @@ LLM_MODEL=llama3.1:8b
 ```bash
 ./scripts/bootstrap.sh
 source .venv/bin/activate
-career-agent init --resume /absolute/path/to/resume.pdf
-career-agent scan --dry-run
-career-agent scan
+foxpilot init --resume /absolute/path/to/resume.pdf
+foxpilot scan --dry-run
+foxpilot scan
 ```
 
 The first real scan may open a browser for the configured job source. Ollama must remain running while profile extraction or matching is active.

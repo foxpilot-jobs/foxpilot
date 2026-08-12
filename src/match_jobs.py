@@ -24,7 +24,7 @@ def main() -> int:
     config = load_config()
     if not config.profile_path.exists():
         print(f"Career profile not found: {config.profile_path}")
-        print("Run `career-agent scan` or `python src/create_profile.py` first.")
+        print("Run `foxpilot scan` or `python src/create_profile.py` first.")
         return 1
     profile = json.loads(config.profile_path.read_text(encoding="utf-8"))
     try:

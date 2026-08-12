@@ -10,7 +10,7 @@ The initial user is a technical professional actively searching for a role. The 
 
 ## Promise
 
-Career Agent turns a broad job search into a prioritized, explainable shortlist while keeping the user and their data in control.
+FoxPilot turns a broad job search into a prioritized, explainable shortlist while keeping the user and their data in control.
 
 ## MVP
 

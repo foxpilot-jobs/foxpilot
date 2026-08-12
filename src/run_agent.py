@@ -54,7 +54,7 @@ def main():
     )
 
     print(
-        "CAREER AGENT"
+        "FOXPILOT"
     )
 
     print(
@@ -119,7 +119,7 @@ def main():
     )
 
     print(
-        "CAREER AGENT COMPLETE"
+        "FOXPILOT COMPLETE"
     )
 
     print(

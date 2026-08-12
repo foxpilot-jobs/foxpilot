@@ -25,7 +25,7 @@ PIP_EXTRA_INDEX_URL= \
 
 PIP_INDEX_URL=https://pypi.org/simple \
 PIP_EXTRA_INDEX_URL= \
-.venv/bin/python -m pip install --index-url https://pypi.org/simple --editable ".[dev]"
+.venv/bin/python -m pip install --index-url https://pypi.org/simple --editable ".[dev,api]"
 
 .venv/bin/python -m playwright install chromium
 

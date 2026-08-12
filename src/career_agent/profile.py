@@ -61,7 +61,7 @@ def create_profile(
 ) -> dict:
     if not config.resume_path:
         raise ValueError(
-            "No resume is configured. Run `career-agent init --resume path/to/resume.pdf`."
+            "No resume is configured. Run `foxpilot init --resume path/to/resume.pdf`."
         )
     provider = provider or create_provider(config)
     prompt = build_profile_prompt(extract_resume_text(config.resume_path))

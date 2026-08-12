@@ -1,4 +1,4 @@
-"""Command-line entry point for the current Career Agent pipeline."""
+"""Command-line entry point for the FoxPilot pipeline."""
 
 from __future__ import annotations
 
@@ -13,19 +13,19 @@ from .config import load_config
 from .storage import JobStore
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_DATA_DIR = Path.home() / ".career-agent"
+DEFAULT_DATA_DIR = Path.home() / ".foxpilot"
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="career-agent",
+        prog="foxpilot",
         description="Local-first job discovery and career decision support.",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     init_parser = subparsers.add_parser(
         "init",
-        help="Create local Career Agent configuration.",
+        help="Create local FoxPilot configuration.",
     )
     init_parser.add_argument(
         "--resume",
@@ -85,8 +85,8 @@ def init_project(args: argparse.Namespace) -> int:
         return 0
 
     config_path.write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
-    print(f"Career Agent initialized: {config_path}")
-    print("Next: configure target_roles and locations, then run `career-agent scan`.")
+    print(f"FoxPilot initialized: {config_path}")
+    print("Next: configure target_roles and locations, then run `foxpilot scan`.")
     return 0
 
 

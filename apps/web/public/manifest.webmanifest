@@ -1,0 +1,9 @@
+{
+  "name": "FoxPilot",
+  "short_name": "FoxPilot",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4f0e8",
+  "theme_color": "#10231d",
+  "icons": []
+}

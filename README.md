@@ -1,14 +1,14 @@
-# Career Agent
+# FoxPilot
 
-Career Agent is a local-first, open-source job discovery and decision-support tool. It helps a job seeker turn a resume and career goals into a focused list of relevant opportunities, with transparent explanations for every recommendation.
+FoxPilot is a local-first, open-source job discovery and decision-support tool. It helps a job seeker turn a resume and career goals into a focused list of relevant opportunities, with transparent explanations for every recommendation.
 
-The working title is intentionally temporary. The product name and visual identity will be selected after the core user workflow is validated.
+FoxPilot is the product identity for the current build.
 
 ## Product Goal
 
 Reduce the time and uncertainty between discovering a job and deciding whether it deserves an application.
 
-The primary product metric is **qualified opportunities reviewed per hour of user effort**. Career Agent is not an auto-apply bot. The user remains in control of applications, communication, and personal data.
+The primary product metric is **qualified opportunities reviewed per hour of user effort**. FoxPilot is not an auto-apply bot. The user remains in control of applications, communication, and personal data.
 
 ## Planned Workflow
 
@@ -71,8 +71,8 @@ The intended setup will be:
 ./scripts/bootstrap.sh
 source .venv/bin/activate
 cp .env.example .env
-career-agent init
-career-agent scan
+foxpilot init
+foxpilot scan
 ```
 
 The bootstrap script selects public PyPI explicitly and the repository `.npmrc` selects the public npm registry. This avoids relying on machine-level package-manager configuration.
@@ -100,9 +100,9 @@ Then run:
 
 ```bash
 source .venv/bin/activate
-career-agent init --resume /absolute/path/to/resume.pdf
-career-agent migrate
-career-agent scan
+foxpilot init --resume /absolute/path/to/resume.pdf
+foxpilot migrate
+foxpilot scan
 ```
 
 The first local model request can take a few minutes. Ollama requires local compute and disk space, but no API key. OpenAI remains available as an explicit opt-in provider by setting `LLM_PROVIDER=openai`, `LLM_MODEL=<model>`, and `OPENAI_API_KEY` in `.env`.
@@ -114,7 +114,7 @@ See [Local AI](docs/operations/LOCAL_AI.md) for troubleshooting and provider beh
 This is a monorepo by design. The Python domain and application services remain the source of truth. The web app is a separate React workspace under `apps/web`, and the API is a separate deployable service under `services/api`.
 
 ```text
-career-agent/
+foxpilot/
 ├── src/career_agent/       # Python domain, providers, sources, storage
 ├── services/api/           # FastAPI HTTP adapter over Python services
 ├── apps/web/               # React + TypeScript responsive PWA
@@ -130,7 +130,26 @@ career-agent/
 
 The local deployment is the privacy-preserving and lifetime-free baseline. Hosted deployment is optional and may require paid infrastructure.
 
-`~/.career-agent/` is per-user local state. It is created automatically, is ignored by git, and is not copied when the repository is cloned. Each machine needs its own `career-agent init --resume ...` setup. This is intentional: resumes, browser sessions, job history, and match history must not be shared through source control.
+For the web client, use the repository bootstrap script rather than a machine-level npm command:
+
+```bash
+./scripts/bootstrap-web.sh
+cd apps/web
+npm run dev
+```
+
+The web stack requires Node 22.18 or newer. The repository includes `.nvmrc` with the recommended major version.
+
+Run the API in another terminal:
+
+```bash
+source .venv/bin/activate
+uvicorn services.api.app:app --reload --port 8000
+```
+
+Then open the web client at `http://localhost:5173`. The Vite development server proxies `/api` to the local API.
+
+`~/.foxpilot/` is per-user local state. It is created automatically, is ignored by git, and is not copied when the repository is cloned. Existing `~/.career-agent/` state is read as a legacy fallback. Each machine needs its own `foxpilot init --resume ...` setup. This is intentional: resumes, browser sessions, job history, and match history must not be shared through source control.
 
 ## Job Sources
 
@@ -138,4 +157,4 @@ Sources are planned as independent adapters. Greenhouse and Lever are the first 
 
 ## License
 
-Career Agent is released under the MIT License. See [LICENSE](LICENSE).
+FoxPilot is released under the MIT License. See [LICENSE](LICENSE).
