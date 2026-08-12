@@ -2,6 +2,7 @@ import subprocess
 import sys
 
 from career_agent.config import load_config
+from career_agent.runtime import ScanAlreadyRunning, ScanLock
 from career_agent.storage import JobStore
 
 
@@ -41,11 +42,11 @@ def run_step(
 
 
 def has_filtered_jobs() -> bool:
-    with JobStore(load_config().database_path) as store:
+    with JobStore(load_config().resolved_database_url) as store:
         return bool(store.list_jobs(relevance="TARGET"))
 
 
-def main():
+def _run_pipeline():
 
     python = sys.executable
 
@@ -89,7 +90,7 @@ def main():
         print()
         print("No target jobs were found. Skipping AI matching.")
         print("If Greenhouse returned redirects, log in with the new browser profile and scan again.")
-        return
+        return 0
 
     config = load_config()
     if not config.profile_path.exists():
@@ -118,6 +119,16 @@ def main():
         "=" * 70
     )
 
+
+def main() -> int:
+    config = load_config()
+    try:
+        with ScanLock(config.data_dir / "scan.lock"):
+            return _run_pipeline() or 0
+    except ScanAlreadyRunning as error:
+        print(f"ERROR: {error}", file=sys.stderr)
+        return 1
+
     print(
         "FOXPILOT COMPLETE"
     )
@@ -128,4 +139,4 @@ def main():
 
 
 if __name__ == "__main__":
-    raise SystemExit(main() or 0)
+    raise SystemExit(main())

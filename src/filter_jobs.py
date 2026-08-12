@@ -188,7 +188,7 @@ def classify_job(
 
 
 def load_jobs() -> list[dict]:
-    with JobStore(load_config().database_path) as store:
+    with JobStore(load_config().resolved_database_url) as store:
         return store.list_jobs()
 
 
@@ -229,7 +229,7 @@ def main():
     review_jobs = []
     excluded_jobs = []
 
-    with JobStore(load_config().database_path) as store:
+    with JobStore(load_config().resolved_database_url) as store:
         for job in jobs:
 
             classification = classify_job(

@@ -5,15 +5,16 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
+import sqlite3
 import subprocess
 import sys
 from pathlib import Path
 
-from .config import load_config
+from .config import DEFAULT_DATA_DIR, LEGACY_DATA_DIR, load_config
 from .storage import JobStore
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_DATA_DIR = Path.home() / ".foxpilot"
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -111,7 +112,28 @@ def scan_project(args: argparse.Namespace) -> int:
 
 
 def migrate_project() -> int:
-    config = load_config()
+    target_dir = DEFAULT_DATA_DIR
+    target_dir.mkdir(parents=True, exist_ok=True)
+    target_database = target_dir / "foxpilot.sqlite3"
+    legacy_database = LEGACY_DATA_DIR / "career_agent.sqlite3"
+    legacy_profile = LEGACY_DATA_DIR / "career_profile.json"
+
+    if legacy_database.exists() and not target_database.exists():
+        source = sqlite3.connect(legacy_database)
+        destination = sqlite3.connect(target_database)
+        try:
+            source.backup(destination)
+        finally:
+            destination.close()
+            source.close()
+        print(f"Migrated legacy database to {target_database}")
+
+    target_profile = target_dir / "career_profile.json"
+    if legacy_profile.exists() and not target_profile.exists():
+        shutil.copy2(legacy_profile, target_profile)
+        print(f"Migrated legacy profile to {target_profile}")
+
+    config = load_config(DEFAULT_DATA_DIR / "config.json")
     with JobStore(config.database_path) as store:
         imported = store.import_legacy_jobs(REPOSITORY_ROOT / "data" / "jobs")
     print(f"Imported {imported} legacy job record(s) into {config.database_path}")

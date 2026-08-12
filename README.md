@@ -37,6 +37,8 @@ The primary product metric is **qualified opportunities reviewed per hour of use
 - Typer CLI
 - Pydantic domain models
 - SQLite persistence
+- SQLAlchemy repository with SQLite local default and PostgreSQL hosted option
+- Alembic schema migrations
 - Ollama with a local open model as the default LLM
 - Optional OpenAI provider
 - `httpx` and BeautifulSoup for static sources

@@ -36,7 +36,7 @@ def main() -> int:
     analyzed = 0
     skipped = 0
 
-    with JobStore(config.database_path) as store:
+    with JobStore(config.resolved_database_url) as store:
         jobs = store.list_jobs(relevance="TARGET")
         for job in jobs:
             job_id = job["job_id"]

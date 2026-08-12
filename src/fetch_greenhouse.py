@@ -26,7 +26,7 @@ def job_already_exists(job: dict) -> bool:
 
     job_id = job["source_job_id"]
 
-    with JobStore(load_config().database_path) as store:
+    with JobStore(load_config().resolved_database_url) as store:
         return store.get_job(f"mygreenhouse_{job_id}") is not None
 
 
@@ -35,7 +35,7 @@ def save_job(job: dict) -> None:
     Save a new job locally.
     """
 
-    with JobStore(load_config().database_path) as store:
+    with JobStore(load_config().resolved_database_url) as store:
         store.upsert_job(job)
 
 
@@ -485,7 +485,7 @@ def fetch_jobs(
 
     all_new_jobs = []
 
-    with JobStore(load_config().database_path) as store:
+    with JobStore(load_config().resolved_database_url) as store:
         store.import_legacy_jobs(JOBS_PATH)
 
     with sync_playwright() as playwright:
@@ -555,7 +555,7 @@ def main():
         exist_ok=True,
     )
 
-    with JobStore(load_config().database_path) as store:
+    with JobStore(load_config().resolved_database_url) as store:
         store.import_legacy_jobs(JOBS_PATH)
 
     BROWSER_PROFILE.mkdir(
