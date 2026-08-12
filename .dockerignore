@@ -1,0 +1,15 @@
+.git
+.github
+.venv
+__pycache__
+*.pyc
+.env
+data/browser-profile
+data/resume
+data/jobs
+data/*.db
+data/*.sqlite*
+data/*.json
+tests
+apps/web/node_modules
+apps/web/dist

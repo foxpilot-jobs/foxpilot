@@ -127,7 +127,7 @@ foxpilot/
 ## Deployment Modes
 
 - Local CLI: Python package, SQLite, and Ollama on the user's machine.
-- Local web: Docker Compose with the API, web app, SQLite, and Ollama.
+- Local web: hybrid Docker Compose with API, PostgreSQL, and web in Docker; Ollama and interactive scanning on the host.
 - Hosted web: static React frontend, FastAPI service, PostgreSQL, and an explicitly configured LLM provider.
 
 The local deployment is the privacy-preserving and lifetime-free baseline. Hosted deployment is optional and may require paid infrastructure.
@@ -140,7 +140,9 @@ cd apps/web
 npm run dev
 ```
 
-The web stack requires Node 22.18 or newer. The repository includes `.nvmrc` with the recommended major version.
+The web stack requires Node 22.18 or newer; Node 24.19 is the validated runtime. The repository includes `.nvmrc` with the recommended major version.
+
+For the exact process layout, see [Run Modes](docs/operations/RUN_MODES.md). For deployment details, see [Deployment](docs/operations/DEPLOYMENT.md).
 
 Run the API in another terminal:
 

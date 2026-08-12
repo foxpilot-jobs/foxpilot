@@ -23,6 +23,8 @@ def test_api_health_and_jobs(tmp_path: Path) -> None:
     client = TestClient(app)
 
     assert client.get("/api/v1/health").json() == {"status": "ok"}
+    assert client.get("/api/v1/health/live").json() == {"status": "alive"}
+    assert client.get("/api/v1/health/ready").json() == {"status": "ready"}
     response = client.get("/api/v1/jobs")
     assert response.status_code == 200
     assert response.json()[0]["title"] == "Data Engineer"
