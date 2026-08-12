@@ -1,0 +1,9 @@
+2026/08/12-14:55:58.880 5832fc Reusing MANIFEST /Users/siddanthmacherla/career-agent/data/browser-profile/Default/Local Storage/leveldb/MANIFEST-000001
+2026/08/12-14:55:58.882 5832fc Recovering log #10
+2026/08/12-14:55:58.882 5832fc Reusing old log /Users/siddanthmacherla/career-agent/data/browser-profile/Default/Local Storage/leveldb/000010.log 
+2026/08/12-14:56:16.764 5832ff Level-0 table #15: started
+2026/08/12-14:56:16.766 5832ff Level-0 table #15: 24858 bytes OK
+2026/08/12-14:56:16.768 5832ff Delete type=0 #10
+2026/08/12-14:56:34.147 5832ff Level-0 table #17: started
+2026/08/12-14:56:34.150 5832ff Level-0 table #17: 23754 bytes OK
+2026/08/12-14:56:34.153 5832ff Delete type=0 #14
