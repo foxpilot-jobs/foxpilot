@@ -101,6 +101,7 @@ Then run:
 ```bash
 source .venv/bin/activate
 career-agent init --resume /absolute/path/to/resume.pdf
+career-agent migrate
 career-agent scan
 ```
 
@@ -128,6 +129,8 @@ career-agent/
 - Hosted web: static React frontend, FastAPI service, PostgreSQL, and an explicitly configured LLM provider.
 
 The local deployment is the privacy-preserving and lifetime-free baseline. Hosted deployment is optional and may require paid infrastructure.
+
+`~/.career-agent/` is per-user local state. It is created automatically, is ignored by git, and is not copied when the repository is cloned. Each machine needs its own `career-agent init --resume ...` setup. This is intentional: resumes, browser sessions, job history, and match history must not be shared through source control.
 
 ## Job Sources
 

@@ -1,22 +1,7 @@
-import json
 import re
-from pathlib import Path
 
-
-JOBS_PATH = Path("data/jobs")
-
-TARGET_OUTPUT_PATH = Path(
-    "data/filtered_jobs.json"
-)
-
-REVIEW_OUTPUT_PATH = Path(
-    "data/review_jobs.json"
-)
-
-EXCLUDED_OUTPUT_PATH = Path(
-    "data/excluded_jobs.json"
-)
-
+from career_agent.config import load_config
+from career_agent.storage import JobStore
 
 TARGET_ROLES = [
     "analytics engineer",
@@ -203,55 +188,8 @@ def classify_job(
 
 
 def load_jobs() -> list[dict]:
-
-    jobs = []
-
-    for path in sorted(
-        JOBS_PATH.glob("*.json")
-    ):
-
-        try:
-
-            with path.open(
-                "r",
-                encoding="utf-8",
-            ) as file:
-
-                job = json.load(file)
-
-            jobs.append(job)
-
-        except Exception as error:
-
-            print(
-                f"Warning: could not read "
-                f"{path}: {error}"
-            )
-
-    return jobs
-
-
-def save_jobs(
-    path: Path,
-    jobs: list[dict],
-) -> None:
-
-    path.parent.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-
-    with path.open(
-        "w",
-        encoding="utf-8",
-    ) as file:
-
-        json.dump(
-            jobs,
-            file,
-            indent=2,
-            ensure_ascii=False,
-        )
+    with JobStore(load_config().database_path) as store:
+        return store.list_jobs()
 
 
 def print_job_list(
@@ -291,33 +229,35 @@ def main():
     review_jobs = []
     excluded_jobs = []
 
-    for job in jobs:
+    with JobStore(load_config().database_path) as store:
+        for job in jobs:
 
-        classification = classify_job(
-            job
-        )
-
-        job["local_relevance"] = (
-            classification
-        )
-
-        if classification == "TARGET":
-
-            target_jobs.append(
+            classification = classify_job(
                 job
             )
 
-        elif classification == "REVIEW":
-
-            review_jobs.append(
-                job
+            job["local_relevance"] = (
+                classification
             )
+            store.set_relevance(job["job_id"], classification)
 
-        else:
+            if classification == "TARGET":
 
-            excluded_jobs.append(
-                job
-            )
+                target_jobs.append(
+                    job
+                )
+
+            elif classification == "REVIEW":
+
+                review_jobs.append(
+                    job
+                )
+
+            else:
+
+                excluded_jobs.append(
+                    job
+                )
 
     # --------------------------------------------------
     # Print summary
@@ -368,47 +308,7 @@ def main():
         "✗",
     )
 
-    # --------------------------------------------------
-    # Save separate files
-    # --------------------------------------------------
-
-    save_jobs(
-        TARGET_OUTPUT_PATH,
-        target_jobs,
-    )
-
-    save_jobs(
-        REVIEW_OUTPUT_PATH,
-        review_jobs,
-    )
-
-    save_jobs(
-        EXCLUDED_OUTPUT_PATH,
-        excluded_jobs,
-    )
-
-    # --------------------------------------------------
-    # Final summary
-    # --------------------------------------------------
-
-    print(
-        "Saved:"
-    )
-
-    print(
-        f"  TARGET:  "
-        f"{TARGET_OUTPUT_PATH}"
-    )
-
-    print(
-        f"  REVIEW:  "
-        f"{REVIEW_OUTPUT_PATH}"
-    )
-
-    print(
-        f"  EXCLUDE: "
-        f"{EXCLUDED_OUTPUT_PATH}"
-    )
+    print("Relevance classifications persisted to SQLite.")
 
     print()
 

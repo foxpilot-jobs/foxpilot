@@ -4,8 +4,11 @@ import sys
 from pathlib import Path
 from urllib.parse import urlencode
 
+from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import sync_playwright
 
+from career_agent.config import load_config
+from career_agent.storage import JobStore
 
 JOBS_PATH = Path("data/jobs")
 BROWSER_PROFILE = Path("data/browser-profile")
@@ -23,12 +26,8 @@ def job_already_exists(job: dict) -> bool:
 
     job_id = job["source_job_id"]
 
-    path = (
-        JOBS_PATH
-        / f"mygreenhouse_{job_id}.json"
-    )
-
-    return path.exists()
+    with JobStore(load_config().database_path) as store:
+        return store.get_job(f"mygreenhouse_{job_id}") is not None
 
 
 def save_job(job: dict) -> None:
@@ -36,24 +35,8 @@ def save_job(job: dict) -> None:
     Save a new job locally.
     """
 
-    job_id = job["source_job_id"]
-
-    path = (
-        JOBS_PATH
-        / f"mygreenhouse_{job_id}.json"
-    )
-
-    with path.open(
-        "w",
-        encoding="utf-8",
-    ) as file:
-
-        json.dump(
-            job,
-            file,
-            indent=2,
-            ensure_ascii=False,
-        )
+    with JobStore(load_config().database_path) as store:
+        store.upsert_job(job)
 
 
 def load_searches() -> list[dict]:
@@ -83,7 +66,7 @@ def load_searches() -> list[dict]:
         searches,
         list,
     ):
-        raise ValueError(
+        raise TypeError(
             "'searches' must be a list."
         )
 
@@ -170,7 +153,7 @@ def extract_job_posts_from_responses(
             ):
                 return job_posts
 
-        except Exception:
+        except (PlaywrightError, ValueError):
             continue
 
     return []
@@ -283,10 +266,10 @@ def extract_job_description(
                     ).first.inner_text()
                 )
 
-            except Exception:
+            except PlaywrightError:
                 pass
 
-    except Exception as error:
+    except PlaywrightError as error:
 
         print(
             f"  Warning: could not fetch "
@@ -333,7 +316,7 @@ def fetch_single_search(
                 response
             )
 
-        except Exception:
+        except PlaywrightError:
             pass
 
     page.on(
@@ -396,7 +379,7 @@ def fetch_single_search(
                     wait_until="domcontentloaded",
                     timeout=30000,
                 )
-            except Exception as error:
+            except PlaywrightError as error:
                 print(
                     "The browser window was closed before the search could be retried: "
                     f"{error}"
@@ -487,7 +470,7 @@ def fetch_single_search(
     finally:
         try:
             page.close()
-        except Exception:
+        except PlaywrightError:
             pass
 
 
@@ -501,6 +484,9 @@ def fetch_jobs(
     """
 
     all_new_jobs = []
+
+    with JobStore(load_config().database_path) as store:
+        store.import_legacy_jobs(JOBS_PATH)
 
     with sync_playwright() as playwright:
 
@@ -556,7 +542,7 @@ def fetch_jobs(
 
         try:
             context.close()
-        except Exception:
+        except PlaywrightError:
             pass
 
     return all_new_jobs
@@ -568,6 +554,9 @@ def main():
         parents=True,
         exist_ok=True,
     )
+
+    with JobStore(load_config().database_path) as store:
+        store.import_legacy_jobs(JOBS_PATH)
 
     BROWSER_PROFILE.mkdir(
         parents=True,

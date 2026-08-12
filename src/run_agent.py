@@ -1,9 +1,8 @@
-import json
 import subprocess
 import sys
-from pathlib import Path
 
 from career_agent.config import load_config
+from career_agent.storage import JobStore
 
 
 def run_step(
@@ -42,16 +41,8 @@ def run_step(
 
 
 def has_filtered_jobs() -> bool:
-    path = Path("data/filtered_jobs.json")
-    if not path.exists():
-        return False
-
-    try:
-        jobs = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return False
-
-    return isinstance(jobs, list) and bool(jobs)
+    with JobStore(load_config().database_path) as store:
+        return bool(store.list_jobs(relevance="TARGET"))
 
 
 def main():
