@@ -65,3 +65,36 @@ def test_api_token_protects_data_endpoints(tmp_path: Path, monkeypatch) -> None:
         headers={"Authorization": "Bearer test-token"},
     )
     assert response.status_code == 200
+
+
+def test_api_exposes_local_identity(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.delenv("FOXPILOT_API_TOKEN", raising=False)
+    monkeypatch.delenv("FOXPILOT_AUTH_MODE", raising=False)
+    config = AppConfig(data_dir=tmp_path)
+    app = create_app()
+    app.state.service.config = config
+
+    response = TestClient(app).get("/api/v1/me")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "user_id": "local-user",
+        "email": "local@foxpilot.local",
+    }
+
+
+def test_api_token_identity_is_stable(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("FOXPILOT_AUTH_MODE", "token")
+    monkeypatch.setenv("FOXPILOT_API_TOKEN", "test-token")
+    monkeypatch.setenv("FOXPILOT_TOKEN_USER_ID", "staging-user")
+    config = AppConfig(data_dir=tmp_path)
+    app = create_app()
+    app.state.service.config = config
+
+    response = TestClient(app).get(
+        "/api/v1/me",
+        headers={"Authorization": "Bearer test-token"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"user_id": "staging-user", "email": None}

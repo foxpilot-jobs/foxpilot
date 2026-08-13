@@ -76,27 +76,38 @@ The local SQLite path remains the default when `DATABASE_URL` is not set.
 
 ## API Protection
 
-Local development leaves API data routes open on localhost. Any non-local deployment must set:
+Local development leaves API data routes open on localhost. Any non-local deployment must set an explicit authentication mode:
 
 ```env
 FOXPILOT_ENV=production
-FOXPILOT_API_TOKEN=<long-random-secret>
+FOXPILOT_AUTH_MODE=oidc
+FOXPILOT_JWT_ISSUER=https://id.example.com/
+FOXPILOT_JWT_AUDIENCE=foxpilot-api
+FOXPILOT_JWKS_URL=https://id.example.com/.well-known/jwks.json
 ```
 
-Clients then send:
+OIDC clients then send:
 
 ```text
-Authorization: Bearer <long-random-secret>
+Authorization: Bearer <oidc-access-token>
 ```
 
-This is an interim deployment guard, not the final multi-user identity system. Hosted production requires OIDC/OAuth authentication and per-user data isolation before public launch.
+Token mode remains available for staging:
+
+```env
+FOXPILOT_AUTH_MODE=token
+FOXPILOT_API_TOKEN=<long-random-secret>
+FOXPILOT_TOKEN_USER_ID=staging-user
+```
+
+Token mode is a single shared identity and is not suitable for a public multi-user deployment. OIDC authentication is now available, but hosted production still requires database ownership and per-user data isolation before public launch.
 
 Do not set production mode on the current local web UI yet: the browser client does not have an authentication flow. Use the token guard for protected API clients or staging smoke tests until OIDC is implemented.
 
 ## Production Requirements
 
 - Versioned API endpoints.
-- Authentication and per-user data isolation.
+- OIDC authentication and per-user data isolation.
 - TLS at the edge.
 - Secret injection through deployment configuration.
 - Health and readiness checks.

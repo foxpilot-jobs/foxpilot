@@ -23,3 +23,11 @@ Run a secret and personal-data scan before publishing. If sensitive files were c
 ## User Controls
 
 The product must provide export and deletion paths. No outbound application, email, or message may occur without explicit confirmation.
+
+## Hosted Identity And Isolation
+
+The API supports local, single-identity token, and OIDC JWT modes. Hosted deployments must use OIDC and must not rely on the shared token mode. OIDC claims provide the stable `user_id` used by the API boundary.
+
+Jobs are a shared catalog. Matches and application history are keyed by `user_id` and `job_id`, so career decisions and private notes are isolated between identities. Existing local records are migrated to `local-user` by migration `0002_user_owned_state`.
+
+The web client currently has no OIDC login flow. Do not expose the current browser client in OIDC production mode until the frontend has a login/callback flow and sends the provider access token to the API.

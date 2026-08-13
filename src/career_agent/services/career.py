@@ -7,11 +7,12 @@ from ..storage import JobStore
 
 
 class CareerService:
-    def __init__(self, config: AppConfig) -> None:
+    def __init__(self, config: AppConfig, user_id: str = "local-user") -> None:
         self.config = config
+        self.user_id = user_id
 
     def _store(self) -> JobStore:
-        return JobStore(self.config.resolved_database_url)
+        return JobStore(self.config.resolved_database_url, user_id=self.user_id)
 
     def list_jobs(self, relevance: str | None = None) -> list[dict]:
         with self._store() as store:

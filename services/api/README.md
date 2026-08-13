@@ -23,4 +23,39 @@ For local Compose mode, the API runs in Docker and reads PostgreSQL. The host sc
 
 For hosted database configuration, set `DATABASE_URL` to a PostgreSQL `postgresql+psycopg://...` URL and run `alembic upgrade head` before starting the service.
 
-Set `FOXPILOT_ENV=production` and a long random `FOXPILOT_API_TOKEN` before exposing the API outside localhost. The current token guard protects the deployment boundary; multi-user OIDC/OAuth is still required for public launch.
+## Authentication modes
+
+Local mode is the default and uses the explicit `local-user` identity. It is intended only for a private local deployment:
+
+```env
+FOXPILOT_ENV=local
+FOXPILOT_AUTH_MODE=local
+```
+
+Token mode is suitable for staging and non-browser automation. The token maps to one stable identity, not multiple users:
+
+```env
+FOXPILOT_AUTH_MODE=token
+FOXPILOT_API_TOKEN=<long-random-secret>
+FOXPILOT_TOKEN_USER_ID=staging-user
+```
+
+Hosted deployments should use an OIDC provider that exposes a JWKS endpoint. FoxPilot validates the issuer, audience, signature, expiration, issued-at time, and subject locally after retrieving the provider's public keys:
+
+```env
+FOXPILOT_ENV=production
+FOXPILOT_AUTH_MODE=oidc
+FOXPILOT_JWT_ISSUER=https://id.example.com/
+FOXPILOT_JWT_AUDIENCE=foxpilot-api
+FOXPILOT_JWKS_URL=https://id.example.com/.well-known/jwks.json
+# Optional; defaults to email
+FOXPILOT_JWT_EMAIL_CLAIM=email
+```
+
+Clients send the provider access token as:
+
+```text
+Authorization: Bearer <oidc-access-token>
+```
+
+The current `/api/v1/me` endpoint confirms the identity FoxPilot extracted. OIDC authentication is only the first hosted milestone; database ownership must be enabled before users can safely share one deployment.
