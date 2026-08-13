@@ -33,6 +33,8 @@ services:
       LLM_MODEL: llama3.1:8b
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11435}
       CAREER_AGENT_ALLOWED_ORIGINS: http://localhost:8080
+      FOXPILOT_ENV: ${FOXPILOT_ENV:-local}
+      FOXPILOT_API_TOKEN: ${FOXPILOT_API_TOKEN:-}
     depends_on:
       postgres:
         condition: service_healthy

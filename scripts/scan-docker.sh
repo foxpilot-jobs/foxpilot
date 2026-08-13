@@ -14,10 +14,16 @@ fi
 export DATABASE_URL="${DATABASE_URL:-postgresql+psycopg://foxpilot:foxpilot-dev-only@localhost:5432/foxpilot}"
 export OLLAMA_BASE_URL="${OLLAMA_BASE_URL:-http://localhost:11435}"
 
+foxpilot_bin="${FOXPILOT_BIN:-$repo_root/.venv/bin/foxpilot}"
+if [[ ! -x "$foxpilot_bin" ]]; then
+  printf 'FoxPilot CLI not found at %s. Run ./scripts/bootstrap.sh first.\n' "$foxpilot_bin" >&2
+  exit 1
+fi
+
 if ! curl --fail --silent http://localhost:8000/api/v1/health/ready >/dev/null; then
   printf 'FoxPilot API is not ready at http://localhost:8000.\n' >&2
   printf 'Start Docker services with: docker compose up -d\n' >&2
   exit 1
 fi
 
-exec foxpilot scan "$@"
+exec "$foxpilot_bin" scan "$@"
