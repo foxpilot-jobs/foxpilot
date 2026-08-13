@@ -57,9 +57,7 @@ docker compose up --build -d
 
 # Terminal 3
 source .venv/bin/activate
-export DATABASE_URL=postgresql+psycopg://foxpilot:foxpilot-dev-only@localhost:5432/foxpilot
-export OLLAMA_BASE_URL=http://localhost:11435
-foxpilot scan
+./scripts/scan-docker.sh
 ```
 
 Open `http://localhost:8080` after the scan completes.
@@ -72,6 +70,12 @@ The Compose file includes an optional `container-llm` profile:
 ```
 
 Use this only when the Docker Ollama image has a valid certificate chain for `registry.ollama.ai`. On enterprise networks, install the approved CA into a derived Ollama image. Do not disable TLS verification in a hosted deployment.
+
+## Enterprise Docker Proxy
+
+Docker Desktop may route container traffic through an enterprise HTTPS proxy. Docker Hub pulls can succeed while Ollama registry pulls fail with `x509: certificate signed by unknown authority`. This means the proxy CA is missing from the Ollama container, not that the model or FoxPilot configuration is invalid.
+
+The supported local workaround is host Ollama, which uses the host trust store. The secure containerized fix requires the approved enterprise CA certificate to be installed in a derived Ollama image. Do not copy credentials or private registry configuration into this repository.
 
 ## Stop And Data
 

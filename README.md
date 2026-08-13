@@ -144,6 +144,12 @@ The web stack requires Node 22.18 or newer; Node 24.19 is the validated runtime.
 
 For the exact process layout, see [Run Modes](docs/operations/RUN_MODES.md). For deployment details, see [Deployment](docs/operations/DEPLOYMENT.md).
 
+After starting Docker and host Ollama, run the integrated scan wrapper:
+
+```bash
+./scripts/scan-docker.sh
+```
+
 Run the API in another terminal:
 
 ```bash
