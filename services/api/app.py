@@ -11,6 +11,8 @@ from pydantic import BaseModel, Field
 from career_agent.config import load_config
 from career_agent.services import CareerService
 
+from .auth import require_api_access
+
 
 class ApplicationUpdate(BaseModel):
     status: str = Field(pattern="^(saved|applied|interviewing|rejected|offered)$")
@@ -59,25 +61,34 @@ def create_app() -> FastAPI:
     @app.get("/api/v1/jobs")
     def list_jobs(
         career_service: CareerService = Depends(service),
+        _: None = Depends(require_api_access),
         relevance: str | None = Query(default=None, pattern="^(TARGET|REVIEW|EXCLUDE)$"),
     ) -> list[dict]:
         return career_service.list_jobs(relevance=relevance)
 
     @app.get("/api/v1/jobs/{job_id}")
-    def get_job(job_id: str, career_service: CareerService = Depends(service)) -> dict:
+    def get_job(
+        job_id: str,
+        career_service: CareerService = Depends(service),
+        _: None = Depends(require_api_access),
+    ) -> dict:
         job = career_service.get_job(job_id)
         if job is None:
             raise HTTPException(status_code=404, detail="Job not found")
         return job
 
     @app.get("/api/v1/matches")
-    def list_matches(career_service: CareerService = Depends(service)) -> list[dict]:
+    def list_matches(
+        career_service: CareerService = Depends(service),
+        _: None = Depends(require_api_access),
+    ) -> list[dict]:
         return career_service.list_matches()
 
     @app.get("/api/v1/jobs/{job_id}/application")
     def get_application(
         job_id: str,
         career_service: CareerService = Depends(service),
+        _: None = Depends(require_api_access),
     ) -> dict | None:
         if career_service.get_job(job_id) is None:
             raise HTTPException(status_code=404, detail="Job not found")
@@ -88,6 +99,7 @@ def create_app() -> FastAPI:
         job_id: str,
         update: ApplicationUpdate,
         career_service: CareerService = Depends(service),
+        _: None = Depends(require_api_access),
     ) -> dict:
         try:
             return career_service.update_application(

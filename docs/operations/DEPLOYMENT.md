@@ -74,6 +74,25 @@ alembic upgrade head
 
 The local SQLite path remains the default when `DATABASE_URL` is not set.
 
+## API Protection
+
+Local development leaves API data routes open on localhost. Any non-local deployment must set:
+
+```env
+FOXPILOT_ENV=production
+FOXPILOT_API_TOKEN=<long-random-secret>
+```
+
+Clients then send:
+
+```text
+Authorization: Bearer <long-random-secret>
+```
+
+This is an interim deployment guard, not the final multi-user identity system. Hosted production requires OIDC/OAuth authentication and per-user data isolation before public launch.
+
+Do not set production mode on the current local web UI yet: the browser client does not have an authentication flow. Use the token guard for protected API clients or staging smoke tests until OIDC is implemented.
+
 ## Production Requirements
 
 - Versioned API endpoints.

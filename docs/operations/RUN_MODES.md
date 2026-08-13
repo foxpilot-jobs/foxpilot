@@ -60,6 +60,8 @@ source .venv/bin/activate
 ./scripts/scan-docker.sh
 ```
 
+The wrapper calls `.venv/bin/foxpilot` directly, so shell activation is optional after `./scripts/bootstrap.sh` has completed.
+
 Open `http://localhost:8080` after the scan completes.
 
 ## Fully Containerized Ollama

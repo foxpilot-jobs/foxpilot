@@ -46,3 +46,18 @@ def test_api_application_update(tmp_path: Path) -> None:
     )
     assert response.status_code == 200
     assert response.json()["status"] == "applied"
+
+
+def test_api_token_protects_data_endpoints(tmp_path: Path, monkeypatch) -> None:
+    config = AppConfig(data_dir=tmp_path)
+    app = create_app()
+    app.state.service.config = config
+    monkeypatch.setenv("FOXPILOT_API_TOKEN", "test-token")
+    client = TestClient(app)
+
+    assert client.get("/api/v1/jobs").status_code == 401
+    response = client.get(
+        "/api/v1/jobs",
+        headers={"Authorization": "Bearer test-token"},
+    )
+    assert response.status_code == 200
