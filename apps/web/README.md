@@ -8,13 +8,13 @@ The initial responsive shortlist experience is implemented in `src/`. It remains
 
 ## Local Development
 
-The current Vite/Babel release requires Node 22.18 or newer.
+The current Vite/Babel release requires Node 22.18 or newer. Node 24.19 is the validated runtime.
 
 ```bash
 node --version
 ```
 
-If using `nvm`, run `nvm use` from the repository root. Otherwise install Node 22 LTS before running the bootstrap script.
+If using `nvm`, run `nvm use` from the repository root. Otherwise install Node 24.19 before running the bootstrap script.
 
 From the repository root:
 

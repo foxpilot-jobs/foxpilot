@@ -12,7 +12,42 @@ This preserves privacy and avoids mandatory hosting costs.
 
 ## Local Docker Deployment
 
-Docker Compose will package the API and web app while Ollama remains a local model service. Persistent volumes must store SQLite data, Ollama models, and user data outside container layers. The compose stack must not contain credentials.
+Docker Compose packages the API, web app, and PostgreSQL for local web development. Ollama runs on the host by default, which avoids duplicating model downloads and avoids container trust-store problems on enterprise networks. Start host Ollama on a Docker-reachable port.
+
+Terminal 1:
+
+```bash
+OLLAMA_HOST=0.0.0.0:11435 ollama serve
+```
+
+Terminal 2:
+
+```bash
+OLLAMA_HOST=127.0.0.1:11435 ollama pull llama3.1:8b
+docker compose up --build -d
+```
+
+The API image uses public PyPI. The local Dockerfile includes trusted-host defaults for enterprise TLS proxies that re-sign public traffic. The web image similarly defaults to local npm strict-TLS off for this environment. For a normal deployment, set `NPM_STRICT_SSL=true` and provide the platform's CA bundle rather than disabling certificate verification.
+
+Check services:
+
+```bash
+curl http://localhost:8000/api/v1/health/ready
+open http://localhost:8080
+```
+
+The development PostgreSQL password in Compose is intentionally local-only and must be replaced before any hosted deployment. The optional `container-llm` Compose profile is available for environments with a configured enterprise CA, but host Ollama is the default on macOS.
+
+To run the browser-based local scan against the Compose PostgreSQL instance:
+
+```bash
+source .venv/bin/activate
+DATABASE_URL=postgresql+psycopg://foxpilot:foxpilot-dev-only@localhost:5432/foxpilot \
+OLLAMA_BASE_URL=http://localhost:11435 \
+foxpilot scan
+```
+
+The scan still runs on the host because it uses the interactive Playwright browser. The API and web app then read the PostgreSQL data.
 
 ## Hosted Deployment
 

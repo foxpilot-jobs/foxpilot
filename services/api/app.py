@@ -44,6 +44,18 @@ def create_app() -> FastAPI:
     def health() -> dict[str, str]:
         return {"status": "ok"}
 
+    @app.get("/api/v1/health/live")
+    def liveness() -> dict[str, str]:
+        return {"status": "alive"}
+
+    @app.get("/api/v1/health/ready")
+    def readiness(career_service: CareerService = Depends(service)) -> dict[str, str]:
+        try:
+            career_service.list_jobs()
+        except Exception as error:
+            raise HTTPException(status_code=503, detail="Database is not ready") from error
+        return {"status": "ready"}
+
     @app.get("/api/v1/jobs")
     def list_jobs(
         career_service: CareerService = Depends(service),

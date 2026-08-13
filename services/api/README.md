@@ -19,4 +19,6 @@ uvicorn services.api.app:app --reload --port 8000
 
 The API is currently intended for local use. Authentication and hosted per-user isolation are required before public deployment.
 
+For local Compose mode, the API runs in Docker and reads PostgreSQL. The host scan must set `DATABASE_URL` to the published PostgreSQL port before writing jobs for the web app to display.
+
 For hosted database configuration, set `DATABASE_URL` to a PostgreSQL `postgresql+psycopg://...` URL and run `alembic upgrade head` before starting the service.

@@ -49,6 +49,7 @@ data/exports/
 .career_agent/
 *.log
 *.local
+docker-data/
 
 # Editors and operating systems
 .DS_Store
