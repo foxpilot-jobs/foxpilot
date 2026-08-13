@@ -84,6 +84,13 @@ def create_app() -> FastAPI:
     ) -> list[dict]:
         return career_service.list_matches()
 
+    @app.get("/api/v1/applications")
+    def list_applications(
+        career_service: CareerService = Depends(service),
+        _: None = Depends(require_api_access),
+    ) -> list[dict]:
+        return career_service.list_applications()
+
     @app.get("/api/v1/jobs/{job_id}/application")
     def get_application(
         job_id: str,

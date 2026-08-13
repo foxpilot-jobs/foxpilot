@@ -29,6 +29,10 @@ class CareerService:
         with self._store() as store:
             return store.get_application(job_id)
 
+    def list_applications(self) -> list[dict]:
+        with self._store() as store:
+            return store.list_applications()
+
     def update_application(self, job_id: str, status: str, notes: str = "") -> dict:
         with self._store() as store:
             if not store.get_job(job_id):

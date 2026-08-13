@@ -23,6 +23,14 @@ export type Match = {
   };
 };
 
+export type Application = {
+  job_id: string;
+  status: "saved" | "applied" | "interviewing" | "rejected" | "offered";
+  notes: string;
+  title?: string;
+  company?: string;
+};
+
 const API_BASE = import.meta.env.VITE_API_BASE ?? "";
 
 async function request<T>(path: string): Promise<T> {
@@ -41,13 +49,21 @@ export function getMatches(): Promise<Match[]> {
   return request<Match[]>("/api/v1/matches");
 }
 
-export async function saveJob(jobId: string): Promise<void> {
+export function getApplications(): Promise<Application[]> {
+  return request<Application[]>("/api/v1/applications");
+}
+
+export async function updateApplication(
+  jobId: string,
+  status: Application["status"],
+): Promise<Application> {
   const response = await fetch(`${API_BASE}/api/v1/jobs/${jobId}/application`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ status: "saved", notes: "" }),
+    body: JSON.stringify({ status, notes: "" }),
   });
   if (!response.ok) {
-    throw new Error(`Unable to save job: ${response.status}`);
+    throw new Error(`Unable to update application: ${response.status}`);
   }
+  return response.json() as Promise<Application>;
 }

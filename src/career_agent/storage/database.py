@@ -253,6 +253,16 @@ class JobStore:
             ).mappings().first()
         return dict(row) if row else None
 
+    def list_applications(self) -> list[dict]:
+        query = (
+            select(applications_table, jobs_table.c.title, jobs_table.c.company)
+            .join(jobs_table, jobs_table.c.job_id == applications_table.c.job_id)
+            .order_by(applications_table.c.updated_at.desc())
+        )
+        with self.engine.connect() as connection:
+            rows = connection.execute(query).mappings().all()
+        return [dict(row) for row in rows]
+
     @staticmethod
     def _job_from_row(row) -> dict:
         job = dict(row["payload_json"])

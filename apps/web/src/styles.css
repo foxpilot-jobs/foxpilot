@@ -160,6 +160,79 @@ h2 {
   font-weight: 700;
 }
 
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  margin-top: 34px;
+  border: 1px solid var(--fox-line);
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--fox-line);
+}
+
+.metrics > div {
+  display: grid;
+  gap: 5px;
+  padding: 18px 20px;
+  background: rgba(255, 253, 248, 0.62);
+}
+
+.metric-value {
+  font-family: Georgia, serif;
+  font-size: 32px;
+  line-height: 1;
+}
+
+.metric-label {
+  color: #777b74;
+  font-size: 12px;
+}
+
+.toolbar {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.toolbar input {
+  width: min(100%, 520px);
+  border: 1px solid var(--fox-line);
+  border-radius: 12px;
+  padding: 13px 15px;
+  color: var(--fox-ink);
+  background: rgba(255, 253, 248, 0.82);
+  outline: none;
+}
+
+.toolbar input:focus {
+  border-color: var(--fox-moss);
+  box-shadow: 0 0 0 3px rgba(49, 91, 67, 0.12);
+}
+
+.filter-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.filter-tabs button {
+  border: 1px solid var(--fox-line);
+  border-radius: 999px;
+  padding: 8px 13px;
+  color: #6f746d;
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.filter-tabs button.active,
+.filter-tabs button:hover {
+  border-color: var(--fox-ink);
+  color: var(--fox-paper);
+  background: var(--fox-ink);
+}
+
 .job-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -216,6 +289,38 @@ h3 {
   line-height: 1.45;
 }
 
+.evidence {
+  margin: 2px 0 18px;
+  border-top: 1px solid #e4ddd1;
+  padding-top: 12px;
+  color: #656c64;
+  font-size: 12px;
+}
+
+.evidence summary {
+  color: var(--fox-moss);
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.evidence-grid {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.evidence-grid div {
+  display: grid;
+  gap: 3px;
+}
+
+.evidence-grid strong {
+  color: var(--fox-ink);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
 .card-actions {
   margin-top: auto;
   padding-top: 18px;
@@ -236,6 +341,30 @@ h3 {
   cursor: pointer;
   font-size: 13px;
   font-weight: 800;
+}
+
+.card-actions select {
+  max-width: 132px;
+  border: 1px solid var(--fox-line);
+  border-radius: 8px;
+  padding: 7px 8px;
+  color: var(--fox-ink);
+  background: transparent;
+  font-size: 12px;
+}
+
+.empty-state {
+  display: grid;
+  gap: 6px;
+  padding: 44px 20px;
+  border: 1px dashed var(--fox-line);
+  border-radius: 18px;
+  color: #777b74;
+  text-align: center;
+}
+
+.empty-state strong {
+  color: var(--fox-ink);
 }
 
 .error-card {
@@ -275,6 +404,10 @@ code {
   }
 
   .job-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .metrics {
     grid-template-columns: 1fr;
   }
 

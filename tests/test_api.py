@@ -47,6 +47,10 @@ def test_api_application_update(tmp_path: Path) -> None:
     assert response.status_code == 200
     assert response.json()["status"] == "applied"
 
+    applications = client.get("/api/v1/applications")
+    assert applications.status_code == 200
+    assert applications.json()[0]["status"] == "applied"
+
 
 def test_api_token_protects_data_endpoints(tmp_path: Path, monkeypatch) -> None:
     config = AppConfig(data_dir=tmp_path)
