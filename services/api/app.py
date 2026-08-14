@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 from career_agent.config import load_config
 from career_agent.services import CareerService
 
-from .auth import require_api_access
+from .auth import AuthContext, require_api_access
 
 
 class ApplicationUpdate(BaseModel):
@@ -35,12 +35,15 @@ def create_app() -> FastAPI:
         allow_origins=[origin.strip() for origin in allowed_origins if origin.strip()],
         allow_credentials=False,
         allow_methods=["GET", "POST", "PUT"],
-        allow_headers=["Content-Type"],
+        allow_headers=["Authorization", "Content-Type"],
     )
     app.state.service = CareerService(load_config())
 
     def service() -> CareerService:
         return app.state.service
+
+    def user_service(current_user: AuthContext = Depends(require_api_access)) -> CareerService:
+        return CareerService(app.state.service.config, user_id=current_user.user_id)
 
     @app.get("/api/v1/health")
     def health() -> dict[str, str]:
@@ -58,10 +61,16 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=503, detail="Database is not ready") from error
         return {"status": "ready"}
 
+    @app.get("/api/v1/me")
+    def current_identity(current_user: AuthContext = Depends(require_api_access)) -> dict:
+        return {
+            "user_id": current_user.user_id,
+            "email": current_user.email,
+        }
+
     @app.get("/api/v1/jobs")
     def list_jobs(
-        career_service: CareerService = Depends(service),
-        _: None = Depends(require_api_access),
+        career_service: CareerService = Depends(user_service),
         relevance: str | None = Query(default=None, pattern="^(TARGET|REVIEW|EXCLUDE)$"),
     ) -> list[dict]:
         return career_service.list_jobs(relevance=relevance)
@@ -69,8 +78,7 @@ def create_app() -> FastAPI:
     @app.get("/api/v1/jobs/{job_id}")
     def get_job(
         job_id: str,
-        career_service: CareerService = Depends(service),
-        _: None = Depends(require_api_access),
+        career_service: CareerService = Depends(user_service),
     ) -> dict:
         job = career_service.get_job(job_id)
         if job is None:
@@ -79,23 +87,20 @@ def create_app() -> FastAPI:
 
     @app.get("/api/v1/matches")
     def list_matches(
-        career_service: CareerService = Depends(service),
-        _: None = Depends(require_api_access),
+        career_service: CareerService = Depends(user_service),
     ) -> list[dict]:
         return career_service.list_matches()
 
     @app.get("/api/v1/applications")
     def list_applications(
-        career_service: CareerService = Depends(service),
-        _: None = Depends(require_api_access),
+        career_service: CareerService = Depends(user_service),
     ) -> list[dict]:
         return career_service.list_applications()
 
     @app.get("/api/v1/jobs/{job_id}/application")
     def get_application(
         job_id: str,
-        career_service: CareerService = Depends(service),
-        _: None = Depends(require_api_access),
+        career_service: CareerService = Depends(user_service),
     ) -> dict | None:
         if career_service.get_job(job_id) is None:
             raise HTTPException(status_code=404, detail="Job not found")
@@ -105,8 +110,7 @@ def create_app() -> FastAPI:
     def update_application(
         job_id: str,
         update: ApplicationUpdate,
-        career_service: CareerService = Depends(service),
-        _: None = Depends(require_api_access),
+        career_service: CareerService = Depends(user_service),
     ) -> dict:
         try:
             return career_service.update_application(

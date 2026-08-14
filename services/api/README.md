@@ -23,4 +23,23 @@ For local Compose mode, the API runs in Docker and reads PostgreSQL. The host sc
 
 For hosted database configuration, set `DATABASE_URL` to a PostgreSQL `postgresql+psycopg://...` URL and run `alembic upgrade head` before starting the service.
 
-Set `FOXPILOT_ENV=production` and a long random `FOXPILOT_API_TOKEN` before exposing the API outside localhost. The current token guard protects the deployment boundary; multi-user OIDC/OAuth is still required for public launch.
+## Authentication modes
+
+Local mode is the default and uses the explicit `local-user` identity. It is intended only for a private local deployment:
+
+```env
+FOXPILOT_ENV=local
+FOXPILOT_AUTH_MODE=local
+```
+
+Token mode is suitable for staging and non-browser automation. The token maps to one stable identity, not multiple users:
+
+```env
+FOXPILOT_AUTH_MODE=token
+FOXPILOT_API_TOKEN=<long-random-secret>
+FOXPILOT_TOKEN_USER_ID=staging-user
+```
+
+Hosted production will use native FoxPilot authentication with branded registration, secure password hashing, HTTP-only sessions, email verification, and password recovery. Until that native auth layer lands, token mode is a temporary single-user staging guard and is not suitable for a public multi-user deployment.
+
+The current `/api/v1/me` endpoint confirms the identity FoxPilot extracted. Local mode returns `local-user`; token mode returns `FOXPILOT_TOKEN_USER_ID`.

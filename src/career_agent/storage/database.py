@@ -24,6 +24,15 @@ from sqlalchemy.engine import Engine
 
 metadata = MetaData()
 
+users_table = Table(
+    "users",
+    metadata,
+    Column("user_id", String, primary_key=True),
+    Column("email", String),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+    Column("updated_at", DateTime(timezone=True), nullable=False),
+)
+
 jobs_table = Table(
     "jobs",
     metadata,
@@ -47,6 +56,7 @@ jobs_table = Table(
 matches_table = Table(
     "matches",
     metadata,
+    Column("user_id", String, primary_key=True),
     Column("job_id", String, primary_key=True),
     Column("job_hash", String, nullable=False),
     Column("provider", String, nullable=False),
@@ -59,6 +69,7 @@ matches_table = Table(
 applications_table = Table(
     "applications",
     metadata,
+    Column("user_id", String, primary_key=True),
     Column("job_id", String, primary_key=True),
     Column("status", String, nullable=False, default="saved"),
     Column("notes", Text, nullable=False, default=""),
@@ -74,7 +85,8 @@ def utc_now() -> datetime:
 class JobStore:
     """Repository shared by CLI, API, and background workers."""
 
-    def __init__(self, database: Path | str) -> None:
+    def __init__(self, database: Path | str, user_id: str = "local-user") -> None:
+        self.user_id = user_id
         if isinstance(database, Path):
             database_path = database.expanduser().resolve()
             database_path.parent.mkdir(parents=True, exist_ok=True)
@@ -187,6 +199,7 @@ class JobStore:
     ) -> None:
         now = utc_now()
         values = {
+            "user_id": self.user_id,
             "job_id": job_id,
             "job_hash": job_hash,
             "provider": provider,
@@ -196,11 +209,19 @@ class JobStore:
         }
         with self.engine.begin() as connection:
             existing = connection.execute(
-                select(matches_table.c.job_id).where(matches_table.c.job_id == job_id)
+                select(matches_table.c.job_id).where(
+                    matches_table.c.user_id == self.user_id,
+                    matches_table.c.job_id == job_id,
+                )
             ).first()
             if existing:
                 connection.execute(
-                    update(matches_table).where(matches_table.c.job_id == job_id).values(**values)
+                    update(matches_table)
+                    .where(
+                        matches_table.c.user_id == self.user_id,
+                        matches_table.c.job_id == job_id,
+                    )
+                    .values(**values)
                 )
             else:
                 connection.execute(matches_table.insert().values(created_at=now, **values))
@@ -208,7 +229,10 @@ class JobStore:
     def get_match(self, job_id: str) -> dict | None:
         with self.engine.connect() as connection:
             row = connection.execute(
-                select(matches_table).where(matches_table.c.job_id == job_id)
+                select(matches_table).where(
+                    matches_table.c.user_id == self.user_id,
+                    matches_table.c.job_id == job_id,
+                )
             ).mappings().first()
         return self._match_from_row(row) if row else None
 
@@ -216,6 +240,7 @@ class JobStore:
         query = (
             select(matches_table, jobs_table.c.payload_json)
             .join(jobs_table, jobs_table.c.job_id == matches_table.c.job_id)
+            .where(matches_table.c.user_id == self.user_id)
             .order_by(matches_table.c.updated_at.desc())
         )
         with self.engine.connect() as connection:
@@ -232,15 +257,27 @@ class JobStore:
         if status not in {"saved", "applied", "interviewing", "rejected", "offered"}:
             raise ValueError(f"Unsupported application status: {status}")
         now = utc_now()
-        values = {"job_id": job_id, "status": status, "notes": notes, "updated_at": now}
+        values = {
+            "user_id": self.user_id,
+            "job_id": job_id,
+            "status": status,
+            "notes": notes,
+            "updated_at": now,
+        }
         with self.engine.begin() as connection:
             existing = connection.execute(
-                select(applications_table.c.job_id).where(applications_table.c.job_id == job_id)
+                select(applications_table.c.job_id).where(
+                    applications_table.c.user_id == self.user_id,
+                    applications_table.c.job_id == job_id,
+                )
             ).first()
             if existing:
                 connection.execute(
                     update(applications_table)
-                    .where(applications_table.c.job_id == job_id)
+                    .where(
+                        applications_table.c.user_id == self.user_id,
+                        applications_table.c.job_id == job_id,
+                    )
                     .values(**values)
                 )
             else:
@@ -249,7 +286,10 @@ class JobStore:
     def get_application(self, job_id: str) -> dict | None:
         with self.engine.connect() as connection:
             row = connection.execute(
-                select(applications_table).where(applications_table.c.job_id == job_id)
+                select(applications_table).where(
+                    applications_table.c.user_id == self.user_id,
+                    applications_table.c.job_id == job_id,
+                )
             ).mappings().first()
         return dict(row) if row else None
 
@@ -257,6 +297,7 @@ class JobStore:
         query = (
             select(applications_table, jobs_table.c.title, jobs_table.c.company)
             .join(jobs_table, jobs_table.c.job_id == applications_table.c.job_id)
+            .where(applications_table.c.user_id == self.user_id)
             .order_by(applications_table.c.updated_at.desc())
         )
         with self.engine.connect() as connection:

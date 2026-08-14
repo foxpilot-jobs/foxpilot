@@ -46,7 +46,6 @@ export function App() {
       });
   }, []);
 
-  const matchByJob = new Map(matches.map((item) => [item.job_id, item.match]));
   const filteredJobs = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     return jobs.filter((job) => {
@@ -58,6 +57,8 @@ export function App() {
       return matchesStatus && matchesQuery;
     });
   }, [applications, jobs, query, statusFilter]);
+
+  const matchByJob = new Map(matches.map((item) => [item.job_id, item.match]));
 
   async function handleStatus(jobId: string, status: Application["status"]) {
     setUpdatingJob(jobId);

@@ -76,27 +76,20 @@ The local SQLite path remains the default when `DATABASE_URL` is not set.
 
 ## API Protection
 
-Local development leaves API data routes open on localhost. Any non-local deployment must set:
+Local development leaves API data routes open on localhost and uses the explicit `local-user` identity. Token mode remains available as a temporary single-user staging guard:
 
 ```env
-FOXPILOT_ENV=production
+FOXPILOT_AUTH_MODE=token
 FOXPILOT_API_TOKEN=<long-random-secret>
+FOXPILOT_TOKEN_USER_ID=staging-user
 ```
 
-Clients then send:
-
-```text
-Authorization: Bearer <long-random-secret>
-```
-
-This is an interim deployment guard, not the final multi-user identity system. Hosted production requires OIDC/OAuth authentication and per-user data isolation before public launch.
-
-Do not set production mode on the current local web UI yet: the browser client does not have an authentication flow. Use the token guard for protected API clients or staging smoke tests until OIDC is implemented.
+Token mode is not suitable for public multi-user deployment. Hosted production will use native FoxPilot authentication with branded registration, secure password hashing, HTTP-only sessions, email verification, and password recovery.
 
 ## Production Requirements
 
 - Versioned API endpoints.
-- Authentication and per-user data isolation.
+- Native FoxPilot authentication and per-user data isolation.
 - TLS at the edge.
 - Secret injection through deployment configuration.
 - Health and readiness checks.

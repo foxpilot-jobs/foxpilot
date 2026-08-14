@@ -30,3 +30,21 @@ def test_application_status_is_validated(tmp_path: Path) -> None:
             assert "Unsupported" in str(error)
         else:
             raise AssertionError("Expected invalid application status to fail")
+
+
+def test_user_owned_state_is_isolated(tmp_path: Path) -> None:
+    database = tmp_path / "career.sqlite3"
+    with JobStore(database, user_id="user-a") as user_a:
+        job_id = user_a.upsert_job({"source": "test", "source_job_id": "1"})
+        user_a.save_match(job_id, "hash-a", "ollama", "test-model", {"score": 90})
+        user_a.save_application(job_id, status="applied", notes="Private note")
+
+    with JobStore(database, user_id="user-b") as user_b:
+        assert user_b.get_match(job_id) is None
+        assert user_b.get_application(job_id) is None
+        assert user_b.list_matches() == []
+        assert user_b.list_applications() == []
+
+    with JobStore(database, user_id="user-a") as user_a:
+        assert user_a.get_match(job_id)["match"] == {"score": 90}
+        assert user_a.get_application(job_id)["notes"] == "Private note"

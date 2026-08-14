@@ -23,3 +23,9 @@ Run a secret and personal-data scan before publishing. If sensitive files were c
 ## User Controls
 
 The product must provide export and deletion paths. No outbound application, email, or message may occur without explicit confirmation.
+
+## Hosted Identity And Isolation
+
+Hosted deployments must not rely on local mode or the shared token guard. FoxPilot's production path is native branded authentication backed by PostgreSQL users, secure password hashing, HTTP-only sessions, email verification, and password recovery.
+
+Jobs are a shared catalog. Matches and application history are keyed by `user_id` and `job_id`, so career decisions and private notes are isolated between identities. Existing local records are migrated to `local-user` by migration `0002_user_owned_state`.
