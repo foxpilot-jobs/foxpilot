@@ -9,6 +9,7 @@ from typing import Self
 
 from sqlalchemy import (
     JSON,
+    Boolean,
     Column,
     DateTime,
     MetaData,
@@ -29,8 +30,35 @@ users_table = Table(
     metadata,
     Column("user_id", String, primary_key=True),
     Column("email", String),
+    Column("password_hash", String),
+    Column("email_verified", Boolean, nullable=False, default=False),
+    Column("is_active", Boolean, nullable=False, default=True),
     Column("created_at", DateTime(timezone=True), nullable=False),
     Column("updated_at", DateTime(timezone=True), nullable=False),
+)
+
+sessions_table = Table(
+    "sessions",
+    metadata,
+    Column("session_id", String, primary_key=True),
+    Column("user_id", String, nullable=False),
+    Column("token_hash", String, nullable=False, unique=True),
+    Column("expires_at", DateTime(timezone=True), nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+    Column("last_seen_at", DateTime(timezone=True), nullable=False),
+    Column("revoked_at", DateTime(timezone=True)),
+)
+
+auth_tokens_table = Table(
+    "auth_tokens",
+    metadata,
+    Column("token_id", String, primary_key=True),
+    Column("user_id", String, nullable=False),
+    Column("purpose", String, nullable=False),
+    Column("token_hash", String, nullable=False, unique=True),
+    Column("expires_at", DateTime(timezone=True), nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+    Column("used_at", DateTime(timezone=True)),
 )
 
 jobs_table = Table(
@@ -105,6 +133,20 @@ class JobStore:
         metadata.create_all(self.engine)
         if self.engine.dialect.name == "sqlite":
             with self.engine.begin() as connection:
+                columns = {
+                    row[1]
+                    for row in connection.exec_driver_sql("PRAGMA table_info(users)").fetchall()
+                }
+                if "password_hash" not in columns:
+                    connection.exec_driver_sql("ALTER TABLE users ADD COLUMN password_hash VARCHAR")
+                if "email_verified" not in columns:
+                    connection.exec_driver_sql(
+                        "ALTER TABLE users ADD COLUMN email_verified BOOLEAN NOT NULL DEFAULT 0"
+                    )
+                if "is_active" not in columns:
+                    connection.exec_driver_sql(
+                        "ALTER TABLE users ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT 1"
+                    )
                 connection.exec_driver_sql("PRAGMA foreign_keys = ON")
                 connection.exec_driver_sql("PRAGMA journal_mode = WAL")
 
@@ -116,6 +158,149 @@ class JobStore:
 
     def __exit__(self, *_args) -> None:
         self.close()
+
+    def create_user(self, user_id: str, email: str, password_hash: str) -> None:
+        now = utc_now()
+        with self.engine.begin() as connection:
+            connection.execute(
+                users_table.insert().values(
+                    user_id=user_id,
+                    email=email,
+                    password_hash=password_hash,
+                    email_verified=False,
+                    is_active=True,
+                    created_at=now,
+                    updated_at=now,
+                )
+            )
+
+    def get_user_by_email(self, email: str) -> dict | None:
+        with self.engine.connect() as connection:
+            row = connection.execute(
+                select(users_table).where(users_table.c.email == email)
+            ).mappings().first()
+        return dict(row) if row else None
+
+    def get_user(self, user_id: str) -> dict | None:
+        with self.engine.connect() as connection:
+            row = connection.execute(
+                select(users_table).where(users_table.c.user_id == user_id)
+            ).mappings().first()
+        return dict(row) if row else None
+
+    def mark_email_verified(self, user_id: str) -> None:
+        with self.engine.begin() as connection:
+            connection.execute(
+                update(users_table)
+                .where(users_table.c.user_id == user_id)
+                .values(email_verified=True, updated_at=utc_now())
+            )
+
+    def update_password(self, user_id: str, password_hash: str) -> None:
+        with self.engine.begin() as connection:
+            connection.execute(
+                update(users_table)
+                .where(users_table.c.user_id == user_id)
+                .values(password_hash=password_hash, updated_at=utc_now())
+            )
+
+    def create_session(
+        self,
+        session_id: str,
+        user_id: str,
+        token_hash: str,
+        expires_at: datetime,
+    ) -> None:
+        now = utc_now()
+        with self.engine.begin() as connection:
+            connection.execute(
+                sessions_table.insert().values(
+                    session_id=session_id,
+                    user_id=user_id,
+                    token_hash=token_hash,
+                    expires_at=expires_at,
+                    created_at=now,
+                    last_seen_at=now,
+                )
+            )
+
+    def get_session_user(self, token_hash: str) -> dict | None:
+        now = utc_now()
+        query = (
+            select(users_table, sessions_table.c.session_id, sessions_table.c.expires_at)
+            .join(sessions_table, sessions_table.c.user_id == users_table.c.user_id)
+            .where(
+                sessions_table.c.token_hash == token_hash,
+                sessions_table.c.revoked_at.is_(None),
+                sessions_table.c.expires_at > now,
+                users_table.c.is_active.is_(True),
+            )
+        )
+        with self.engine.begin() as connection:
+            row = connection.execute(query).mappings().first()
+            if row:
+                connection.execute(
+                    update(sessions_table)
+                    .where(sessions_table.c.session_id == row["session_id"])
+                    .values(last_seen_at=now)
+                )
+        return dict(row) if row else None
+
+    def revoke_session(self, token_hash: str) -> None:
+        with self.engine.begin() as connection:
+            connection.execute(
+                update(sessions_table)
+                .where(sessions_table.c.token_hash == token_hash)
+                .values(revoked_at=utc_now())
+            )
+
+    def revoke_user_sessions(self, user_id: str) -> None:
+        with self.engine.begin() as connection:
+            connection.execute(
+                update(sessions_table)
+                .where(sessions_table.c.user_id == user_id, sessions_table.c.revoked_at.is_(None))
+                .values(revoked_at=utc_now())
+            )
+
+    def create_auth_token(
+        self,
+        token_id: str,
+        user_id: str,
+        purpose: str,
+        token_hash: str,
+        expires_at: datetime,
+    ) -> None:
+        with self.engine.begin() as connection:
+            connection.execute(
+                auth_tokens_table.insert().values(
+                    token_id=token_id,
+                    user_id=user_id,
+                    purpose=purpose,
+                    token_hash=token_hash,
+                    expires_at=expires_at,
+                    created_at=utc_now(),
+                )
+            )
+
+    def consume_auth_token(self, token_hash: str, purpose: str) -> dict | None:
+        now = utc_now()
+        with self.engine.begin() as connection:
+            row = connection.execute(
+                select(auth_tokens_table).where(
+                    auth_tokens_table.c.token_hash == token_hash,
+                    auth_tokens_table.c.purpose == purpose,
+                    auth_tokens_table.c.used_at.is_(None),
+                    auth_tokens_table.c.expires_at > now,
+                )
+            ).mappings().first()
+            if not row:
+                return None
+            connection.execute(
+                update(auth_tokens_table)
+                .where(auth_tokens_table.c.token_id == row["token_id"])
+                .values(used_at=now)
+            )
+        return dict(row)
 
     @staticmethod
     def job_id(job: dict) -> str:

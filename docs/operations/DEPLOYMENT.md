@@ -86,6 +86,27 @@ FOXPILOT_TOKEN_USER_ID=staging-user
 
 Token mode is not suitable for public multi-user deployment. Hosted production will use native FoxPilot authentication with branded registration, secure password hashing, HTTP-only sessions, email verification, and password recovery.
 
+Enable the current native session flow with:
+
+```env
+FOXPILOT_ENV=production
+FOXPILOT_AUTH_MODE=native
+```
+
+For local browser testing, keep `FOXPILOT_ENV=local` so cookies do not require HTTPS. Set `FOXPILOT_AUTH_MODE=local` to return to the private single-user dashboard.
+
+Production native registration requires SMTP configuration for verification and password recovery:
+
+```env
+EMAIL_FROM=FoxPilot <accounts@example.com>
+EMAIL_SMTP_HOST=smtp.example.com
+EMAIL_SMTP_PORT=587
+EMAIL_SMTP_USERNAME=accounts@example.com
+EMAIL_SMTP_PASSWORD=<secret>
+EMAIL_SMTP_TLS=true
+FOXPILOT_PUBLIC_URL=https://foxpilot.example.com
+```
+
 ## Production Requirements
 
 - Versioned API endpoints.
