@@ -1,10 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
+  getAuthUser,
   getApplications,
   getJobs,
   getMatches,
+  login,
+  logout,
+  register,
+  requestPasswordReset,
+  resetPassword,
+  verifyEmail,
   updateApplication,
   type Application,
+  type AuthUser,
   type Job,
   type Match,
 } from "./api";
@@ -21,7 +29,167 @@ function formatStatus(status: string) {
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
+function AuthScreen({ onAuthenticated }: { onAuthenticated: (user: AuthUser) => void }) {
+  const searchToken = new URLSearchParams(window.location.search).get("token");
+  const route = window.location.pathname;
+  const verification = route === "/verify-email" && Boolean(searchToken);
+  const reset = route === "/reset-password" && Boolean(searchToken);
+  const [registering, setRegistering] = useState(false);
+  const [forgotten, setForgotten] = useState(route === "/forgot-password");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!verification) {
+      return;
+    }
+    verifyEmail(searchToken ?? "")
+      .then(onAuthenticated)
+      .catch((reason: unknown) => {
+        setError(reason instanceof Error ? reason.message : "Unable to verify your email");
+      });
+  }, [onAuthenticated, searchToken, verification]);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const user = reset
+        ? await resetPassword(searchToken ?? "", password)
+        : registering
+          ? await register(email, password)
+          : await login(email, password);
+      if (registering && !user.session_created) {
+        setMessage("Check your email to verify your FoxPilot account before signing in.");
+        return;
+      }
+      onAuthenticated(user);
+    } catch (reason: unknown) {
+      setError(reason instanceof Error ? reason.message : "Unable to authenticate");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <main className="auth-shell">
+      <p className="eyebrow accent">FOXPILOT</p>
+      <h1>
+        {verification
+          ? "Verifying your email..."
+          : reset
+            ? "Choose a new password."
+            : forgotten
+              ? "Reset your FoxPilot password."
+              : registering
+                ? "Make your next move clearer."
+                : "Welcome back, career navigator."}
+      </h1>
+      <p className="hero-copy">
+        Keep your matches, decisions, and application history private to you.
+      </p>
+      {verification ? null : forgotten && !reset ? (
+        <form
+          className="auth-form"
+          onSubmit={async (event) => {
+            event.preventDefault();
+            setBusy(true);
+            setError(null);
+            try {
+              await requestPasswordReset(email);
+              setMessage("If an account exists for that email, a reset link is on its way.");
+            } catch (reason: unknown) {
+              setError(reason instanceof Error ? reason.message : "Unable to request a reset");
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          <label>
+            Email
+            <input
+              autoComplete="email"
+              required
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+            />
+          </label>
+          {message && <div className="success-card">{message}</div>}
+          {error && <div className="error-card">{error}</div>}
+          <button className="primary-button" disabled={busy} type="submit">
+            {busy ? "Working..." : "Send reset link"}
+          </button>
+        </form>
+      ) : (
+        <form className="auth-form" onSubmit={submit}>
+          <label>
+            Email
+            <input
+              autoComplete="email"
+              required
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+            />
+          </label>
+          <label>
+            Password
+            <input
+              autoComplete={registering || reset ? "new-password" : "current-password"}
+              minLength={12}
+              required
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+          </label>
+          {error && <div className="error-card">{error}</div>}
+          {message && <div className="success-card">{message}</div>}
+          <button className="primary-button" disabled={busy} type="submit">
+            {busy
+              ? "Working..."
+              : reset
+                ? "Reset password"
+                : registering
+                  ? "Create account"
+                  : "Sign in"}
+          </button>
+        </form>
+      )}
+      {!verification && !reset && (
+        <button
+          className="text-button"
+          type="button"
+          onClick={() => {
+            setForgotten((value) => !value);
+            setRegistering(false);
+            setMessage(null);
+          }}
+        >
+          {forgotten ? "Back to sign in" : "Forgot your password?"}
+        </button>
+      )}
+      {!verification && !forgotten && !reset && (
+        <button
+          className="text-button"
+          type="button"
+          onClick={() => setRegistering((value) => !value)}
+        >
+          {registering ? "Already have an account? Sign in" : "New to FoxPilot? Create an account"}
+        </button>
+      )}
+    </main>
+  );
+}
+
 export function App() {
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [applications, setApplications] = useState<Record<string, Application>>({});
@@ -31,6 +199,18 @@ export function App() {
   const [updatingJob, setUpdatingJob] = useState<string | null>(null);
 
   useEffect(() => {
+    getAuthUser()
+      .then(setUser)
+      .catch((reason: unknown) => {
+        setError(reason instanceof Error ? reason.message : "Unable to check your session");
+      })
+      .finally(() => setAuthLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
     Promise.all([getJobs(), getMatches(), getApplications()])
       .then(([loadedJobs, loadedMatches, loadedApplications]) => {
         setJobs(loadedJobs);
@@ -44,7 +224,7 @@ export function App() {
       .catch((reason: unknown) => {
         setError(reason instanceof Error ? reason.message : "Unable to load your shortlist");
       });
-  }, []);
+  }, [user]);
 
   const filteredJobs = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -57,6 +237,19 @@ export function App() {
       return matchesStatus && matchesQuery;
     });
   }, [applications, jobs, query, statusFilter]);
+
+  if (authLoading) {
+    return (
+      <main className="auth-shell">
+        <p className="eyebrow">FOXPILOT</p>
+        <h1>Preparing your workspace...</h1>
+      </main>
+    );
+  }
+
+  if (!user) {
+    return <AuthScreen onAuthenticated={setUser} />;
+  }
 
   const matchByJob = new Map(matches.map((item) => [item.job_id, item.match]));
 
@@ -86,9 +279,18 @@ export function App() {
           <p className="eyebrow">FOXPILOT</p>
           <p className="muted">A sharper shortlist for your next move</p>
         </div>
-        <button className="ghost-button" type="button">
-          Settings
-        </button>
+        <div className="account-actions">
+          <span className="muted">{user.email}</span>
+          {user.user_id !== "local-user" && (
+            <button
+              className="ghost-button"
+              type="button"
+              onClick={() => void logout().then(() => setUser(null))}
+            >
+              Sign out
+            </button>
+          )}
+        </div>
       </nav>
 
       <section className="hero">

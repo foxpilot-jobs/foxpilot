@@ -15,6 +15,7 @@ dependencies = [
   "pypdf",
   "playwright",
   "httpx",
+  "pwdlib[argon2]",
   "sqlalchemy",
 ]
 

@@ -17,8 +17,7 @@ COPY alembic.ini ./alembic.ini
 COPY alembic ./alembic
 
 RUN for host in ${PIP_TRUSTED_HOSTS}; do TRUSTED_HOST_ARGS="$TRUSTED_HOST_ARGS --trusted-host $host"; done; \
-    python -m pip install --no-cache-dir --index-url https://pypi.org/simple $TRUSTED_HOST_ARGS -e ".[api]" \
-    && python -m playwright install --with-deps chromium
+    python -m pip install --no-cache-dir --index-url https://pypi.org/simple $TRUSTED_HOST_ARGS -e ".[api]"
 
 EXPOSE 8000
 

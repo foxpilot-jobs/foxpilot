@@ -42,4 +42,16 @@ FOXPILOT_TOKEN_USER_ID=staging-user
 
 Hosted production will use native FoxPilot authentication with branded registration, secure password hashing, HTTP-only sessions, email verification, and password recovery. Until that native auth layer lands, token mode is a temporary single-user staging guard and is not suitable for a public multi-user deployment.
 
+The native auth endpoints are:
+
+- `POST /api/v1/auth/register`
+- `POST /api/v1/auth/login`
+- `POST /api/v1/auth/logout`
+- `GET /api/v1/auth/me`
+- `POST /api/v1/auth/verify-email`
+- `POST /api/v1/auth/request-password-reset`
+- `POST /api/v1/auth/reset-password`
+
+Registration and login use HTTP-only `foxpilot_session` cookies. Email verification and password recovery are the next required hosted-auth milestone; do not expose native registration publicly until SMTP delivery and those flows are configured.
+
 The current `/api/v1/me` endpoint confirms the identity FoxPilot extracted. Local mode returns `local-user`; token mode returns `FOXPILOT_TOKEN_USER_ID`.
