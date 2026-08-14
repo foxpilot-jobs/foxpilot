@@ -25,7 +25,6 @@ dev = [
 ]
 api = [
   "fastapi",
-  "PyJWT[crypto]",
   "uvicorn[standard]",
   "psycopg[binary]",
   "alembic",

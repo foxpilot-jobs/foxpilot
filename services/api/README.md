@@ -40,22 +40,6 @@ FOXPILOT_API_TOKEN=<long-random-secret>
 FOXPILOT_TOKEN_USER_ID=staging-user
 ```
 
-Hosted deployments should use an OIDC provider that exposes a JWKS endpoint. FoxPilot validates the issuer, audience, signature, expiration, issued-at time, and subject locally after retrieving the provider's public keys:
+Hosted production will use native FoxPilot authentication with branded registration, secure password hashing, HTTP-only sessions, email verification, and password recovery. Until that native auth layer lands, token mode is a temporary single-user staging guard and is not suitable for a public multi-user deployment.
 
-```env
-FOXPILOT_ENV=production
-FOXPILOT_AUTH_MODE=oidc
-FOXPILOT_JWT_ISSUER=https://id.example.com/
-FOXPILOT_JWT_AUDIENCE=foxpilot-api
-FOXPILOT_JWKS_URL=https://id.example.com/.well-known/jwks.json
-# Optional; defaults to email
-FOXPILOT_JWT_EMAIL_CLAIM=email
-```
-
-Clients send the provider access token as:
-
-```text
-Authorization: Bearer <oidc-access-token>
-```
-
-The current `/api/v1/me` endpoint confirms the identity FoxPilot extracted. OIDC authentication is only the first hosted milestone; database ownership must be enabled before users can safely share one deployment.
+The current `/api/v1/me` endpoint confirms the identity FoxPilot extracted. Local mode returns `local-user`; token mode returns `FOXPILOT_TOKEN_USER_ID`.
