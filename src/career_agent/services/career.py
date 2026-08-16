@@ -13,6 +13,7 @@ from ..config import AppConfig
 from ..llm import LLMError, create_provider
 from ..matching import match_job
 from ..profile import create_profile_from_text
+from ..sources import fetch_configured_sources
 from ..storage import JobStore
 
 
@@ -75,6 +76,11 @@ class CareerService:
     def queue_profile_generation(self, resume_text: str, resume_filename: str) -> str:
         job_id = str(uuid4())
         with self._store() as store:
+            existing = store.get_profile()
+            if existing and existing["resume_text"] == resume_text and existing["profile_json"]:
+                store.create_background_job(job_id, "profile_generation")
+                store.update_background_job(job_id, "completed", {"profile": existing["profile_json"]})
+                return job_id
             store.save_profile(resume_text, resume_filename, {})
             store.create_background_job(job_id, "profile_generation")
         return job_id
@@ -85,6 +91,8 @@ class CareerService:
                 job = store.get_background_job(job_id)
                 profile_row = store.get_profile()
                 if not job or not profile_row:
+                    return
+                if job["status"] == "completed":
                     return
                 store.update_background_job(job_id, "running")
             profile = create_profile_from_text(self.config, profile_row["resume_text"], persist=False)
@@ -106,6 +114,33 @@ class CareerService:
             job_id = str(uuid4())
             store.create_background_job(job_id, "matching")
         return job_id
+
+    def queue_scan(self) -> str:
+        with self._store() as store:
+            profile = store.get_profile()
+            if not profile or not profile["profile_json"]:
+                raise ValueError("Upload a resume before scanning for jobs")
+            active = store.get_active_background_job("scan")
+            if active:
+                return active["job_id"]
+            job_id = str(uuid4())
+            store.create_background_job(job_id, "scan")
+        return job_id
+
+    def run_scan_job(self, job_id: str) -> None:
+        try:
+            with self._store() as store:
+                job = store.get_background_job(job_id)
+                profile_row = store.get_profile()
+                if not job or not profile_row:
+                    return
+                store.update_background_job(job_id, "running")
+            total = fetch_configured_sources(profile_row["profile_json"], user_id=self.user_id)
+            with self._store() as store:
+                store.update_background_job(job_id, "completed", {"new_jobs": total})
+        except Exception as error:  # noqa: BLE001 - persist failure for polling clients
+            with self._store() as store:
+                store.update_background_job(job_id, "failed", error=str(error))
 
     def get_background_job(self, job_id: str) -> dict | None:
         with self._store() as store:

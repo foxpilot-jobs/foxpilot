@@ -3,58 +3,6 @@ import re
 from career_agent.config import load_config
 from career_agent.storage import JobStore
 
-TARGET_ROLES = [
-    "analytics engineer",
-    "analytics engineering",
-    "data engineer",
-    "data analyst",
-    "senior data analyst",
-    "bi engineer",
-    "business intelligence engineer",
-    "snowflake developer",
-    "data warehouse engineer",
-]
-
-
-EXCLUDED_ROLES = [
-    "android engineer",
-    "ios engineer",
-    "mobile engineer",
-    "frontend engineer",
-    "front end engineer",
-    "backend engineer",
-    "back end engineer",
-    "full stack engineer",
-    "full-stack engineer",
-    "site reliability engineer",
-    "sre",
-    "devops engineer",
-    "cloud engineer",
-    "network engineer",
-    "security engineer",
-    "sales engineer",
-    "solutions architect",
-    "product manager",
-    "project manager",
-    "engineering manager",
-    "qa engineer",
-    "test engineer",
-]
-
-
-ML_SIGNALS = [
-    "pytorch",
-    "tensorflow",
-    "computer vision",
-    "deep learning",
-    "machine learning model",
-    "mlops",
-    "model training",
-    "model deployment",
-    "neural network",
-    "transformers",
-]
-
 
 def normalize(text: str) -> str:
     text = text.lower()
@@ -74,63 +22,15 @@ def normalize(text: str) -> str:
     return text.strip()
 
 
-def contains_any(
-    text: str,
-    keywords: list[str],
-) -> bool:
-
-    normalized = normalize(text)
-
-    return any(
-        keyword in normalized
-        for keyword in keywords
-    )
-
-
-def is_excluded_role(
-    title: str,
-) -> bool:
-
-    return contains_any(
-        title,
-        EXCLUDED_ROLES,
-    )
-
-
-def is_target_role(
-    title: str,
-) -> bool:
-
-    return contains_any(
-        title,
-        TARGET_ROLES,
-    )
-
-
-def has_strong_ml_signals(
-    description: str,
-) -> bool:
-
-    normalized = normalize(
-        description
-    )
-
-    matches = [
-        signal
-        for signal in ML_SIGNALS
-        if signal in normalized
-    ]
-
-    # A couple of ML signals are enough to
-    # prevent automatic targeting.
-    return len(matches) >= 2
-
-
 def profile_matches_job(
     job: dict,
     profile: dict,
 ) -> bool:
     """Return whether the job has deterministic evidence of profile fit."""
+    if job.get("source") == "hackernews":
+        # HN comments are represented as synthetic titles containing the
+        # entire post; they are not reliable enough for title-only targeting.
+        return False
     title = normalize(job.get("title", ""))
     def profile_values(field: str) -> list[str]:
         value = profile.get(field) or []
@@ -160,90 +60,14 @@ def profile_matches_job(
         phrase in title
         for phrase in role_phrases
     )
-    profile_role_domain = any(
-        contains_any(
-            normalize(role),
-            ["data", "analytics", "bi", "warehouse", "snowflake"],
-        )
-        for role in roles
-    )
-    taxonomy_match = profile_role_domain and is_target_role(title)
-    return role_match or taxonomy_match
+    return role_match
 
 
 def classify_job(
     job: dict,
     profile: dict | None = None,
 ) -> str:
-
-    title = job.get(
-        "title",
-        "",
-    )
-
-    description = job.get(
-        "description",
-        "",
-    )
-
-    # An uploaded profile is the source of truth for personalized scans.
-    # This allows roles outside the generic taxonomy while still requiring
-    # deterministic evidence before spending an LLM call.
-    if profile and profile_matches_job(job, profile):
-        if has_strong_ml_signals(description):
-            return "REVIEW"
-        return "TARGET"
-
-    # Do not fall back to the generic taxonomy after a profile is available;
-    # otherwise a generic "Data Engineer" target can bypass the user's career.
-    if profile:
-        return "REVIEW"
-
-    # --------------------------------------------------
-    # 1. Clearly unrelated roles
-    # --------------------------------------------------
-
-    if is_excluded_role(title):
-
-        return "EXCLUDE"
-
-    # --------------------------------------------------
-    # 2. ML-heavy roles
-    # --------------------------------------------------
-    #
-    # Example:
-    #
-    # "Data Analyst — Machine Learning"
-    #
-    # We don't want the title alone to make this
-    # a TARGET just because it contains "Data Analyst".
-    #
-    # Instead, send it to REVIEW.
-    # The user can decide whether it should be analyzed.
-    #
-
-    if (
-        is_target_role(title)
-        and has_strong_ml_signals(
-            description
-        )
-    ):
-
-        return "REVIEW"
-
-    # --------------------------------------------------
-    # 3. Clearly relevant roles
-    # --------------------------------------------------
-
-    if is_target_role(title):
-
-        return "TARGET"
-
-    # --------------------------------------------------
-    # 4. Everything else is ambiguous
-    # --------------------------------------------------
-
-    return "REVIEW"
+    return "TARGET" if profile and profile_matches_job(job, profile) else "REVIEW"
 
 
 def load_jobs() -> list[dict]:

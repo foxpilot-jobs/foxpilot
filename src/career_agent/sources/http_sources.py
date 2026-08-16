@@ -14,6 +14,7 @@ from typing import Any
 import httpx
 
 from ..config import load_config
+from ..search import profile_search_queries
 from ..storage import JobStore
 
 DEFAULT_SOURCES_PATH = Path("data/sources.json")
@@ -231,16 +232,16 @@ def _load_source_config() -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def _save_jobs(jobs: list[SourceJob]) -> int:
-    with JobStore(load_config().resolved_database_url) as store:
+def _save_jobs(jobs: list[SourceJob], user_id: str) -> int:
+    with JobStore(load_config().resolved_database_url, user_id=user_id) as store:
         for job in jobs:
             store.upsert_job(job.as_dict())
     return len(jobs)
 
 
-def fetch_configured_sources() -> int:
+def fetch_configured_sources(profile: dict, user_id: str = "local-user") -> int:
     config = _load_source_config()
-    queries = [str(query) for query in config.get("queries", [])]
+    queries = profile_search_queries(profile)
     client = PublicSourceClient()
     total = 0
     adapters = [
@@ -256,7 +257,7 @@ def fetch_configured_sources() -> int:
                 continue
             try:
                 jobs = fetch()
-                saved = _save_jobs(jobs)
+                saved = _save_jobs(jobs, user_id)
                 total += saved
                 print(f"[SOURCE] {name}: fetched {len(jobs)}, upserted {saved}")
             except Exception as error:  # noqa: BLE001 - isolate every external source

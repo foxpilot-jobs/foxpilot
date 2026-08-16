@@ -40,7 +40,7 @@ flowchart LR
 
 Source adapters fetch listings, normalize them to the canonical job model, and persist idempotently. Relevance processing removes duplicates and applies user-configured constraints before LLM analysis. LLM output is validated, stored with provider/model/prompt metadata, and shown as decision support. User status changes are stored separately from source data and are never overwritten by a rescan.
 
-The hosted web profile flow uploads a PDF to the API, extracts text in the API boundary, stores it in the per-user `profiles` record, and queues provider work in `background_jobs`. Profile generation and user-triggered matching run asynchronously; the browser polls job status and never holds an HTTP request open while a local model runs. The browser never accesses resumes, providers, or source adapters directly. Both the CLI and API apply the same profile-aware deterministic relevance classifier before invoking the LLM matcher; the generic role taxonomy is used only before a profile exists.
+The hosted web profile flow uploads a PDF to the API, extracts text in the API boundary, stores it in the per-user `profiles` record, and queues provider/source work in `background_jobs`. Profile generation, profile-derived scanning, and user-triggered matching run asynchronously; the browser polls job status and never holds an HTTP request open while a local model or source adapter runs. The browser never accesses resumes, providers, or source adapters directly. The CLI and API share the profile query planner and deterministic role classifier; there is no hardcoded role fallback when a profile is absent.
 
 ## Reliability
 

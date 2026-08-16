@@ -31,6 +31,10 @@ class AppConfig:
         return self.data_dir / "career_profile.json"
 
     @property
+    def profile_metadata_path(self) -> Path:
+        return self.data_dir / "career_profile.meta.json"
+
+    @property
     def database_path(self) -> Path:
         legacy_database = self.data_dir / "career_agent.sqlite3"
         if self.data_dir == LEGACY_DATA_DIR and legacy_database.exists():

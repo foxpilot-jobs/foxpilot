@@ -474,6 +474,20 @@ def create_app() -> FastAPI:
         except ValueError as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
 
+    @app.post("/api/v1/jobs/scan", status_code=202)
+    def scan_jobs(
+        background_tasks: BackgroundTasks,
+        request: Request,
+        career_service: CareerService = Depends(user_service),
+    ) -> dict:
+        enforce_rate_limit(request, "job-scan", 3)
+        try:
+            job_id = career_service.queue_scan()
+            background_tasks.add_task(career_service.run_scan_job, job_id)
+            return {"job_id": job_id, "kind": "scan", "status": "queued"}
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+
     @app.get("/api/v1/me")
     def current_identity(current_user: AuthContext = Depends(require_api_access)) -> dict:
         return {

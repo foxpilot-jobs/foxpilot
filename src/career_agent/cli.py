@@ -82,7 +82,18 @@ def init_project(args: argparse.Namespace) -> int:
     }
 
     if config_path.exists():
-        print(f"Configuration already exists: {config_path}")
+        if not args.resume and not args.provider and not args.model:
+            print(f"Configuration already exists: {config_path}")
+            return 0
+        existing = json.loads(config_path.read_text(encoding="utf-8"))
+        if args.resume:
+            existing["resume_path"] = str(args.resume.expanduser().resolve())
+        if args.provider:
+            existing["llm_provider"] = args.provider
+        if args.model:
+            existing["llm_model"] = args.model
+        config_path.write_text(json.dumps(existing, indent=2) + "\n", encoding="utf-8")
+        print(f"FoxPilot configuration updated: {config_path}")
         return 0
 
     config_path.write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")

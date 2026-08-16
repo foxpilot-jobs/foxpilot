@@ -68,6 +68,25 @@ def test_profile_generation_updates_background_job(tmp_path: Path, monkeypatch) 
     assert job["result"] == {"profile": {"summary": "Data engineer"}}
 
 
+def test_profile_generation_reuses_identical_resume(tmp_path: Path, monkeypatch) -> None:
+    config = AppConfig(data_dir=tmp_path)
+    service = CareerService(config, user_id="user-a")
+    with JobStore(config.database_path, user_id="user-a") as store:
+        store.save_profile("Resume text", "resume.pdf", {"summary": "Existing"})
+    monkeypatch.setattr(
+        "career_agent.services.career.create_profile_from_text",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("LLM should not run")),
+    )
+
+    job_id = service.queue_profile_generation("Resume text", "renamed.pdf")
+    service.run_profile_generation(job_id)
+
+    job = service.get_background_job(job_id)
+    assert job is not None
+    assert job["status"] == "completed"
+    assert job["result"] == {"profile": {"summary": "Existing"}}
+
+
 def test_matching_queue_reuses_active_job(tmp_path: Path) -> None:
     config = AppConfig(data_dir=tmp_path)
     with JobStore(config.database_path, user_id="user-a") as store:
@@ -78,6 +97,29 @@ def test_matching_queue_reuses_active_job(tmp_path: Path) -> None:
     second = service.queue_matching()
 
     assert first == second
+
+
+def test_scan_uses_saved_profile_and_persists_result(tmp_path: Path, monkeypatch) -> None:
+    config = AppConfig(data_dir=tmp_path)
+    with JobStore(config.database_path, user_id="user-a") as store:
+        store.save_profile(
+            "Resume text",
+            "resume.pdf",
+            {"current_or_recent_roles": ["Data Engineer"]},
+        )
+
+    calls = []
+    monkeypatch.setattr(
+        "career_agent.services.career.fetch_configured_sources",
+        lambda profile, user_id: calls.append((profile, user_id)) or 4,
+    )
+    service = CareerService(config, user_id="user-a")
+
+    job_id = service.queue_scan()
+    service.run_scan_job(job_id)
+
+    assert calls == [({"current_or_recent_roles": ["Data Engineer"]}, "user-a")]
+    assert service.get_background_job(job_id)["result"] == {"new_jobs": 4}
 
 
 def test_profile_aware_relevance_rejects_generic_roles_without_profile_fit() -> None:
@@ -110,4 +152,11 @@ def test_profile_aware_relevance_rejects_generic_roles_without_profile_fit() -> 
             "current_or_recent_roles": ["Data Engineer"],
             "skills": {"data_engineering": ["Python", "SQL"]},
         },
+    ) == "REVIEW"
+    assert classify_job(
+        {
+            "source": "hackernews",
+            "title": "Hiring thread mentioning a Software Engineer opportunity",
+        },
+        {"current_or_recent_roles": ["Software Engineer"]},
     ) == "REVIEW"

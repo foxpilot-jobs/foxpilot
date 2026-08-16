@@ -52,7 +52,7 @@ export type Profile = {
 
 export type BackgroundJob = {
   job_id: string;
-  kind: "profile_generation" | "matching";
+  kind: "profile_generation" | "scan" | "matching";
   status: "queued" | "running" | "completed" | "failed";
   result: Record<string, unknown> | null;
   error: string | null;
@@ -153,6 +153,18 @@ export async function runMatching(): Promise<BackgroundJob> {
   if (!response.ok) {
     const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
     throw new Error(payload?.detail ?? `Matching failed: ${response.status}`);
+  }
+  return response.json() as Promise<BackgroundJob>;
+}
+
+export async function runScan(): Promise<BackgroundJob> {
+  const response = await fetch(`${API_BASE}/api/v1/jobs/scan`, {
+    method: "POST",
+    credentials: "include",
+  });
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
+    throw new Error(payload?.detail ?? `Job scan failed: ${response.status}`);
   }
   return response.json() as Promise<BackgroundJob>;
 }

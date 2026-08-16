@@ -2,11 +2,15 @@
 
 from career_agent.config import load_config
 from career_agent.llm import LLMError
-from career_agent.profile import create_profile
+from career_agent.profile import create_profile, has_current_local_profile
 
 
 def main() -> int:
     config = load_config()
+    if has_current_local_profile(config):
+        print(f"Career profile is current: {config.profile_path}")
+        print("Skipping profile creation; the resume has not changed.")
+        return 0
     print(f"Using LLM provider: {config.llm_provider} ({config.llm_model})")
     print("Reading resume and creating career profile...")
     try:

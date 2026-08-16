@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from io import BytesIO
 from pathlib import Path
@@ -37,6 +38,51 @@ PROFILE_RESPONSE_SCHEMA = {
     },
     "required": PROFILE_FIELDS,
 }
+
+
+def resume_fingerprint(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as resume:
+        for chunk in iter(lambda: resume.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def write_local_profile_metadata(config: AppConfig) -> None:
+    if not config.resume_path:
+        return
+    config.profile_metadata_path.write_text(
+        json.dumps(
+            {
+                "resume_path": str(config.resume_path.resolve()),
+                "resume_sha256": resume_fingerprint(config.resume_path),
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+
+def has_current_local_profile(config: AppConfig) -> bool:
+    """Check that the saved local profile belongs to the configured resume."""
+    if not config.resume_path or not config.resume_path.exists():
+        return False
+    if not config.profile_path.exists() or not config.profile_metadata_path.exists():
+        # Profiles written before fingerprinting are assumed to belong to the
+        # currently configured resume and get metadata on first reuse.
+        if config.profile_path.exists() and not config.profile_metadata_path.exists():
+            write_local_profile_metadata(config)
+            return True
+        return False
+    try:
+        metadata = json.loads(config.profile_metadata_path.read_text(encoding="utf-8"))
+        return (
+            metadata.get("resume_path") == str(config.resume_path.resolve())
+            and metadata.get("resume_sha256") == resume_fingerprint(config.resume_path)
+        )
+    except (OSError, ValueError, TypeError):
+        return False
 
 
 def extract_resume_text(path: Path) -> str:
@@ -127,4 +173,5 @@ def create_profile_from_text(
             json.dumps(profile, indent=2, ensure_ascii=False) + "\n",
             encoding="utf-8",
         )
+        write_local_profile_metadata(config)
     return profile
