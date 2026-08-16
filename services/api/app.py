@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import os
 from pathlib import Path
+from urllib.parse import urlencode
 
+import httpx
 from fastapi import (
     BackgroundTasks,
     Depends,
@@ -18,7 +21,9 @@ from fastapi import (
     UploadFile,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
+from google.auth.transport import requests as google_requests
+from google.oauth2 import id_token
 from pydantic import BaseModel, Field
 from pypdf.errors import PdfReadError
 from sqlalchemy.exc import IntegrityError
@@ -45,6 +50,15 @@ from .auth import (
     set_session_cookie,
     verify_password,
 )
+
+GOOGLE_STATE_COOKIE = "foxpilot_google_state"
+GOOGLE_STATE_MAX_AGE = 600
+
+
+def _google_configured() -> bool:
+    client_id = os.getenv("GOOGLE_CLIENT_ID", "").strip()
+    client_secret = os.getenv("GOOGLE_CLIENT_SECRET", "").strip()
+    return bool(client_id and client_secret) and not client_id.startswith("your-") and not client_secret.startswith("your-")
 
 
 class ApplicationUpdate(BaseModel):
@@ -84,6 +98,20 @@ def _auth_user_response(user: dict) -> AuthUser:
         user_id=user["user_id"],
         email=user["email"],
         email_verified=bool(user["email_verified"]),
+    )
+
+
+def _google_redirect_uri() -> str:
+    return os.getenv(
+        "GOOGLE_REDIRECT_URI",
+        f"{os.getenv('FOXPILOT_PUBLIC_URL', 'http://localhost:8080').rstrip('/')}/api/v1/auth/google/callback",
+    )
+
+
+def _google_failure(message: str) -> RedirectResponse:
+    return RedirectResponse(
+        url=f"{os.getenv('FOXPILOT_PUBLIC_URL', 'http://localhost:8080').rstrip('/')}/login?oauth_error={message}",
+        status_code=303,
     )
 
 
@@ -195,6 +223,95 @@ def create_app() -> FastAPI:
             store.close()
         set_session_cookie(response, token, os.getenv("FOXPILOT_ENV", "local") == "production")
         return _auth_user_response(user)
+
+    @app.get("/api/v1/auth/google/start")
+    def google_start(response: Response) -> RedirectResponse:
+        client_id = os.getenv("GOOGLE_CLIENT_ID", "").strip()
+        if not _google_configured():
+            raise HTTPException(status_code=503, detail="Google sign-in is not configured with a real OAuth web client")
+        state = os.urandom(32).hex()
+        params = {
+            "client_id": client_id,
+            "redirect_uri": _google_redirect_uri(),
+            "response_type": "code",
+            "scope": "openid email profile",
+            "state": state,
+            "access_type": "offline",
+            "prompt": "select_account",
+        }
+        redirect = RedirectResponse(
+            url=f"https://accounts.google.com/o/oauth2/v2/auth?{urlencode(params)}",
+            status_code=303,
+        )
+        redirect.set_cookie(
+            GOOGLE_STATE_COOKIE,
+            state,
+            max_age=GOOGLE_STATE_MAX_AGE,
+            httponly=True,
+            secure=os.getenv("FOXPILOT_ENV", "local").lower() == "production",
+            samesite="lax",
+            path="/",
+        )
+        return redirect
+
+    @app.get("/api/v1/auth/google/callback")
+    def google_callback(request: Request, code: str | None = None, state: str | None = None) -> RedirectResponse:
+        expected_state = request.cookies.get(GOOGLE_STATE_COOKIE)
+        if not code or not state or not expected_state or not hmac.compare_digest(state, expected_state):
+            return _google_failure("invalid_state")
+        client_id = os.getenv("GOOGLE_CLIENT_ID")
+        client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
+        if not _google_configured():
+            return _google_failure("not_configured")
+        try:
+            token_response = httpx.post(
+                "https://oauth2.googleapis.com/token",
+                data={
+                    "code": code,
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "redirect_uri": _google_redirect_uri(),
+                    "grant_type": "authorization_code",
+                },
+                timeout=15,
+            )
+            token_response.raise_for_status()
+            token_payload = token_response.json()
+            claims = id_token.verify_oauth2_token(
+                token_payload["id_token"], google_requests.Request(), client_id
+            )
+            email = normalize_email(str(claims["email"]))
+            subject = str(claims["sub"])
+            if not claims.get("email_verified") or not email or not subject:
+                return _google_failure("email_not_verified")
+        except (httpx.HTTPError, KeyError, ValueError):
+            return _google_failure("verification_failed")
+
+        store = JobStore(app.state.service.config.resolved_database_url)
+        try:
+            user = store.get_user_by_auth_subject("google", subject)
+            if not user:
+                user = store.get_user_by_email(email)
+                if user:
+                    store.link_auth_subject(user["user_id"], "google", subject)
+                    user = store.get_user(user["user_id"])
+                else:
+                    user_id = f"user_{os.urandom(12).hex()}"
+                    store.create_user(user_id, email, None, "google", subject)
+                    user = store.get_user(user_id)
+            if not user:
+                return _google_failure("account_unavailable")
+            session_token = create_session(store, user["user_id"])
+        finally:
+            store.close()
+
+        redirect = RedirectResponse(
+            url=f"{os.getenv('FOXPILOT_PUBLIC_URL', 'http://localhost:8080').rstrip('/')}/app",
+            status_code=303,
+        )
+        redirect.delete_cookie(GOOGLE_STATE_COOKIE, path="/")
+        set_session_cookie(redirect, session_token, os.getenv("FOXPILOT_ENV", "local").lower() == "production")
+        return redirect
 
     @app.post("/api/v1/auth/logout", status_code=204)
     def logout(request: Request, response: Response) -> None:

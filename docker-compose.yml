@@ -37,6 +37,9 @@ services:
       FOXPILOT_AUTH_MODE: ${FOXPILOT_AUTH_MODE:-local}
       FOXPILOT_API_TOKEN: ${FOXPILOT_API_TOKEN:-}
       FOXPILOT_TOKEN_USER_ID: ${FOXPILOT_TOKEN_USER_ID:-staging-user}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:8080/api/v1/auth/google/callback}
     depends_on:
       postgres:
         condition: service_healthy

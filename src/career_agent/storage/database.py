@@ -31,6 +31,8 @@ users_table = Table(
     Column("user_id", String, primary_key=True),
     Column("email", String),
     Column("password_hash", String),
+    Column("auth_provider", String),
+    Column("auth_subject", String),
     Column("email_verified", Boolean, nullable=False, default=False),
     Column("is_active", Boolean, nullable=False, default=True),
     Column("created_at", DateTime(timezone=True), nullable=False),
@@ -171,6 +173,10 @@ class JobStore:
                     connection.exec_driver_sql(
                         "ALTER TABLE users ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT 1"
                     )
+                if "auth_provider" not in columns:
+                    connection.exec_driver_sql("ALTER TABLE users ADD COLUMN auth_provider VARCHAR")
+                if "auth_subject" not in columns:
+                    connection.exec_driver_sql("ALTER TABLE users ADD COLUMN auth_subject VARCHAR")
                 self._upgrade_user_owned_tables(connection)
                 connection.exec_driver_sql("PRAGMA foreign_keys = ON")
                 connection.exec_driver_sql("PRAGMA journal_mode = WAL")
@@ -212,7 +218,14 @@ class JobStore:
     def __exit__(self, *_args) -> None:
         self.close()
 
-    def create_user(self, user_id: str, email: str, password_hash: str) -> None:
+    def create_user(
+        self,
+        user_id: str,
+        email: str,
+        password_hash: str | None,
+        auth_provider: str | None = None,
+        auth_subject: str | None = None,
+    ) -> None:
         now = utc_now()
         with self.engine.begin() as connection:
             connection.execute(
@@ -220,6 +233,8 @@ class JobStore:
                     user_id=user_id,
                     email=email,
                     password_hash=password_hash,
+                    auth_provider=auth_provider,
+                    auth_subject=auth_subject,
                     email_verified=False,
                     is_active=True,
                     created_at=now,
@@ -233,6 +248,24 @@ class JobStore:
                 select(users_table).where(users_table.c.email == email)
             ).mappings().first()
         return dict(row) if row else None
+
+    def get_user_by_auth_subject(self, provider: str, subject: str) -> dict | None:
+        with self.engine.connect() as connection:
+            row = connection.execute(
+                select(users_table).where(
+                    users_table.c.auth_provider == provider,
+                    users_table.c.auth_subject == subject,
+                )
+            ).mappings().first()
+        return dict(row) if row else None
+
+    def link_auth_subject(self, user_id: str, provider: str, subject: str) -> None:
+        with self.engine.begin() as connection:
+            connection.execute(
+                update(users_table)
+                .where(users_table.c.user_id == user_id)
+                .values(auth_provider=provider, auth_subject=subject, email_verified=True, updated_at=utc_now())
+            )
 
     def get_user(self, user_id: str) -> dict | None:
         with self.engine.connect() as connection:

@@ -81,6 +81,15 @@ export function DashboardPage() {
       });
   }, [applications, jobs, matchByJob, query, statusFilter]);
 
+  const matchedJobs = useMemo(
+    () => jobs.filter((job) => matchByJob.has(job.job_id ?? "")),
+    [jobs, matchByJob],
+  );
+  const matchedJobIds = useMemo(
+    () => new Set(matchedJobs.map((job) => job.job_id ?? "")),
+    [matchedJobs],
+  );
+
   if (!user) {
     return null;
   }
@@ -98,9 +107,11 @@ export function DashboardPage() {
     }
   }
 
-  const savedCount = Object.values(applications).filter((item) => item.status === "saved").length;
+  const savedCount = Object.values(applications).filter(
+    (item) => item.status === "saved" && matchedJobIds.has(item.job_id),
+  ).length;
   const appliedCount = Object.values(applications).filter(
-    (item) => item.status === "applied",
+    (item) => item.status === "applied" && matchedJobIds.has(item.job_id),
   ).length;
 
   return (
@@ -112,12 +123,18 @@ export function DashboardPage() {
           <p className="muted">A sharper shortlist for your next move</p>
         </div>
         <div className="account-actions">
-          <span className="muted">{user.email}</span>
-          {user.user_id !== "local-user" && (
-            <Button variant="quiet" type="button" onClick={() => void signOut()}>
-              Sign out
-            </Button>
-          )}
+          <span className="account-email">{user.email}</span>
+          <Button
+            variant="quiet"
+            type="button"
+            onClick={() =>
+              void signOut().catch((reason: unknown) =>
+                setError(reason instanceof Error ? reason.message : "Unable to sign out"),
+              )
+            }
+          >
+            Sign out
+          </Button>
           <Link className="profile-link" to="/app/profile">
             Profile
           </Link>
@@ -134,8 +151,8 @@ export function DashboardPage() {
           </p>
         </div>
         <div className="signal-card">
-          <span className="signal-number">{jobs.length}</span>
-          <span className="muted">target roles ready</span>
+          <span className="signal-number">{matchedJobs.length}</span>
+          <span className="muted">matched roles ready</span>
         </div>
       </section>
 
@@ -163,7 +180,7 @@ export function DashboardPage() {
         <LoadingState label="Loading your shortlist..." />
       ) : (
         <>
-          <MetricsSummary applied={appliedCount} matches={matches.length} saved={savedCount} />
+          <MetricsSummary applied={appliedCount} matches={matchedJobs.length} saved={savedCount} />
 
           <section className="section-heading">
             <div>

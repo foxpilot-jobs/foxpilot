@@ -47,6 +47,8 @@ OLLAMA_BASE_URL=http://localhost:11434 \
 foxpilot scan
 ```
 
+For Google sign-in, configure `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and an exact `GOOGLE_REDIRECT_URI` matching the Google Cloud OAuth client. Never expose the client secret to the frontend.
+
 The scan still runs on the host because it uses the interactive Playwright browser. The API and web app then read the PostgreSQL data.
 
 ## Hosted Deployment
