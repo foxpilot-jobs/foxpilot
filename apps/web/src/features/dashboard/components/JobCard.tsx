@@ -1,0 +1,57 @@
+import type { Application, Job, Match } from "../../../api";
+import { ApplicationStatusSelect } from "./ApplicationStatusSelect";
+
+type JobCardProps = {
+  job: Job;
+  match?: Match["match"];
+  application?: Application;
+  updating: boolean;
+  onStatusChange: (status: Application["status"]) => void;
+};
+
+export function JobCard({ application, job, match, onStatusChange, updating }: JobCardProps) {
+  return (
+    <article className="job-card">
+      <div className="card-topline">
+        <span className="source-label">{job.source ?? "JOB SOURCE"}</span>
+        {match && <span className="score">{match.match_score}% fit</span>}
+      </div>
+      <h3>{job.title}</h3>
+      <p className="company">{job.company}</p>
+      <p className="location">{job.location || "Location not specified"}</p>
+      {match && <p className="reason">{match.reasons[0] ?? match.experience_match}</p>}
+      {match && (
+        <details className="evidence">
+          <summary>Why this match</summary>
+          <div className="evidence-grid">
+            <div>
+              <strong>Strengths</strong>
+              <span>{match.matching_skills.join(", ") || "Profile alignment identified"}</span>
+            </div>
+            <div>
+              <strong>Gaps</strong>
+              <span>{match.missing_skills.join(", ") || "No major gaps found"}</span>
+            </div>
+            <div>
+              <strong>Concerns</strong>
+              <span>{match.concerns.join(", ") || "None flagged"}</span>
+            </div>
+          </div>
+        </details>
+      )}
+      <div className="card-actions">
+        {job.url && (
+          <a href={job.url} target="_blank" rel="noreferrer">
+            View role
+          </a>
+        )}
+        <ApplicationStatusSelect
+          disabled={updating}
+          jobTitle={job.title}
+          status={application?.status}
+          onChange={onStatusChange}
+        />
+      </div>
+    </article>
+  );
+}

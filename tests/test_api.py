@@ -162,3 +162,19 @@ def test_native_auth_rejects_wrong_password(tmp_path: Path, monkeypatch) -> None
         json={"email": "user@example.com", "password": "wrong password here"},
     )
     assert response.status_code == 401
+
+
+def test_native_auth_rejects_cross_origin_mutation(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("FOXPILOT_AUTH_MODE", "native")
+    config = AppConfig(data_dir=tmp_path)
+    app = create_app()
+    app.state.service.config = config
+
+    response = TestClient(app).post(
+        "/api/v1/auth/register",
+        headers={"Origin": "https://malicious.example"},
+        json={"email": "user@example.com", "password": "correct horse battery staple"},
+    )
+
+    assert response.status_code == 403
+    assert response.json() == {"detail": "Request origin is not allowed"}
