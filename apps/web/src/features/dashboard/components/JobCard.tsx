@@ -10,15 +10,26 @@ type JobCardProps = {
 };
 
 export function JobCard({ application, job, match, onStatusChange, updating }: JobCardProps) {
+  const scoreTone =
+    match && match.match_score >= 70
+      ? "strong"
+      : match && match.match_score >= 40
+        ? "possible"
+        : "weak";
   return (
     <article className="job-card">
       <div className="card-topline">
         <span className="source-label">{job.source ?? "JOB SOURCE"}</span>
-        {match && <span className="score">{match.match_score}% fit</span>}
+        {match && <span className={`score score-${scoreTone}`}>{match.match_score}% fit</span>}
       </div>
       <h3>{job.title}</h3>
       <p className="company">{job.company}</p>
       <p className="location">{job.location || "Location not specified"}</p>
+      {match && (
+        <span className={`recommendation recommendation-${match.recommendation.toLowerCase()}`}>
+          {match.recommendation}
+        </span>
+      )}
       {match && <p className="reason">{match.reasons[0] ?? match.experience_match}</p>}
       {match && (
         <details className="evidence">
@@ -29,9 +40,19 @@ export function JobCard({ application, job, match, onStatusChange, updating }: J
               <span>{match.matching_skills.join(", ") || "Profile alignment identified"}</span>
             </div>
             <div>
-              <strong>Gaps</strong>
+              <strong>Gaps to verify</strong>
               <span>{match.missing_skills.join(", ") || "No major gaps found"}</span>
             </div>
+            {match.gap_analysis && match.gap_analysis.length > 0 && (
+              <div>
+                <strong>Addressability</strong>
+                <span>
+                  {match.gap_analysis
+                    .map((gap) => `${gap.gap}: ${gap.severity}. ${gap.explanation}`)
+                    .join(" ")}
+                </span>
+              </div>
+            )}
             <div>
               <strong>Concerns</strong>
               <span>{match.concerns.join(", ") || "None flagged"}</span>

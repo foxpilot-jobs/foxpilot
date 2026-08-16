@@ -61,6 +61,17 @@ auth_tokens_table = Table(
     Column("used_at", DateTime(timezone=True)),
 )
 
+profiles_table = Table(
+    "profiles",
+    metadata,
+    Column("user_id", String, primary_key=True),
+    Column("resume_text", Text, nullable=False),
+    Column("resume_filename", String, nullable=False),
+    Column("profile_json", JSON, nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+    Column("updated_at", DateTime(timezone=True), nullable=False),
+)
+
 jobs_table = Table(
     "jobs",
     metadata,
@@ -290,6 +301,35 @@ class JobStore:
                 .where(sessions_table.c.user_id == user_id, sessions_table.c.revoked_at.is_(None))
                 .values(revoked_at=utc_now())
             )
+
+    def save_profile(self, resume_text: str, resume_filename: str, profile: dict) -> None:
+        now = utc_now()
+        values = {
+            "user_id": self.user_id,
+            "resume_text": resume_text,
+            "resume_filename": resume_filename,
+            "profile_json": profile,
+            "updated_at": now,
+        }
+        with self.engine.begin() as connection:
+            existing = connection.execute(
+                select(profiles_table.c.user_id).where(profiles_table.c.user_id == self.user_id)
+            ).first()
+            if existing:
+                connection.execute(
+                    update(profiles_table)
+                    .where(profiles_table.c.user_id == self.user_id)
+                    .values(**values)
+                )
+            else:
+                connection.execute(profiles_table.insert().values(created_at=now, **values))
+
+    def get_profile(self) -> dict | None:
+        with self.engine.connect() as connection:
+            row = connection.execute(
+                select(profiles_table).where(profiles_table.c.user_id == self.user_id)
+            ).mappings().first()
+        return dict(row) if row else None
 
     def create_auth_token(
         self,

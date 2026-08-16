@@ -2,6 +2,7 @@ import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { AuthPage } from "../features/auth/AuthPage";
 import { useAuth } from "../features/auth/useAuth";
 import { DashboardPage } from "../features/dashboard/pages/DashboardPage";
+import { ProfileSetupPage } from "../features/profile/pages/ProfileSetupPage";
 
 export function AppRouter() {
   return (
@@ -15,6 +16,7 @@ export function AppRouter() {
       </Route>
       <Route element={<ProtectedRoute />}>
         <Route path="/app" element={<DashboardPage />} />
+        <Route path="/app/profile" element={<ProfileSetupPage />} />
       </Route>
       <Route path="*" element={<Navigate replace to="/app" />} />
     </Routes>

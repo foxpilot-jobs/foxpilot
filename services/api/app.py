@@ -4,16 +4,29 @@ from __future__ import annotations
 
 import hashlib
 import os
+from pathlib import Path
 
-from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
+from fastapi import (
+    Depends,
+    FastAPI,
+    File,
+    HTTPException,
+    Query,
+    Request,
+    Response,
+    UploadFile,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+from pypdf.errors import PdfReadError
 from sqlalchemy.exc import IntegrityError
 
 from career_agent.config import load_config
 from career_agent.email import configured as email_configured
 from career_agent.email import send_email
+from career_agent.llm import LLMError
+from career_agent.profile import extract_resume_text_from_bytes
 from career_agent.services import CareerService
 from career_agent.storage import JobStore
 
@@ -60,6 +73,9 @@ class PasswordReset(AuthToken):
 
 class PasswordResetRequest(BaseModel):
     email: str = Field(min_length=3, max_length=320)
+
+
+MAX_RESUME_BYTES = 10 * 1024 * 1024
 
 
 def _auth_user_response(user: dict) -> AuthUser:
@@ -251,6 +267,44 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=400, detail="User account is unavailable")
         set_session_cookie(response, session_token, os.getenv("FOXPILOT_ENV", "local") == "production")
         return _auth_user_response(user)
+
+    @app.post("/api/v1/profile/resume")
+    async def upload_resume(
+        file: UploadFile = File(...),
+        career_service: CareerService = Depends(user_service),
+    ) -> dict:
+        filename = Path(file.filename or "resume.pdf").name
+        if not filename.lower().endswith(".pdf"):
+            raise HTTPException(status_code=422, detail="Resume uploads must be PDF files")
+        content = await file.read(MAX_RESUME_BYTES + 1)
+        if len(content) > MAX_RESUME_BYTES:
+            raise HTTPException(status_code=413, detail="Resume file must be 10 MB or smaller")
+        try:
+            resume_text = extract_resume_text_from_bytes(content, filename)
+            if not resume_text.strip():
+                raise ValueError("The uploaded PDF did not contain readable text")
+            profile = career_service.save_profile(resume_text, filename)
+        except (PdfReadError, ValueError) as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+        except LLMError as error:
+            raise HTTPException(status_code=502, detail="Unable to create a profile from the resume") from error
+        return {"resume_filename": filename, "profile": profile}
+
+    @app.get("/api/v1/profile")
+    def get_profile(career_service: CareerService = Depends(user_service)) -> dict:
+        profile = career_service.get_profile()
+        if profile is None:
+            raise HTTPException(status_code=404, detail="No resume profile has been uploaded")
+        return profile
+
+    @app.post("/api/v1/profile/match")
+    def run_profile_matching(career_service: CareerService = Depends(user_service)) -> dict[str, int]:
+        try:
+            return career_service.run_matching()
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+        except LLMError as error:
+            raise HTTPException(status_code=502, detail="Unable to initialize the matching provider") from error
 
     @app.get("/api/v1/me")
     def current_identity(current_user: AuthContext = Depends(require_api_access)) -> dict:

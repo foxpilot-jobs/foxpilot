@@ -178,3 +178,46 @@ def test_native_auth_rejects_cross_origin_mutation(tmp_path: Path, monkeypatch) 
 
     assert response.status_code == 403
     assert response.json() == {"detail": "Request origin is not allowed"}
+
+
+def test_profile_upload_and_retrieval(tmp_path: Path, monkeypatch) -> None:
+    profile = {
+        "summary": "Data engineer",
+        "years_of_experience": 5,
+        "current_or_recent_roles": ["Data Engineer"],
+    }
+    monkeypatch.setattr(
+        "services.api.app.extract_resume_text_from_bytes",
+        lambda _content, _filename: "Resume text",
+    )
+    monkeypatch.setattr(
+        "career_agent.services.career.create_profile_from_text",
+        lambda *_args, **_kwargs: profile,
+    )
+    config = AppConfig(data_dir=tmp_path)
+    app = create_app()
+    app.state.service.config = config
+    client = TestClient(app)
+
+    upload = client.post(
+        "/api/v1/profile/resume",
+        files={"file": ("resume.pdf", b"pdf-bytes", "application/pdf")},
+    )
+
+    assert upload.status_code == 200
+    assert upload.json()["profile"] == profile
+    retrieved = client.get("/api/v1/profile")
+    assert retrieved.status_code == 200
+    assert retrieved.json()["resume_filename"] == "resume.pdf"
+    assert retrieved.json()["profile"] == profile
+
+
+def test_profile_matching_requires_uploaded_profile(tmp_path: Path) -> None:
+    config = AppConfig(data_dir=tmp_path)
+    app = create_app()
+    app.state.service.config = config
+
+    response = TestClient(app).post("/api/v1/profile/match")
+
+    assert response.status_code == 422
+    assert "Upload a resume" in response.json()["detail"]
