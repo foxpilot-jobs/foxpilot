@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from uuid import uuid4
 
 from ..config import AppConfig
 from ..llm import LLMError, create_provider
@@ -59,7 +60,7 @@ class CareerService:
     def get_profile(self) -> dict | None:
         with self._store() as store:
             profile = store.get_profile()
-        if not profile:
+        if not profile or not profile["profile_json"]:
             return None
         return {
             "resume_filename": profile["resume_filename"],
@@ -67,6 +68,67 @@ class CareerService:
             "created_at": profile["created_at"],
             "updated_at": profile["updated_at"],
         }
+
+    def queue_profile_generation(self, resume_text: str, resume_filename: str) -> str:
+        job_id = str(uuid4())
+        with self._store() as store:
+            store.save_profile(resume_text, resume_filename, {})
+            store.create_background_job(job_id, "profile_generation")
+        return job_id
+
+    def run_profile_generation(self, job_id: str) -> None:
+        try:
+            with self._store() as store:
+                job = store.get_background_job(job_id)
+                profile_row = store.get_profile()
+                if not job or not profile_row:
+                    return
+                store.update_background_job(job_id, "running")
+            profile = create_profile_from_text(self.config, profile_row["resume_text"], persist=False)
+            with self._store() as store:
+                store.save_profile(profile_row["resume_text"], profile_row["resume_filename"], profile)
+                store.update_background_job(job_id, "completed", {"profile": profile})
+        except Exception as error:  # noqa: BLE001 - persist failure for polling clients
+            with self._store() as store:
+                store.update_background_job(job_id, "failed", error=str(error))
+
+    def queue_matching(self) -> str:
+        with self._store() as store:
+            profile = store.get_profile()
+            if not profile or not profile["profile_json"]:
+                raise ValueError("Upload a resume before running matching")
+            job_id = str(uuid4())
+            store.create_background_job(job_id, "matching")
+        return job_id
+
+    def get_background_job(self, job_id: str) -> dict | None:
+        with self._store() as store:
+            job = store.get_background_job(job_id)
+        if not job:
+            return None
+        return {
+            "job_id": job["job_id"],
+            "kind": job["kind"],
+            "status": job["status"],
+            "result": job["result_json"],
+            "error": job["error"],
+            "created_at": job["created_at"],
+            "updated_at": job["updated_at"],
+        }
+
+    def run_matching_job(self, job_id: str) -> None:
+        with self._store() as store:
+            job = store.get_background_job(job_id)
+            if not job:
+                return
+            store.update_background_job(job_id, "running")
+        try:
+            result = self.run_matching()
+            with self._store() as store:
+                store.update_background_job(job_id, "completed", result)
+        except Exception as error:  # noqa: BLE001 - persist failure for polling clients
+            with self._store() as store:
+                store.update_background_job(job_id, "failed", error=str(error))
 
     def run_matching(self) -> dict[str, int]:
         with self._store() as store:

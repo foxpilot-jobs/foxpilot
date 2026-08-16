@@ -17,13 +17,13 @@ Docker Compose packages the API, web app, and PostgreSQL for local web developme
 Terminal 1:
 
 ```bash
-OLLAMA_HOST=0.0.0.0:11435 ollama serve
+OLLAMA_HOST=0.0.0.0:11434 ollama serve
 ```
 
 Terminal 2:
 
 ```bash
-OLLAMA_HOST=127.0.0.1:11435 ollama pull llama3.1:8b
+OLLAMA_HOST=127.0.0.1:11434 ollama pull llama3.1:8b
 docker compose up --build -d
 ```
 
@@ -43,7 +43,7 @@ To run the browser-based local scan against the Compose PostgreSQL instance:
 ```bash
 source .venv/bin/activate
 DATABASE_URL=postgresql+psycopg://foxpilot:foxpilot-dev-only@localhost:5432/foxpilot \
-OLLAMA_BASE_URL=http://localhost:11435 \
+OLLAMA_BASE_URL=http://localhost:11434 \
 foxpilot scan
 ```
 

@@ -50,6 +50,17 @@ export type Profile = {
   updated_at: string;
 };
 
+export type BackgroundJob = {
+  job_id: string;
+  kind: "profile_generation" | "matching";
+  status: "queued" | "running" | "completed" | "failed";
+  result: Record<string, unknown> | null;
+  error: string | null;
+  created_at: string;
+  updated_at: string;
+  resume_filename?: string;
+};
+
 const API_BASE = import.meta.env.VITE_API_BASE ?? "";
 
 async function authRequest<T>(path: string, body?: unknown): Promise<T> {
@@ -101,7 +112,7 @@ export function resetPassword(token: string, password: string): Promise<AuthUser
   return authRequest<AuthUser>("/api/v1/auth/reset-password", { token, password });
 }
 
-export async function uploadResume(file: File): Promise<Profile> {
+export async function uploadResume(file: File): Promise<BackgroundJob> {
   const formData = new FormData();
   formData.append("file", file);
   const response = await fetch(`${API_BASE}/api/v1/profile/resume`, {
@@ -113,7 +124,7 @@ export async function uploadResume(file: File): Promise<Profile> {
     const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
     throw new Error(payload?.detail ?? `Resume upload failed: ${response.status}`);
   }
-  return response.json() as Promise<Profile>;
+  return response.json() as Promise<BackgroundJob>;
 }
 
 export async function getProfile(): Promise<Profile | null> {
@@ -127,12 +138,7 @@ export async function getProfile(): Promise<Profile | null> {
   return response.json() as Promise<Profile>;
 }
 
-export async function runMatching(): Promise<{
-  total: number;
-  analyzed: number;
-  skipped: number;
-  failed: number;
-}> {
+export async function runMatching(): Promise<BackgroundJob> {
   const response = await fetch(`${API_BASE}/api/v1/profile/match`, {
     method: "POST",
     credentials: "include",
@@ -141,12 +147,17 @@ export async function runMatching(): Promise<{
     const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
     throw new Error(payload?.detail ?? `Matching failed: ${response.status}`);
   }
-  return response.json() as Promise<{
-    total: number;
-    analyzed: number;
-    skipped: number;
-    failed: number;
-  }>;
+  return response.json() as Promise<BackgroundJob>;
+}
+
+export async function getBackgroundJob(jobId: string): Promise<BackgroundJob> {
+  const response = await fetch(`${API_BASE}/api/v1/profile/jobs/${jobId}`, {
+    credentials: "include",
+  });
+  if (!response.ok) {
+    throw new Error(`Unable to check job status: ${response.status}`);
+  }
+  return response.json() as Promise<BackgroundJob>;
 }
 
 async function request<T>(path: string): Promise<T> {

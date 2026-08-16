@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 
 from fastapi import (
+    BackgroundTasks,
     Depends,
     FastAPI,
     File,
@@ -268,8 +269,9 @@ def create_app() -> FastAPI:
         set_session_cookie(response, session_token, os.getenv("FOXPILOT_ENV", "local") == "production")
         return _auth_user_response(user)
 
-    @app.post("/api/v1/profile/resume")
+    @app.post("/api/v1/profile/resume", status_code=202)
     async def upload_resume(
+        background_tasks: BackgroundTasks,
         file: UploadFile = File(...),
         career_service: CareerService = Depends(user_service),
     ) -> dict:
@@ -283,12 +285,16 @@ def create_app() -> FastAPI:
             resume_text = extract_resume_text_from_bytes(content, filename)
             if not resume_text.strip():
                 raise ValueError("The uploaded PDF did not contain readable text")
-            profile = career_service.save_profile(resume_text, filename)
+            job_id = career_service.queue_profile_generation(resume_text, filename)
+            background_tasks.add_task(career_service.run_profile_generation, job_id)
         except (PdfReadError, ValueError) as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
         except LLMError as error:
-            raise HTTPException(status_code=502, detail="Unable to create a profile from the resume") from error
-        return {"resume_filename": filename, "profile": profile}
+            raise HTTPException(
+                status_code=502,
+                detail=f"Unable to create a profile from the configured LLM provider: {error}",
+            ) from error
+        return {"job_id": job_id, "kind": "profile_generation", "status": "queued", "resume_filename": filename}
 
     @app.get("/api/v1/profile")
     def get_profile(career_service: CareerService = Depends(user_service)) -> dict:
@@ -297,14 +303,24 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=404, detail="No resume profile has been uploaded")
         return profile
 
-    @app.post("/api/v1/profile/match")
-    def run_profile_matching(career_service: CareerService = Depends(user_service)) -> dict[str, int]:
+    @app.get("/api/v1/profile/jobs/{job_id}")
+    def get_profile_job(job_id: str, career_service: CareerService = Depends(user_service)) -> dict:
+        job = career_service.get_background_job(job_id)
+        if job is None:
+            raise HTTPException(status_code=404, detail="Background job not found")
+        return job
+
+    @app.post("/api/v1/profile/match", status_code=202)
+    def run_profile_matching(
+        background_tasks: BackgroundTasks,
+        career_service: CareerService = Depends(user_service),
+    ) -> dict:
         try:
-            return career_service.run_matching()
+            job_id = career_service.queue_matching()
+            background_tasks.add_task(career_service.run_matching_job, job_id)
+            return {"job_id": job_id, "kind": "matching", "status": "queued"}
         except ValueError as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
-        except LLMError as error:
-            raise HTTPException(status_code=502, detail="Unable to initialize the matching provider") from error
 
     @app.get("/api/v1/me")
     def current_identity(current_user: AuthContext = Depends(require_api_access)) -> dict:

@@ -204,8 +204,9 @@ def test_profile_upload_and_retrieval(tmp_path: Path, monkeypatch) -> None:
         files={"file": ("resume.pdf", b"pdf-bytes", "application/pdf")},
     )
 
-    assert upload.status_code == 200
-    assert upload.json()["profile"] == profile
+    assert upload.status_code == 202
+    assert upload.json()["kind"] == "profile_generation"
+    assert upload.json()["job_id"]
     retrieved = client.get("/api/v1/profile")
     assert retrieved.status_code == 200
     assert retrieved.json()["resume_filename"] == "resume.pdf"

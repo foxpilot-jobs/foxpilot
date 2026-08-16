@@ -24,7 +24,7 @@ foxpilot scan
 The current Compose setup is hybrid:
 
 ```text
-Host Ollama :11435
+Host Ollama :11434
         ^
         |
 Docker API -> Docker PostgreSQL
@@ -43,14 +43,14 @@ Docker runs:
 
 The host runs:
 
-- Ollama on `localhost:11435`.
+- Ollama on `localhost:11434`.
 - The interactive Playwright browser and `foxpilot scan`.
 
 Start the host model first, then Compose:
 
 ```bash
 # Terminal 1
-OLLAMA_HOST=0.0.0.0:11435 ollama serve
+OLLAMA_HOST=0.0.0.0:11434 ollama serve
 
 # Terminal 2
 docker compose up --build -d
@@ -85,7 +85,7 @@ Open `http://localhost:8080` after the scan completes.
 
 Use `FOXPILOT_SOURCES_CONFIG=/path/to/sources.json` for a separate configuration. Each source is deduplicated through the shared database and a failed source does not stop the rest of the scan.
 
-For hosted web profile setup, open `/app/profile` after signing in. Uploading a PDF stores extracted resume text and the structured profile under the authenticated user. Use `Run matching` to analyze current TARGET jobs; results are then shown on `/app` sorted by match score.
+For hosted web profile setup, open `/app/profile` after signing in. Uploading a PDF stores extracted resume text and immediately returns a background job ID; profile extraction continues asynchronously. Use `Run matching` to queue analysis of current TARGET jobs. The UI polls job status and shows completed results on `/app` sorted by match score, without holding the browser request open.
 
 ## Fully Containerized Ollama
 
