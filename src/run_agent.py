@@ -70,7 +70,7 @@ def _run_pipeline():
         "Job ingestion",
         [
             python,
-            "src/fetch_greenhouse.py",
+            "src/fetch_sources.py",
         ],
     )
 
