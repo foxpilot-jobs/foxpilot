@@ -40,3 +40,20 @@ def test_run_matching_uses_user_profile_and_caches_results(tmp_path: Path, monke
     assert first == {"total": 1, "analyzed": 1, "skipped": 0, "failed": 0}
     assert second == {"total": 1, "analyzed": 0, "skipped": 1, "failed": 0}
     assert calls == [({"skills": ["Python"]}, job_id)]
+
+
+def test_profile_generation_updates_background_job(tmp_path: Path, monkeypatch) -> None:
+    config = AppConfig(data_dir=tmp_path)
+    service = CareerService(config, user_id="user-a")
+    monkeypatch.setattr(
+        "career_agent.services.career.create_profile_from_text",
+        lambda *_args, **_kwargs: {"summary": "Data engineer"},
+    )
+
+    job_id = service.queue_profile_generation("Resume text", "resume.pdf")
+    service.run_profile_generation(job_id)
+
+    job = service.get_background_job(job_id)
+    assert job is not None
+    assert job["status"] == "completed"
+    assert job["result"] == {"profile": {"summary": "Data engineer"}}

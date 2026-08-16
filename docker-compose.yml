@@ -31,7 +31,7 @@ services:
       DATABASE_URL: postgresql+psycopg://foxpilot:foxpilot-dev-only@postgres:5432/foxpilot
       LLM_PROVIDER: ollama
       LLM_MODEL: llama3.1:8b
-      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11435}
+      OLLAMA_BASE_URL: ${OLLAMA_DOCKER_BASE_URL:-http://host.docker.internal:11434}
       CAREER_AGENT_ALLOWED_ORIGINS: http://localhost:8080
       FOXPILOT_ENV: ${FOXPILOT_ENV:-local}
       FOXPILOT_AUTH_MODE: ${FOXPILOT_AUTH_MODE:-local}

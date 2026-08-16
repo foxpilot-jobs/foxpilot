@@ -72,6 +72,19 @@ profiles_table = Table(
     Column("updated_at", DateTime(timezone=True), nullable=False),
 )
 
+background_jobs_table = Table(
+    "background_jobs",
+    metadata,
+    Column("job_id", String, primary_key=True),
+    Column("user_id", String, nullable=False),
+    Column("kind", String, nullable=False),
+    Column("status", String, nullable=False),
+    Column("result_json", JSON),
+    Column("error", Text),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+    Column("updated_at", DateTime(timezone=True), nullable=False),
+)
+
 jobs_table = Table(
     "jobs",
     metadata,
@@ -330,6 +343,52 @@ class JobStore:
                 select(profiles_table).where(profiles_table.c.user_id == self.user_id)
             ).mappings().first()
         return dict(row) if row else None
+
+    def create_background_job(self, job_id: str, kind: str) -> None:
+        now = utc_now()
+        with self.engine.begin() as connection:
+            connection.execute(
+                background_jobs_table.insert().values(
+                    job_id=job_id,
+                    user_id=self.user_id,
+                    kind=kind,
+                    status="queued",
+                    created_at=now,
+                    updated_at=now,
+                )
+            )
+
+    def get_background_job(self, job_id: str) -> dict | None:
+        with self.engine.connect() as connection:
+            row = connection.execute(
+                select(background_jobs_table).where(
+                    background_jobs_table.c.job_id == job_id,
+                    background_jobs_table.c.user_id == self.user_id,
+                )
+            ).mappings().first()
+        return dict(row) if row else None
+
+    def update_background_job(
+        self,
+        job_id: str,
+        status: str,
+        result: dict | None = None,
+        error: str | None = None,
+    ) -> None:
+        with self.engine.begin() as connection:
+            connection.execute(
+                update(background_jobs_table)
+                .where(
+                    background_jobs_table.c.job_id == job_id,
+                    background_jobs_table.c.user_id == self.user_id,
+                )
+                .values(
+                    status=status,
+                    result_json=result,
+                    error=error,
+                    updated_at=utc_now(),
+                )
+            )
 
     def create_auth_token(
         self,
