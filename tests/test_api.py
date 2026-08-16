@@ -222,3 +222,54 @@ def test_profile_matching_requires_uploaded_profile(tmp_path: Path) -> None:
 
     assert response.status_code == 422
     assert "Upload a resume" in response.json()["detail"]
+
+
+def test_google_start_requires_configuration(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.delenv("GOOGLE_CLIENT_ID", raising=False)
+    monkeypatch.delenv("GOOGLE_CLIENT_SECRET", raising=False)
+    app = create_app()
+    app.state.service.config = AppConfig(data_dir=tmp_path)
+
+    response = TestClient(app).get("/api/v1/auth/google/start")
+
+    assert response.status_code == 503
+    assert "not configured" in response.json()["detail"]
+
+
+def test_google_callback_links_user_and_creates_session(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("FOXPILOT_AUTH_MODE", "native")
+    monkeypatch.setenv("GOOGLE_CLIENT_ID", "client-id")
+    monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "client-secret")
+    config = AppConfig(data_dir=tmp_path)
+    app = create_app()
+    app.state.service.config = config
+    client = TestClient(app)
+
+    start = client.get("/api/v1/auth/google/start", follow_redirects=False)
+    state = start.cookies["foxpilot_google_state"]
+
+    class TokenResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"id_token": "signed-token"}
+
+    monkeypatch.setattr("services.api.app.httpx.post", lambda *_args, **_kwargs: TokenResponse())
+    monkeypatch.setattr(
+        "services.api.app.id_token.verify_oauth2_token",
+        lambda *_args, **_kwargs: {
+            "sub": "google-subject",
+            "email": "google@example.com",
+            "email_verified": True,
+        },
+    )
+
+    callback = client.get(
+        f"/api/v1/auth/google/callback?code=auth-code&state={state}",
+        follow_redirects=False,
+    )
+
+    assert callback.status_code == 303
+    assert callback.headers["location"].endswith("/app")
+    assert client.get("/api/v1/auth/me").json()["email"] == "google@example.com"

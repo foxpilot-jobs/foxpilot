@@ -97,7 +97,14 @@ export function login(email: string, password: string): Promise<AuthUser> {
 }
 
 export function logout(): Promise<void> {
-  return authRequest<void>("/api/v1/auth/logout");
+  return fetch(`${API_BASE}/api/v1/auth/logout`, {
+    method: "POST",
+    credentials: "include",
+  }).then(async (response) => {
+    if (!response.ok) {
+      throw new Error(`Unable to sign out: ${response.status}`);
+    }
+  });
 }
 
 export function verifyEmail(token: string): Promise<AuthUser> {

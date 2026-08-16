@@ -87,6 +87,14 @@ Use `FOXPILOT_SOURCES_CONFIG=/path/to/sources.json` for a separate configuration
 
 For hosted web profile setup, open `/app/profile` after signing in. Uploading a PDF stores extracted resume text and immediately returns a background job ID; profile extraction continues asynchronously. Use `Run matching` to queue analysis of current TARGET jobs. The UI polls job status and shows completed results on `/app` sorted by match score, without holding the browser request open.
 
+## Google Sign-In
+
+Create a Google OAuth web application and add this authorized redirect URI for local Docker:
+
+`http://localhost:8080/api/v1/auth/google/callback`
+
+Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in the Compose environment. `GOOGLE_REDIRECT_URI` may override the default. The API validates the authorization state, exchanges the code server-side, verifies the Google ID token, links an existing email account when applicable, and creates the normal FoxPilot session cookie.
+
 ## Fully Containerized Ollama
 
 The Compose file includes an optional `container-llm` profile:

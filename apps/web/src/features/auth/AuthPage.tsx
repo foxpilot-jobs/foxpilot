@@ -18,11 +18,14 @@ export function AuthPage() {
   const { setUser } = useAuth();
   const token = new URLSearchParams(location.search).get("token");
   const route = location.pathname;
+  const oauthError = new URLSearchParams(location.search).get("oauth_error");
   const mode = route.slice(1) as
     "login" | "register" | "forgot-password" | "reset-password" | "verify-email";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    oauthError ? "Google sign-in could not be completed. Please try again." : null,
+  );
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<CredentialErrors>({});
@@ -159,6 +162,19 @@ export function AuthPage() {
                   : "Sign in"}
         </Button>
       </form>
+      {(mode === "login" || mode === "register") && (
+        <>
+          <div className="auth-divider">
+            <span>or continue with</span>
+          </div>
+          <a className="google-button" href="/api/v1/auth/google/start">
+            <span className="google-mark" aria-hidden="true">
+              G
+            </span>
+            {mode === "register" ? "Sign up with Google" : "Continue with Google"}
+          </a>
+        </>
+      )}
       {!isForgot && !isReset && (
         <button
           className="text-button"

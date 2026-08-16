@@ -155,6 +155,54 @@ a {
   margin-top: 28px;
 }
 
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 22px 0 14px;
+  color: #98a2b3;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  height: 1px;
+  flex: 1;
+  background: var(--fox-line);
+  content: "";
+}
+
+.google-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  border: 1px solid var(--fox-line);
+  border-radius: 12px;
+  padding: 12px 15px;
+  color: var(--fox-ink);
+  background: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.google-button:hover,
+.google-button:focus-visible {
+  border-color: #98a2b3;
+  background: #f8fafc;
+}
+
+.google-mark {
+  color: #4285f4;
+  font-size: 18px;
+  font-weight: 900;
+}
+
 .auth-form label {
   display: grid;
   gap: 7px;
@@ -262,6 +310,15 @@ a {
   align-items: center;
   gap: 14px;
   margin-left: auto;
+}
+
+.account-email {
+  max-width: 260px;
+  overflow: hidden;
+  color: #667085;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .profile-link {
