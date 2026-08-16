@@ -20,6 +20,11 @@ export type Match = {
     missing_skills: string[];
     experience_match: string;
     concerns: string[];
+    gap_analysis?: Array<{
+      gap: string;
+      severity: "blocking" | "addressable" | "unknown";
+      explanation: string;
+    }>;
   };
 };
 
@@ -36,6 +41,13 @@ export type AuthUser = {
   email: string;
   email_verified: boolean;
   session_created: boolean;
+};
+
+export type Profile = {
+  resume_filename: string;
+  profile: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
 };
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "";
@@ -87,6 +99,54 @@ export function requestPasswordReset(email: string): Promise<void> {
 
 export function resetPassword(token: string, password: string): Promise<AuthUser> {
   return authRequest<AuthUser>("/api/v1/auth/reset-password", { token, password });
+}
+
+export async function uploadResume(file: File): Promise<Profile> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const response = await fetch(`${API_BASE}/api/v1/profile/resume`, {
+    method: "POST",
+    credentials: "include",
+    body: formData,
+  });
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
+    throw new Error(payload?.detail ?? `Resume upload failed: ${response.status}`);
+  }
+  return response.json() as Promise<Profile>;
+}
+
+export async function getProfile(): Promise<Profile | null> {
+  const response = await fetch(`${API_BASE}/api/v1/profile`, { credentials: "include" });
+  if (response.status === 404) {
+    return null;
+  }
+  if (!response.ok) {
+    throw new Error(`Unable to load profile: ${response.status}`);
+  }
+  return response.json() as Promise<Profile>;
+}
+
+export async function runMatching(): Promise<{
+  total: number;
+  analyzed: number;
+  skipped: number;
+  failed: number;
+}> {
+  const response = await fetch(`${API_BASE}/api/v1/profile/match`, {
+    method: "POST",
+    credentials: "include",
+  });
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
+    throw new Error(payload?.detail ?? `Matching failed: ${response.status}`);
+  }
+  return response.json() as Promise<{
+    total: number;
+    analyzed: number;
+    skipped: number;
+    failed: number;
+  }>;
 }
 
 async function request<T>(path: string): Promise<T> {

@@ -31,7 +31,8 @@ skills. Return one valid JSON object with exactly these fields:
   "matching_skills": [],
   "missing_skills": [],
   "experience_match": "",
-  "concerns": []
+  "concerns": [],
+  "gap_analysis": []
 }}
 
 Rules:
@@ -40,6 +41,8 @@ Rules:
 - Explicitly mention missing mandatory experience or skills.
 - Do not treat similar technology names as equivalent without evidence.
 - AI-assisted development is not machine-learning engineering experience unless the profile says so.
+- For each material missing skill, include gap_analysis entries with severity blocking only when the posting clearly makes it mandatory; use addressable for learnable or adjacent gaps and unknown when the posting is ambiguous.
+- Never claim a gap is bypassable without evidence from the posting; explain what should be verified.
 
 CANDIDATE PROFILE:
 ---
@@ -81,6 +84,7 @@ def match_job(
             and recommendation in {"APPLY", "CONSIDER", "SKIP"}
         )
         if valid:
+            result.setdefault("gap_analysis", [])
             return result
 
         if attempt == 0:

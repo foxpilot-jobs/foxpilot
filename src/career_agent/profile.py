@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from io import BytesIO
 from pathlib import Path
 
 from pypdf import PdfReader
@@ -37,6 +38,14 @@ def extract_resume_text(path: Path) -> str:
     return "\n".join(page.extract_text() or "" for page in reader.pages)
 
 
+def extract_resume_text_from_bytes(content: bytes, filename: str) -> str:
+    """Extract text from an uploaded PDF without persisting the file itself."""
+    if not filename.lower().endswith(".pdf"):
+        raise ValueError("Resume uploads must be PDF files")
+    reader = PdfReader(BytesIO(content))
+    return "\n".join(page.extract_text() or "" for page in reader.pages)
+
+
 def build_profile_prompt(resume_text: str) -> str:
     fields = ",\n  ".join(f'"{field}": null' for field in PROFILE_FIELDS)
     return f"""You are a careful career profile extraction assistant.
@@ -64,7 +73,17 @@ def create_profile(
             "No resume is configured. Run `foxpilot init --resume path/to/resume.pdf`."
         )
     provider = provider or create_provider(config)
-    prompt = build_profile_prompt(extract_resume_text(config.resume_path))
+    return create_profile_from_text(config, extract_resume_text(config.resume_path), provider)
+
+
+def create_profile_from_text(
+    config: AppConfig,
+    resume_text: str,
+    provider: LLMProvider | None = None,
+    persist: bool = True,
+) -> dict:
+    provider = provider or create_provider(config)
+    prompt = build_profile_prompt(resume_text)
     try:
         profile = provider.complete_json(prompt)
     except LLMError:
@@ -82,9 +101,10 @@ def create_profile(
         missing = [field for field in PROFILE_FIELDS if field not in profile]
         if missing:
             raise ValueError(f"Profile response is missing fields: {', '.join(missing)}")
-    config.data_dir.mkdir(parents=True, exist_ok=True)
-    config.profile_path.write_text(
-        json.dumps(profile, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
+    if persist:
+        config.data_dir.mkdir(parents=True, exist_ok=True)
+        config.profile_path.write_text(
+            json.dumps(profile, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
     return profile

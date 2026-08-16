@@ -34,10 +34,13 @@ flowchart LR
 - `llm`: provider interface and structured matching/profile operations.
 - `storage`: SQLite repositories and migrations.
 - `reports`: human-readable and exportable views.
+- `features/profile`: web profile upload and profile-driven matching controls.
 
 ## Data Flow
 
 Source adapters fetch listings, normalize them to the canonical job model, and persist idempotently. Relevance processing removes duplicates and applies user-configured constraints before LLM analysis. LLM output is validated, stored with provider/model/prompt metadata, and shown as decision support. User status changes are stored separately from source data and are never overwritten by a rescan.
+
+The hosted web profile flow uploads a PDF to the API, extracts text in the API boundary, generates a structured profile through the configured provider, and stores it in the per-user `profiles` record. A user-triggered match run loads that profile and analyzes TARGET jobs through the same matching service used by the CLI. The browser never accesses resumes, providers, or source adapters directly.
 
 ## Reliability
 

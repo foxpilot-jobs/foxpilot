@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
+  getProfile,
   getApplications,
   getJobs,
   getMatches,
@@ -7,6 +9,7 @@ import {
   type Application,
   type Job,
   type Match,
+  type Profile,
 } from "../../../api";
 import { Alert } from "../../../shared/components/Alert";
 import { Button } from "../../../shared/components/Button";
@@ -20,6 +23,7 @@ export function DashboardPage() {
   const { signOut, user } = useAuth();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [applications, setApplications] = useState<Record<string, Application>>({});
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -32,8 +36,8 @@ export function DashboardPage() {
       return;
     }
     setLoading(true);
-    Promise.all([getJobs(), getMatches(), getApplications()])
-      .then(([loadedJobs, loadedMatches, loadedApplications]) => {
+    Promise.all([getJobs(), getMatches(), getApplications(), getProfile()])
+      .then(([loadedJobs, loadedMatches, loadedApplications, loadedProfile]) => {
         setJobs(loadedJobs);
         setMatches(loadedMatches);
         setApplications(
@@ -41,6 +45,7 @@ export function DashboardPage() {
             loadedApplications.map((application) => [application.job_id, application]),
           ),
         );
+        setProfile(loadedProfile);
       })
       .catch((reason: unknown) => {
         setError(reason instanceof Error ? reason.message : "Unable to load your shortlist");
@@ -48,23 +53,37 @@ export function DashboardPage() {
       .finally(() => setLoading(false));
   }, [user]);
 
+  const matchByJob = useMemo(
+    () => new Map(matches.map((item) => [item.job_id, item.match])),
+    [matches],
+  );
+
   const filteredJobs = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
-    return jobs.filter((job) => {
-      const application = applications[job.job_id ?? ""];
-      const matchesStatus = statusFilter === "all" || application?.status === statusFilter;
-      const matchesQuery =
-        !normalizedQuery ||
-        `${job.title} ${job.company} ${job.location ?? ""}`.toLowerCase().includes(normalizedQuery);
-      return matchesStatus && matchesQuery;
-    });
-  }, [applications, jobs, query, statusFilter]);
+    return jobs
+      .filter((job) => {
+        const jobId = job.job_id ?? "";
+        const match = matchByJob.get(jobId);
+        if (!match) return false;
+        const application = applications[job.job_id ?? ""];
+        const matchesStatus = statusFilter === "all" || application?.status === statusFilter;
+        const matchesQuery =
+          !normalizedQuery ||
+          `${job.title} ${job.company} ${job.location ?? ""}`
+            .toLowerCase()
+            .includes(normalizedQuery);
+        return matchesStatus && matchesQuery;
+      })
+      .sort((left, right) => {
+        const leftScore = matchByJob.get(left.job_id ?? "")?.match_score ?? -1;
+        const rightScore = matchByJob.get(right.job_id ?? "")?.match_score ?? -1;
+        return rightScore - leftScore;
+      });
+  }, [applications, jobs, matchByJob, query, statusFilter]);
 
   if (!user) {
     return null;
   }
-
-  const matchByJob = new Map(matches.map((item) => [item.job_id, item.match]));
 
   async function handleStatus(jobId: string, status: Application["status"]) {
     setUpdatingJob(jobId);
@@ -99,6 +118,9 @@ export function DashboardPage() {
               Sign out
             </Button>
           )}
+          <Link className="profile-link" to="/app/profile">
+            Profile
+          </Link>
         </div>
       </nav>
 
@@ -119,6 +141,22 @@ export function DashboardPage() {
 
       {error && (
         <Alert>{`${error}. Check that the API is running and authenticated correctly.`}</Alert>
+      )}
+
+      {!loading && profile === null && (
+        <section className="profile-banner">
+          <div>
+            <p className="eyebrow accent">START HERE</p>
+            <h2>Upload your resume to unlock match scores.</h2>
+            <p>
+              FoxPilot will use your experience, skills, and target roles to explain what fits and
+              where the gaps are.
+            </p>
+          </div>
+          <Link className="primary-button" to="/app/profile">
+            Set up profile
+          </Link>
+        </section>
       )}
 
       {loading ? (

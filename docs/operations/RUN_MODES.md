@@ -85,6 +85,8 @@ Open `http://localhost:8080` after the scan completes.
 
 Use `FOXPILOT_SOURCES_CONFIG=/path/to/sources.json` for a separate configuration. Each source is deduplicated through the shared database and a failed source does not stop the rest of the scan.
 
+For hosted web profile setup, open `/app/profile` after signing in. Uploading a PDF stores extracted resume text and the structured profile under the authenticated user. Use `Run matching` to analyze current TARGET jobs; results are then shown on `/app` sorted by match score.
+
 ## Fully Containerized Ollama
 
 The Compose file includes an optional `container-llm` profile:
