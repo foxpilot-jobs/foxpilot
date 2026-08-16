@@ -31,3 +31,7 @@ SQLAlchemy is the repository boundary. SQLite remains the default local database
 ## Responsive PWA before native mobile
 
 The first browser product targets desktop and mobile layouts through one responsive React application and PWA capabilities. Native mobile apps are deferred until usage demonstrates a need for platform-specific capabilities.
+
+## Source Adapter Expansion
+
+Job ingestion uses isolated adapters with a shared normalized job contract. Public HTTP sources use their documented public endpoints; authenticated browser access is limited to Greenhouse's saved local session. Adapters are independently rate-limited and failure-isolated so one source outage cannot prevent other sources from contributing jobs. Source-specific configuration is explicit, particularly for Lever board slugs.

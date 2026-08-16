@@ -7,6 +7,7 @@ import os
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.exc import IntegrityError
 
@@ -76,18 +77,31 @@ def create_app() -> FastAPI:
         docs_url="/docs",
         redoc_url="/redoc",
     )
-    allowed_origins = os.getenv(
-        "CAREER_AGENT_ALLOWED_ORIGINS",
-        "http://localhost:5173,http://127.0.0.1:5173",
-    ).split(",")
+    allowed_origins = [
+        origin.strip()
+        for origin in os.getenv(
+            "CAREER_AGENT_ALLOWED_ORIGINS",
+            "http://localhost:5173,http://127.0.0.1:5173",
+        ).split(",")
+        if origin.strip()
+    ]
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[origin.strip() for origin in allowed_origins if origin.strip()],
+        allow_origins=allowed_origins,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "DELETE"],
         allow_headers=["Content-Type"],
     )
     app.state.service = CareerService(load_config())
+
+    @app.middleware("http")
+    async def protect_native_unsafe_requests(request: Request, call_next):
+        unsafe_method = request.method in {"POST", "PUT", "PATCH", "DELETE"}
+        native_mode = os.getenv("FOXPILOT_AUTH_MODE", "").lower() == "native"
+        origin = request.headers.get("origin")
+        if unsafe_method and native_mode and origin and origin not in allowed_origins:
+            return JSONResponse(status_code=403, content={"detail": "Request origin is not allowed"})
+        return await call_next(request)
 
     def service() -> CareerService:
         return app.state.service

@@ -64,6 +64,27 @@ The wrapper calls `.venv/bin/foxpilot` directly, so shell activation is optional
 
 Open `http://localhost:8080` after the scan completes.
 
+## Job Sources
+
+`foxpilot scan` runs the saved Greenhouse browser searches plus the public adapters configured in `data/sources.json`.
+
+- RemoteOK is enabled by default and reads its documented public feed.
+- Remotive is enabled by default and searches the configured query list.
+- Hacker News is enabled by default and reads public `Ask HN: Who is hiring?` comments.
+- Lever is enabled when board slugs are added under `lever.boards`, for example:
+
+```json
+{
+  "lever": {
+    "boards": [
+      {"slug": "example-company", "company": "Example Company"}
+    ]
+  }
+}
+```
+
+Use `FOXPILOT_SOURCES_CONFIG=/path/to/sources.json` for a separate configuration. Each source is deduplicated through the shared database and a failed source does not stop the rest of the scan.
+
 ## Fully Containerized Ollama
 
 The Compose file includes an optional `container-llm` profile:

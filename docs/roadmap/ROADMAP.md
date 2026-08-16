@@ -25,10 +25,18 @@ Every phase ends with tests, documentation, and a runnable state. Work is not co
 
 ## Phase 3: Source Platform
 
-- Define the canonical job model and source interface.
-- Stabilize Greenhouse, then add Lever, RemoteOK, Remotive, and HN.
-- Add deduplication, retries, rate limits, fixtures, and source health.
+- Define the canonical job model and source interface. **In progress.**
+- Stabilize Greenhouse, then add Lever, RemoteOK, Remotive, and HN. **In progress.**
+- Add deduplication, retries, rate limits, fixtures, and source health. **In progress.**
 - Treat Indeed and LinkedIn as optional integrations with explicit limitations.
+
+### Source Expansion Notes
+
+- Greenhouse `my.greenhouse.io` remains an authenticated browser source because its search experience requires a saved user session. Authentication, CAPTCHA, robots, and rate limits are never bypassed.
+- Lever is configured by public board slug because Lever does not provide a universal public global-search endpoint. Empty configuration means the adapter is skipped without failing the scan.
+- RemoteOK and Remotive are public APIs queried with bounded timeouts, a descriptive user agent, and conservative request pacing.
+- Hacker News uses the public Algolia search API for `Ask HN: Who is hiring?` posts. The adapter treats post text as untrusted job content and never submits or contacts anyone.
+- Every source writes the same canonical job shape with a source-specific ID. Database upserts provide idempotency; source failures are reported and do not prevent other sources from running.
 
 ## Phase 4: Durable Workflow (Storage Portability Complete)
 

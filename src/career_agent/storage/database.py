@@ -147,8 +147,37 @@ class JobStore:
                     connection.exec_driver_sql(
                         "ALTER TABLE users ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT 1"
                     )
+                self._upgrade_user_owned_tables(connection)
                 connection.exec_driver_sql("PRAGMA foreign_keys = ON")
                 connection.exec_driver_sql("PRAGMA journal_mode = WAL")
+
+    @staticmethod
+    def _upgrade_user_owned_tables(connection) -> None:
+        """Rebuild pre-user-isolation SQLite tables with composite keys."""
+        for table in (matches_table, applications_table):
+            columns = {
+                row[1]
+                for row in connection.exec_driver_sql(f'PRAGMA table_info("{table.name}")').fetchall()
+            }
+            if "user_id" in columns:
+                continue
+
+            legacy_name = f"{table.name}_legacy"
+            connection.exec_driver_sql(
+                f'ALTER TABLE "{table.name}" RENAME TO "{legacy_name}"'
+            )
+            table.create(connection, checkfirst=False)
+            copied_columns = [column.name for column in table.columns if column.name != "user_id"]
+            column_list = ", ".join(f'"{column}"' for column in copied_columns)
+            connection.exec_driver_sql(
+                f'INSERT INTO "{table.name}" ("user_id", {column_list}) '
+                f'SELECT \'local-user\', {column_list} FROM "{legacy_name}"'
+            )
+            connection.exec_driver_sql(f'DROP TABLE "{legacy_name}"')
+            connection.exec_driver_sql(
+                f'CREATE INDEX IF NOT EXISTS "idx_{table.name}_user" '
+                f'ON "{table.name}" ("user_id")'
+            )
 
     def close(self) -> None:
         self.engine.dispose()

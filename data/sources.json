@@ -1,0 +1,22 @@
+{
+  "queries": [
+    "analytics engineer",
+    "data engineer",
+    "data analyst",
+    "analytics engineering",
+    "snowflake"
+  ],
+  "remoteok": {
+    "enabled": true
+  },
+  "remotive": {
+    "enabled": true
+  },
+  "lever": {
+    "boards": []
+  },
+  "hacker_news": {
+    "enabled": true,
+    "comment_limit": 500
+  }
+}

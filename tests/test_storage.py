@@ -1,3 +1,4 @@
+import sqlite3
 from pathlib import Path
 
 from career_agent.storage import JobStore
@@ -48,3 +49,63 @@ def test_user_owned_state_is_isolated(tmp_path: Path) -> None:
     with JobStore(database, user_id="user-a") as user_a:
         assert user_a.get_match(job_id)["match"] == {"score": 90}
         assert user_a.get_application(job_id)["notes"] == "Private note"
+
+
+def test_legacy_user_owned_tables_are_upgraded(tmp_path: Path) -> None:
+    database = tmp_path / "legacy.sqlite3"
+    with sqlite3.connect(database) as connection:
+        connection.executescript(
+            """
+            CREATE TABLE jobs (
+                job_id VARCHAR PRIMARY KEY,
+                source VARCHAR NOT NULL,
+                source_job_id VARCHAR NOT NULL,
+                title VARCHAR NOT NULL,
+                company VARCHAR NOT NULL,
+                location VARCHAR NOT NULL,
+                url VARCHAR NOT NULL,
+                description TEXT NOT NULL,
+                first_published VARCHAR,
+                work_type VARCHAR,
+                payload_json JSON NOT NULL,
+                local_relevance VARCHAR,
+                created_at DATETIME NOT NULL,
+                updated_at DATETIME NOT NULL
+            );
+            CREATE TABLE matches (
+                job_id VARCHAR PRIMARY KEY,
+                job_hash VARCHAR NOT NULL,
+                provider VARCHAR NOT NULL,
+                model VARCHAR NOT NULL,
+                result_json JSON NOT NULL,
+                created_at DATETIME NOT NULL,
+                updated_at DATETIME NOT NULL
+            );
+            CREATE TABLE applications (
+                job_id VARCHAR PRIMARY KEY,
+                status VARCHAR NOT NULL,
+                notes TEXT NOT NULL,
+                applied_at DATETIME,
+                updated_at DATETIME NOT NULL
+            );
+            INSERT INTO jobs VALUES
+              ('job-1', 'test', '1', 'Data Engineer', 'Example', '', '', '', '', '',
+               '{"job_id":"job-1","title":"Data Engineer"}', NULL,
+               CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+            INSERT INTO matches VALUES
+              ('job-1', 'hash', 'ollama', 'test-model', '{"score":90}',
+               CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+            INSERT INTO applications VALUES
+              ('job-1', 'saved', '', NULL, CURRENT_TIMESTAMP);
+            """
+        )
+
+    with JobStore(database, user_id="local-user") as local:
+        assert local.get_match("job-1")["match"] == {"score": 90}
+        assert local.get_application("job-1")["status"] == "saved"
+        local.save_match("job-1", "new-hash", "ollama", "test-model", {"score": 95})
+
+    with JobStore(database, user_id="another-user") as another_user:
+        assert another_user.get_match("job-1") is None
+        another_user.save_match("job-1", "hash", "ollama", "test-model", {"score": 80})
+        assert another_user.get_match("job-1")["match"] == {"score": 80}

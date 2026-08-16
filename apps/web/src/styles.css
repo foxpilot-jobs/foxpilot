@@ -1,10 +1,10 @@
 :root {
-  --fox-ink: #17332a;
-  --fox-moss: #315b43;
-  --fox-copper: #bb5c3b;
-  --fox-paper: #f4f0e8;
-  --fox-sand: #ead9c8;
-  --fox-line: #d9d2c5;
+  --fox-ink: #101828;
+  --fox-moss: #155eef;
+  --fox-copper: #d92d20;
+  --fox-paper: #f8fafc;
+  --fox-sand: #eef4ff;
+  --fox-line: #d0d5dd;
 
   color: var(--fox-ink);
   background: var(--fox-paper);
@@ -25,7 +25,7 @@ body {
   margin: 0;
   min-width: 320px;
   background:
-    radial-gradient(circle at 90% 0%, rgba(213, 227, 206, 0.7), transparent 28rem), var(--fox-paper);
+    radial-gradient(circle at 90% 0%, rgba(21, 94, 239, 0.09), transparent 28rem), var(--fox-paper);
 }
 
 button,
@@ -67,18 +67,59 @@ a {
   font-weight: 800;
 }
 
+.field {
+  display: grid;
+  gap: 7px;
+}
+
+.field-label {
+  color: var(--fox-ink);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.field-input {
+  border: 1px solid var(--fox-line);
+  border-radius: 12px;
+  padding: 13px 15px;
+  color: var(--fox-ink);
+  background: #fff;
+  font: inherit;
+}
+
+.field-input:focus {
+  border-color: var(--fox-moss);
+  outline: 3px solid rgba(21, 94, 239, 0.12);
+}
+
+.field-input[aria-invalid="true"] {
+  border-color: var(--fox-copper);
+}
+
+.field-help,
+.field-error {
+  color: #667085;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.field-error {
+  color: var(--fox-copper);
+  font-weight: 700;
+}
+
 .auth-form input {
   border: 1px solid var(--fox-line);
   border-radius: 12px;
   padding: 13px 15px;
   color: var(--fox-ink);
-  background: rgba(255, 253, 248, 0.82);
+  background: #fff;
   font: inherit;
 }
 
 .auth-form input:focus {
   border-color: var(--fox-moss);
-  outline: 3px solid rgba(49, 91, 67, 0.12);
+  outline: 3px solid rgba(21, 94, 239, 0.12);
 }
 
 .primary-button {
@@ -118,6 +159,13 @@ a {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.account-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-left: auto;
 }
 
 .brand-mark {
@@ -180,7 +228,7 @@ h1 {
   max-width: 680px;
   margin: 14px 0 18px;
   color: var(--fox-ink);
-  font-family: Georgia, serif;
+  font-family: inherit;
   font-size: clamp(42px, 6vw, 76px);
   font-weight: 500;
   line-height: 0.98;
@@ -219,7 +267,7 @@ h1 {
 
 h2 {
   margin: 8px 0 0;
-  font-family: Georgia, serif;
+  font-family: inherit;
   font-size: 36px;
   font-weight: 500;
   letter-spacing: -0.04em;
@@ -442,6 +490,34 @@ h3 {
   color: var(--fox-ink);
 }
 
+.loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 220px;
+  margin-top: 34px;
+  border: 1px solid var(--fox-line);
+  border-radius: 18px;
+  color: #667085;
+  background: #fff;
+}
+
+.loading-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #c7d7fe;
+  border-top-color: var(--fox-moss);
+  border-radius: 50%;
+  animation: spin 700ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .error-card {
   margin-top: 24px;
   padding: 14px 16px;
@@ -489,6 +565,17 @@ code {
 
   .job-grid {
     grid-template-columns: 1fr;
+  }
+
+  .topbar {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .account-actions {
+    width: 100%;
+    justify-content: space-between;
+    margin-left: 54px;
   }
 
   .metrics {

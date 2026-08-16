@@ -236,15 +236,15 @@ def extract_job_description(
             f"{url}"
         )
 
-        page.goto(
-            url,
-            wait_until="domcontentloaded",
-            timeout=30000,
-        )
+        try:
+            page.goto(url, wait_until="domcontentloaded", timeout=20000)
+        except PlaywrightError as error:
+            if "Timeout" not in str(error):
+                raise
+            print("  Warning: page load timed out; reading the available response")
+            page.goto(url, wait_until="commit", timeout=5000)
 
-        page.wait_for_timeout(
-            1500
-        )
+        page.wait_for_timeout(1000)
 
         body_text = (
             page.locator(
