@@ -25,9 +25,9 @@ Every phase ends with tests, documentation, and a runnable state. Work is not co
 
 ## Phase 3: Source Platform
 
-- Define the canonical job model and source interface. **In progress.**
-- Stabilize Greenhouse, then add Lever, RemoteOK, Remotive, and HN. **In progress.**
-- Add deduplication, retries, rate limits, fixtures, and source health. **In progress.**
+- Define the canonical job model and source interface. **Complete.**
+- Stabilize Greenhouse, then add Lever, RemoteOK, Remotive, and HN. **Complete.**
+- Add deduplication, retries, rate limits, fixtures, and source health. **Complete for current adapters; distributed rate limiting remains in Phase 6 security hardening.**
 - Treat Indeed and LinkedIn as optional integrations with explicit limitations.
 
 ### Source Expansion Notes
@@ -46,7 +46,7 @@ Every phase ends with tests, documentation, and a runnable state. Work is not co
 - Support PostgreSQL through `DATABASE_URL` and Alembic migrations.
 - Add saved jobs, application statuses, notes, history, export, and deletion.
 
-## Phase 5: API And Web Foundation
+## Phase 5: API And Web Foundation (Foundation Complete)
 
 - Extract reusable application services from compatibility scripts.
 - Add a FastAPI HTTP adapter with versioned endpoints and OpenAPI documentation.
@@ -54,14 +54,15 @@ Every phase ends with tests, documentation, and a runnable state. Work is not co
 - Keep the web app dependent on the API, never on scrapers or LLM providers directly.
 - Add contract tests between API responses and frontend query types.
 
-## Phase 6: Local And Hosted Deployment
+## Phase 6: Local And Hosted Deployment (In Progress)
 
 - Add Docker Compose for API, web, SQLite, and Ollama local deployment.
 - Add PostgreSQL configuration without coupling domain services to one database.
 - Add background scan scheduling and job execution controls.
 - Add health checks, structured logs, backups, and secret configuration.
+- Replace the process-local API limiter with a distributed limiter before multi-worker/public deployment.
 
-## Phase 7: User Experience And Release
+## Phase 7: User Experience And Release (In Progress)
 
 - Ship setup, scan, matches, job, application, and export commands.
 - Ship the responsive web/PWA workflow.

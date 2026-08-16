@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   getBackgroundJob,
   getProfile,
@@ -29,37 +30,50 @@ export function ProfileSetupPage() {
   }, []);
 
   useEffect(() => {
-    if (!activeJob || activeJob.status === "completed" || activeJob.status === "failed") return;
-    const timer = window.setInterval(() => {
-      void getBackgroundJob(activeJob.job_id)
-        .then((job) => {
-          setActiveJob(job);
-          if (job.status === "completed" && job.kind === "profile_generation") {
-            void getProfile().then((loadedProfile) => {
-              setProfile(loadedProfile);
-              setMessage(
-                "Profile extracted. Review the fields below, then run matching when ready.",
-              );
-            });
+    const jobId = activeJob?.job_id;
+    if (!jobId) return;
+    let stopped = false;
+    let timer: number | undefined;
+    const poll = async () => {
+      try {
+        const job = await getBackgroundJob(jobId);
+        if (stopped) return;
+        setActiveJob(job);
+        if (job.status === "completed" && job.kind === "profile_generation") {
+          const loadedProfile = await getProfile();
+          if (!stopped) {
+            setProfile(loadedProfile);
+            setMessage("Profile extracted. Review the fields below, then run matching when ready.");
           }
-          if (job.status === "completed" && job.kind === "matching") {
-            const result = job.result as {
-              analyzed?: number;
-              skipped?: number;
-              failed?: number;
-            } | null;
-            setMessage(
-              `Matching complete: ${result?.analyzed ?? 0} analyzed, ${result?.skipped ?? 0} already current, ${result?.failed ?? 0} failed.`,
-            );
-          }
-          if (job.status === "failed") setError(job.error ?? "The background job failed");
-        })
-        .catch((reason: unknown) =>
-          setError(reason instanceof Error ? reason.message : "Unable to check job status"),
-        );
-    }, 1500);
-    return () => window.clearInterval(timer);
-  }, [activeJob]);
+          return;
+        }
+        if (job.status === "completed" && job.kind === "matching") {
+          const result = job.result as {
+            analyzed?: number;
+            skipped?: number;
+            failed?: number;
+          } | null;
+          setMessage(
+            `Matching complete: ${result?.analyzed ?? 0} analyzed, ${result?.skipped ?? 0} already current, ${result?.failed ?? 0} failed.`,
+          );
+          return;
+        }
+        if (job.status === "failed") {
+          setError(job.error ?? "The background job failed");
+          return;
+        }
+        timer = window.setTimeout(() => void poll(), job.kind === "matching" ? 5000 : 3000);
+      } catch (reason: unknown) {
+        if (!stopped)
+          setError(reason instanceof Error ? reason.message : "Unable to check job status");
+      }
+    };
+    void poll();
+    return () => {
+      stopped = true;
+      if (timer !== undefined) window.clearTimeout(timer);
+    };
+  }, [activeJob?.job_id]);
 
   async function handleUpload(file: File | undefined) {
     if (!file) return;
@@ -146,6 +160,11 @@ export function ProfileSetupPage() {
             {skills.length > 0 && (
               <ProfileList label="Skills and tools" values={[...new Set(skills)]} />
             )}
+            {activeJob?.kind === "matching" && activeJob.status === "completed" && (
+              <Link className="match-link" to="/app">
+                View your matches
+              </Link>
+            )}
             <Button disabled={processing} onClick={() => void handleMatching()}>
               Run matching
             </Button>
@@ -163,12 +182,17 @@ function AsyncStatus({ job }: { job: BackgroundJob | null }) {
       <div className="async-status async-status-error">Processing failed. You can try again.</div>
     );
   }
+  const progress = job.result as { processed?: number; total?: number } | null;
+  const progressLabel =
+    job.kind === "matching" && progress?.total
+      ? `Comparing roles against your profile... ${progress.processed ?? 0}/${progress.total}`
+      : job.kind === "profile_generation"
+        ? "Reading your experience and skills..."
+        : "Comparing roles against your profile...";
   return (
     <div className="async-status">
       <span className="loading-spinner" aria-hidden="true" />
-      {job.kind === "profile_generation"
-        ? "Reading your experience and skills..."
-        : "Comparing roles against your profile..."}
+      {progressLabel}
     </div>
   );
 }

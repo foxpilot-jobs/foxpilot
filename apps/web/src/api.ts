@@ -176,7 +176,7 @@ async function request<T>(path: string): Promise<T> {
 }
 
 export function getJobs(): Promise<Job[]> {
-  return request<Job[]>("/api/v1/jobs?relevance=TARGET");
+  return request<Job[]>("/api/v1/jobs");
 }
 
 export function getMatches(): Promise<Match[]> {

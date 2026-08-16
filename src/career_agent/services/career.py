@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Callable
 from uuid import uuid4
+
+from filter_jobs import classify_job
 
 from ..config import AppConfig
 from ..llm import LLMError, create_provider
@@ -97,6 +100,9 @@ class CareerService:
             profile = store.get_profile()
             if not profile or not profile["profile_json"]:
                 raise ValueError("Upload a resume before running matching")
+            active = store.get_active_background_job("matching")
+            if active:
+                return active["job_id"]
             job_id = str(uuid4())
             store.create_background_job(job_id, "matching")
         return job_id
@@ -123,23 +129,34 @@ class CareerService:
                 return
             store.update_background_job(job_id, "running")
         try:
-            result = self.run_matching()
+            result = self.run_matching(
+                progress=lambda value: self._update_matching_progress(job_id, value)
+            )
             with self._store() as store:
                 store.update_background_job(job_id, "completed", result)
         except Exception as error:  # noqa: BLE001 - persist failure for polling clients
             with self._store() as store:
                 store.update_background_job(job_id, "failed", error=str(error))
 
-    def run_matching(self) -> dict[str, int]:
+    def _update_matching_progress(self, job_id: str, value: dict[str, int]) -> None:
+        with self._store() as store:
+            store.update_background_job(job_id, "running", value)
+
+    def run_matching(self, progress: Callable[[dict[str, int]], None] | None = None) -> dict[str, int]:
         with self._store() as store:
             profile_row = store.get_profile()
             if not profile_row:
                 raise ValueError("Upload a resume before running matching")
-            jobs = store.list_jobs(relevance="TARGET")
+            jobs = [
+                job
+                for job in store.list_jobs()
+                if classify_job(job, profile_row["profile_json"]) == "TARGET"
+            ]
             provider = create_provider(self.config)
             analyzed = 0
             skipped = 0
             failed = 0
+            processed = 0
             for job in jobs:
                 content = {
                     key: job.get(key) for key in ("title", "company", "location", "url", "description")
@@ -150,6 +167,9 @@ class CareerService:
                 cached = store.get_match(job["job_id"])
                 if cached and cached.get("job_hash") == job_hash:
                     skipped += 1
+                    processed += 1
+                    if progress:
+                        progress({"processed": processed, "total": len(jobs)})
                     continue
                 try:
                     result = match_job(self.config, profile_row["profile_json"], job, provider=provider)
@@ -163,4 +183,7 @@ class CareerService:
                     analyzed += 1
                 except (LLMError, ValueError):
                     failed += 1
+                processed += 1
+                if progress:
+                    progress({"processed": processed, "total": len(jobs)})
             return {"total": len(jobs), "analyzed": analyzed, "skipped": skipped, "failed": failed}

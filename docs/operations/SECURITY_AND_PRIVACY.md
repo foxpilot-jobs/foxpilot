@@ -28,4 +28,6 @@ The product must provide export and deletion paths. No outbound application, ema
 
 Hosted deployments must not rely on local mode or the shared token guard. FoxPilot's production path is native branded authentication backed by PostgreSQL users, secure password hashing, HTTP-only sessions, email verification, and password recovery. Registration is not production-ready until SMTP is configured and verification links are deliverable.
 
+The current API rate limiter is process-local and suitable for local or single-worker staging only. Production deployment still requires a shared limiter backed by Redis, PostgreSQL, or an equivalent distributed store before running multiple API workers or exposing authentication publicly. The current limiter, session expiry enforcement, common-password blocklist, origin checks, and Google OAuth nonce validation are defense-in-depth, not a completed production security review.
+
 Jobs are a shared catalog. Matches and application history are keyed by `user_id` and `job_id`, so career decisions and private notes are isolated between identities. Existing local records are migrated to `local-user` by migration `0002_user_owned_state`.

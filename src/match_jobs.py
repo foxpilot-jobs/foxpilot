@@ -9,6 +9,7 @@ from career_agent.config import load_config
 from career_agent.llm import LLMError, create_provider
 from career_agent.matching import match_job
 from career_agent.storage import JobStore
+from filter_jobs import classify_job
 
 
 def get_job_hash(job: dict) -> str:
@@ -37,7 +38,11 @@ def main() -> int:
     skipped = 0
 
     with JobStore(config.resolved_database_url) as store:
-        jobs = store.list_jobs(relevance="TARGET")
+        jobs = [
+            job
+            for job in store.list_jobs()
+            if classify_job(job, profile) == "TARGET"
+        ]
         for job in jobs:
             job_id = job["job_id"]
             job_hash = get_job_hash(job)

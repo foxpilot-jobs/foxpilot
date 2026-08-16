@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Self
 
@@ -18,6 +18,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     create_engine,
+    delete,
     select,
     update,
 )
@@ -348,6 +349,19 @@ class JobStore:
                 .values(revoked_at=utc_now())
             )
 
+    def cleanup_sessions(self, retention_days: int = 7) -> None:
+        cutoff = utc_now() - timedelta(days=retention_days)
+        with self.engine.begin() as connection:
+            connection.execute(
+                delete(sessions_table).where(
+                    (sessions_table.c.expires_at < utc_now())
+                    | (
+                        sessions_table.c.revoked_at.is_not(None)
+                        & (sessions_table.c.revoked_at < cutoff)
+                    )
+                )
+            )
+
     def save_profile(self, resume_text: str, resume_filename: str, profile: dict) -> None:
         now = utc_now()
         values = {
@@ -400,6 +414,31 @@ class JobStore:
                 )
             ).mappings().first()
         return dict(row) if row else None
+
+    def get_active_background_job(self, kind: str) -> dict | None:
+        with self.engine.connect() as connection:
+            row = connection.execute(
+                select(background_jobs_table)
+                .where(
+                    background_jobs_table.c.user_id == self.user_id,
+                    background_jobs_table.c.kind == kind,
+                    background_jobs_table.c.status.in_(("queued", "running")),
+                )
+                .order_by(background_jobs_table.c.updated_at.desc())
+            ).mappings().first()
+        return dict(row) if row else None
+
+    def recover_interrupted_background_jobs(self) -> None:
+        with self.engine.begin() as connection:
+            connection.execute(
+                update(background_jobs_table)
+                .where(background_jobs_table.c.status.in_(("queued", "running")))
+                .values(
+                    status="failed",
+                    error="Job interrupted by an API restart. Please try again.",
+                    updated_at=utc_now(),
+                )
+            )
 
     def update_background_job(
         self,

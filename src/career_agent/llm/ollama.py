@@ -6,7 +6,7 @@ from typing import Any
 
 import httpx
 
-from .base import LLMError, LLMProvider, parse_json_response
+from .base import LLMError, LLMProvider, LLMTimeoutError, parse_json_response
 
 
 class OllamaProvider(LLMProvider):
@@ -20,13 +20,15 @@ class OllamaProvider(LLMProvider):
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
 
-    def complete_json(self, prompt: str) -> dict[str, Any]:
+    def complete_json(
+        self, prompt: str, response_schema: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         payload = {
             "model": self.model,
             "messages": [{"role": "user", "content": prompt}],
             "stream": False,
-            "format": "json",
-            "options": {"temperature": 0},
+            "format": response_schema or "json",
+            "options": {"temperature": 0, "num_predict": 384},
         }
         try:
             response = httpx.post(
@@ -39,6 +41,11 @@ class OllamaProvider(LLMProvider):
             raise LLMError(
                 "Ollama is not running. Start it with `ollama serve`, "
                 f"then make sure `{self.model}` is installed with `ollama pull {self.model}`."
+            ) from error
+        except httpx.TimeoutException as error:
+            raise LLMTimeoutError(
+                f"Ollama did not finish within {self.timeout:.0f} seconds. "
+                "Try a shorter resume or a faster model."
             ) from error
         except httpx.HTTPStatusError as error:
             detail = error.response.text[:500]
