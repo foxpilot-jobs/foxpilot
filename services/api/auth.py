@@ -19,6 +19,22 @@ SESSION_COOKIE = "foxpilot_session"
 SESSION_DAYS = 30
 password_hash = PasswordHash.recommended()
 
+COMMON_BREACHED_PASSWORDS = frozenset(
+    {
+        "123456789012",
+        "password1234",
+        "password123456",
+        "qwertyuiop12",
+        "qwerty123456",
+        "letmein123456",
+        "welcome123456",
+        "iloveyou12345",
+        "admin1234567",
+        "changeme1234",
+        "correcthorsebatterystaple",
+    }
+)
+
 
 @dataclass(frozen=True)
 class AuthContext:
@@ -38,6 +54,10 @@ def hash_password(password: str) -> str:
 
 def verify_password(password: str, encoded: str | None) -> bool:
     return bool(encoded) and password_hash.verify(password, encoded)
+
+
+def is_breached_password(password: str) -> bool:
+    return password.strip().lower() in COMMON_BREACHED_PASSWORDS
 
 
 def _store(request: Request) -> JobStore:
@@ -97,6 +117,7 @@ def current_native_user(request: Request) -> AuthContext:
         raise _unauthorized()
     store = _store(request)
     try:
+        store.cleanup_sessions()
         user = store.get_session_user(_token_hash(token))
     finally:
         store.close()

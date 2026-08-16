@@ -2,9 +2,9 @@ services:
   postgres:
     image: postgres:17-alpine
     environment:
-      POSTGRES_DB: foxpilot
-      POSTGRES_USER: foxpilot
-      POSTGRES_PASSWORD: foxpilot-dev-only
+      POSTGRES_DB: ${POSTGRES_DB:-foxpilot}
+      POSTGRES_USER: ${POSTGRES_USER:-foxpilot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-foxpilot-dev-only}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -28,15 +28,22 @@ services:
       context: .
       dockerfile: Dockerfile.api
     environment:
-      DATABASE_URL: postgresql+psycopg://foxpilot:foxpilot-dev-only@postgres:5432/foxpilot
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://foxpilot:foxpilot-dev-only@postgres:5432/foxpilot}
       LLM_PROVIDER: ollama
       LLM_MODEL: llama3.1:8b
       OLLAMA_BASE_URL: ${OLLAMA_DOCKER_BASE_URL:-http://host.docker.internal:11434}
-      CAREER_AGENT_ALLOWED_ORIGINS: http://localhost:8080
+      CAREER_AGENT_ALLOWED_ORIGINS: ${CAREER_AGENT_ALLOWED_ORIGINS:-http://localhost:8080}
       FOXPILOT_ENV: ${FOXPILOT_ENV:-local}
       FOXPILOT_AUTH_MODE: ${FOXPILOT_AUTH_MODE:-local}
       FOXPILOT_API_TOKEN: ${FOXPILOT_API_TOKEN:-}
       FOXPILOT_TOKEN_USER_ID: ${FOXPILOT_TOKEN_USER_ID:-staging-user}
+      FOXPILOT_PUBLIC_URL: ${FOXPILOT_PUBLIC_URL:-http://localhost:8080}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+      EMAIL_SMTP_HOST: ${EMAIL_SMTP_HOST:-}
+      EMAIL_SMTP_PORT: ${EMAIL_SMTP_PORT:-587}
+      EMAIL_SMTP_USERNAME: ${EMAIL_SMTP_USERNAME:-}
+      EMAIL_SMTP_PASSWORD: ${EMAIL_SMTP_PASSWORD:-}
+      EMAIL_SMTP_TLS: ${EMAIL_SMTP_TLS:-true}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:8080/api/v1/auth/google/callback}

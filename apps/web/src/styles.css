@@ -114,6 +114,25 @@ a {
   line-height: 1.6;
 }
 
+.match-link {
+  color: var(--fox-moss);
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.error-boundary {
+  max-width: 620px;
+  margin: 0 auto;
+  padding: 15vh 24px;
+}
+
+.error-boundary p:not(.eyebrow) {
+  margin: 12px 0 24px;
+  color: #667085;
+  line-height: 1.6;
+}
+
 .profile-list {
   display: grid;
   gap: 10px;
@@ -739,6 +758,50 @@ h3 {
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fox-ink: #f2f4f7;
+    --fox-paper: #101828;
+    --fox-sand: #182230;
+    --fox-line: #344054;
+  }
+
+  body {
+    background:
+      radial-gradient(circle at 90% 0%, rgba(21, 94, 239, 0.18), transparent 28rem),
+      var(--fox-paper);
+  }
+
+  .job-card,
+  .metrics > div,
+  .toolbar,
+  .profile-summary,
+  .upload-dropzone,
+  .loading-state,
+  .google-button {
+    border-color: #344054;
+    background: #182230;
+  }
+
+  .field-input,
+  .auth-form input,
+  .toolbar input {
+    border-color: #475467;
+    color: #f2f4f7;
+    background: #101828;
+  }
+
+  .muted,
+  .account-email,
+  .field-help,
+  .empty-state,
+  .profile-summary p,
+  .profile-banner p:not(.eyebrow),
+  .error-boundary p:not(.eyebrow) {
+    color: #98a2b3;
   }
 }
 

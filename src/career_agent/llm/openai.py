@@ -18,7 +18,9 @@ class OpenAIProvider(LLMProvider):
         self.client = OpenAI(api_key=api_key)
         self.model = model
 
-    def complete_json(self, prompt: str) -> dict[str, Any]:
+    def complete_json(
+        self, prompt: str, response_schema: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         try:
             response = self.client.responses.create(
                 model=self.model,

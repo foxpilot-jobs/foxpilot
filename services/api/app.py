@@ -5,6 +5,8 @@ from __future__ import annotations
 import hashlib
 import hmac
 import os
+import secrets
+from contextlib import asynccontextmanager
 from pathlib import Path
 from urllib.parse import urlencode
 
@@ -45,11 +47,13 @@ from .auth import (
     create_session,
     get_user_by_email,
     hash_password,
+    is_breached_password,
     normalize_email,
     require_api_access,
     set_session_cookie,
     verify_password,
 )
+from .security import InMemoryRateLimiter
 
 GOOGLE_STATE_COOKIE = "foxpilot_google_state"
 GOOGLE_STATE_MAX_AGE = 600
@@ -116,11 +120,18 @@ def _google_failure(message: str) -> RedirectResponse:
 
 
 def create_app() -> FastAPI:
+    @asynccontextmanager
+    async def lifespan(application: FastAPI):
+        with JobStore(application.state.service.config.resolved_database_url) as store:
+            store.recover_interrupted_background_jobs()
+        yield
+
     app = FastAPI(
         title="FoxPilot API",
         version="0.1.0",
         docs_url="/docs",
         redoc_url="/redoc",
+        lifespan=lifespan,
     )
     allowed_origins = [
         origin.strip()
@@ -138,6 +149,7 @@ def create_app() -> FastAPI:
         allow_headers=["Content-Type"],
     )
     app.state.service = CareerService(load_config())
+    app.state.rate_limiter = InMemoryRateLimiter()
 
     @app.middleware("http")
     async def protect_native_unsafe_requests(request: Request, call_next):
@@ -153,6 +165,15 @@ def create_app() -> FastAPI:
 
     def user_service(current_user: AuthContext = Depends(require_api_access)) -> CareerService:
         return CareerService(app.state.service.config, user_id=current_user.user_id)
+
+    def enforce_rate_limit(request: Request, bucket: str, limit: int) -> None:
+        client = request.headers.get("x-real-ip") or (request.client.host if request.client else "unknown")
+        if not app.state.rate_limiter.allow(f"{bucket}:{client}", limit):
+            raise HTTPException(
+                status_code=429,
+                detail="Too many requests. Please try again shortly.",
+                headers={"Retry-After": "60"},
+            )
 
     @app.get("/api/v1/health")
     def health() -> dict[str, str]:
@@ -172,9 +193,12 @@ def create_app() -> FastAPI:
 
     @app.post("/api/v1/auth/register", response_model=AuthUser, status_code=201)
     def register(credentials: AuthCredentials, request: Request, response: Response) -> AuthUser:
+        enforce_rate_limit(request, "register", 5)
         email = normalize_email(credentials.email)
         if "@" not in email or email.startswith("@") or email.endswith("@"):
             raise HTTPException(status_code=422, detail="Enter a valid email address")
+        if is_breached_password(credentials.password):
+            raise HTTPException(status_code=422, detail="Choose a less common password")
         if get_user_by_email(request, email):
             raise HTTPException(status_code=409, detail="An account already exists for this email")
         production = os.getenv("FOXPILOT_ENV", "local") == "production"
@@ -213,6 +237,7 @@ def create_app() -> FastAPI:
 
     @app.post("/api/v1/auth/login", response_model=AuthUser)
     def login(credentials: AuthCredentials, request: Request, response: Response) -> AuthUser:
+        enforce_rate_limit(request, "login", 10)
         user = get_user_by_email(request, credentials.email)
         if not user or not verify_password(credentials.password, user.get("password_hash")):
             raise HTTPException(status_code=401, detail="Email or password is incorrect")
@@ -230,12 +255,14 @@ def create_app() -> FastAPI:
         if not _google_configured():
             raise HTTPException(status_code=503, detail="Google sign-in is not configured with a real OAuth web client")
         state = os.urandom(32).hex()
+        nonce = secrets.token_urlsafe(32)
         params = {
             "client_id": client_id,
             "redirect_uri": _google_redirect_uri(),
             "response_type": "code",
             "scope": "openid email profile",
             "state": state,
+            "nonce": nonce,
             "access_type": "offline",
             "prompt": "select_account",
         }
@@ -245,7 +272,7 @@ def create_app() -> FastAPI:
         )
         redirect.set_cookie(
             GOOGLE_STATE_COOKIE,
-            state,
+            f"{state}.{nonce}",
             max_age=GOOGLE_STATE_MAX_AGE,
             httponly=True,
             secure=os.getenv("FOXPILOT_ENV", "local").lower() == "production",
@@ -256,8 +283,9 @@ def create_app() -> FastAPI:
 
     @app.get("/api/v1/auth/google/callback")
     def google_callback(request: Request, code: str | None = None, state: str | None = None) -> RedirectResponse:
-        expected_state = request.cookies.get(GOOGLE_STATE_COOKIE)
-        if not code or not state or not expected_state or not hmac.compare_digest(state, expected_state):
+        expected_cookie = request.cookies.get(GOOGLE_STATE_COOKIE, "")
+        expected_state, _, expected_nonce = expected_cookie.partition(".")
+        if not code or not state or not expected_state or not expected_nonce or not hmac.compare_digest(state, expected_state):
             return _google_failure("invalid_state")
         client_id = os.getenv("GOOGLE_CLIENT_ID")
         client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
@@ -280,6 +308,8 @@ def create_app() -> FastAPI:
             claims = id_token.verify_oauth2_token(
                 token_payload["id_token"], google_requests.Request(), client_id
             )
+            if not hmac.compare_digest(str(claims.get("nonce", "")), expected_nonce):
+                return _google_failure("invalid_nonce")
             email = normalize_email(str(claims["email"]))
             subject = str(claims["sub"])
             if not claims.get("email_verified") or not email or not subject:
@@ -353,6 +383,7 @@ def create_app() -> FastAPI:
 
     @app.post("/api/v1/auth/request-password-reset", status_code=202)
     def request_password_reset(payload: PasswordResetRequest, request: Request) -> None:
+        enforce_rate_limit(request, "password-reset", 3)
         email = normalize_email(payload.email)
         user = get_user_by_email(request, email)
         if user and email_configured():
@@ -389,9 +420,11 @@ def create_app() -> FastAPI:
     @app.post("/api/v1/profile/resume", status_code=202)
     async def upload_resume(
         background_tasks: BackgroundTasks,
+        request: Request,
         file: UploadFile = File(...),
         career_service: CareerService = Depends(user_service),
     ) -> dict:
+        enforce_rate_limit(request, "resume-upload", 5)
         filename = Path(file.filename or "resume.pdf").name
         if not filename.lower().endswith(".pdf"):
             raise HTTPException(status_code=422, detail="Resume uploads must be PDF files")
@@ -430,8 +463,10 @@ def create_app() -> FastAPI:
     @app.post("/api/v1/profile/match", status_code=202)
     def run_profile_matching(
         background_tasks: BackgroundTasks,
+        request: Request,
         career_service: CareerService = Depends(user_service),
     ) -> dict:
+        enforce_rate_limit(request, "profile-matching", 5)
         try:
             job_id = career_service.queue_matching()
             background_tasks.add_task(career_service.run_matching_job, job_id)

@@ -164,6 +164,37 @@ def test_native_auth_rejects_wrong_password(tmp_path: Path, monkeypatch) -> None
     assert response.status_code == 401
 
 
+def test_registration_rejects_common_breached_password(tmp_path: Path) -> None:
+    app = create_app()
+    app.state.service.config = AppConfig(data_dir=tmp_path)
+
+    response = TestClient(app).post(
+        "/api/v1/auth/register",
+        json={"email": "user@example.com", "password": "password1234"},
+    )
+
+    assert response.status_code == 422
+    assert "less common" in response.json()["detail"]
+
+
+def test_registration_is_rate_limited(tmp_path: Path) -> None:
+    app = create_app()
+    app.state.service.config = AppConfig(data_dir=tmp_path)
+    client = TestClient(app)
+
+    responses = [
+        client.post(
+            "/api/v1/auth/register",
+            json={"email": f"user-{index}@example.com", "password": "unique passphrase 123"},
+        )
+        for index in range(6)
+    ]
+
+    assert [response.status_code for response in responses[:5]] == [201] * 5
+    assert responses[5].status_code == 429
+    assert responses[5].headers["retry-after"] == "60"
+
+
 def test_native_auth_rejects_cross_origin_mutation(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("FOXPILOT_AUTH_MODE", "native")
     config = AppConfig(data_dir=tmp_path)
@@ -225,8 +256,8 @@ def test_profile_matching_requires_uploaded_profile(tmp_path: Path) -> None:
 
 
 def test_google_start_requires_configuration(tmp_path: Path, monkeypatch) -> None:
-    monkeypatch.delenv("GOOGLE_CLIENT_ID", raising=False)
-    monkeypatch.delenv("GOOGLE_CLIENT_SECRET", raising=False)
+    monkeypatch.setenv("GOOGLE_CLIENT_ID", "")
+    monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "")
     app = create_app()
     app.state.service.config = AppConfig(data_dir=tmp_path)
 
@@ -246,7 +277,8 @@ def test_google_callback_links_user_and_creates_session(tmp_path: Path, monkeypa
     client = TestClient(app)
 
     start = client.get("/api/v1/auth/google/start", follow_redirects=False)
-    state = start.cookies["foxpilot_google_state"]
+    state_cookie = start.cookies["foxpilot_google_state"]
+    state, nonce = state_cookie.split(".", 1)
 
     class TokenResponse:
         def raise_for_status(self):
@@ -262,6 +294,7 @@ def test_google_callback_links_user_and_creates_session(tmp_path: Path, monkeypa
             "sub": "google-subject",
             "email": "google@example.com",
             "email_verified": True,
+            "nonce": nonce,
         },
     )
 

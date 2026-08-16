@@ -74,12 +74,22 @@ def _run_pipeline():
         ],
     )
 
+    config = load_config()
+    if not config.profile_path.exists():
+        run_step(
+            "Career profile creation",
+            [
+                python,
+                "src/create_profile.py",
+            ],
+        )
+
     # --------------------------------------------------
-    # STEP 2 — LOCAL RELEVANCE FILTER
+    # STEP 2 — PROFILE-AWARE RELEVANCE FILTER
     # --------------------------------------------------
 
     run_step(
-        "Local relevance filtering",
+        "Profile-aware relevance filtering",
         [
             python,
             "src/filter_jobs.py",
@@ -91,16 +101,6 @@ def _run_pipeline():
         print("No target jobs were found. Skipping AI matching.")
         print("If Greenhouse returned redirects, log in with the new browser profile and scan again.")
         return 0
-
-    config = load_config()
-    if not config.profile_path.exists():
-        run_step(
-            "Career profile creation",
-            [
-                python,
-                "src/create_profile.py",
-            ],
-        )
 
     # --------------------------------------------------
     # STEP 3 — AI MATCHING
@@ -124,18 +124,13 @@ def main() -> int:
     config = load_config()
     try:
         with ScanLock(config.data_dir / "scan.lock"):
-            return _run_pipeline() or 0
+            result = _run_pipeline() or 0
+            print("FOXPILOT COMPLETE")
+            print("=" * 70)
+            return result
     except ScanAlreadyRunning as error:
         print(f"ERROR: {error}", file=sys.stderr)
         return 1
-
-    print(
-        "FOXPILOT COMPLETE"
-    )
-
-    print(
-        "=" * 70
-    )
 
 
 if __name__ == "__main__":

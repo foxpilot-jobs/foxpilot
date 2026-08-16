@@ -9,7 +9,7 @@ from pathlib import Path
 from pypdf import PdfReader
 
 from .config import AppConfig
-from .llm import LLMError, LLMProvider, create_provider
+from .llm import LLMError, LLMProvider, LLMTimeoutError, create_provider
 
 PROFILE_FIELDS = [
     "summary",
@@ -27,6 +27,16 @@ PROFILE_FIELDS = [
     "projects",
     "target_roles",
 ]
+
+PROFILE_RESPONSE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "summary": {"type": ["string", "null"]},
+        "years_of_experience": {"type": ["number", "null"]},
+        **{field: {"type": "array", "items": {"type": "string"}} for field in PROFILE_FIELDS[2:]},
+    },
+    "required": PROFILE_FIELDS,
+}
 
 
 def extract_resume_text(path: Path) -> str:
@@ -52,6 +62,12 @@ def build_profile_prompt(resume_text: str) -> str:
 
 Use only facts explicitly present in the resume. Never invent skills, experience,
 achievements, education, or job titles. Use an empty list or null when unknown.
+Always derive target_roles from the user's current or recent roles and clearly
+supported career direction; do not leave target_roles empty when the resume
+contains a usable job title. Keep current_or_recent_roles and target_roles
+distinct when possible.
+Keep the response concise: summary <= 2 sentences, lists <= 5 items, projects <= 3 items,
+and each list item <= 80 characters.
 Return one valid JSON object with exactly these fields:
 {{
   {fields}
@@ -85,18 +101,22 @@ def create_profile_from_text(
     provider = provider or create_provider(config)
     prompt = build_profile_prompt(resume_text)
     try:
-        profile = provider.complete_json(prompt)
+        profile = provider.complete_json(prompt, response_schema=PROFILE_RESPONSE_SCHEMA)
+    except LLMTimeoutError:
+        raise
     except LLMError:
         profile = provider.complete_json(
             prompt
-            + "\nYour previous response was not valid JSON. Return only the requested JSON object."
+            + "\nReturn only the requested JSON object. Keep every list short and use null or [] when uncertain.",
+            response_schema=PROFILE_RESPONSE_SCHEMA,
         )
 
     missing = [field for field in PROFILE_FIELDS if field not in profile]
     if missing:
         profile = provider.complete_json(
             prompt
-            + "\nYour previous response missed required fields. Return every field exactly as requested."
+            + "\nReturn every required field exactly once and keep the response concise.",
+            response_schema=PROFILE_RESPONSE_SCHEMA,
         )
         missing = [field for field in PROFILE_FIELDS if field not in profile]
         if missing:

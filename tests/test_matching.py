@@ -6,7 +6,7 @@ class RetryingProvider:
     def __init__(self) -> None:
         self.calls = 0
 
-    def complete_json(self, prompt: str) -> dict:
+    def complete_json(self, prompt: str, response_schema=None) -> dict:
         self.calls += 1
         if self.calls == 1:
             return {"match_score": 80}

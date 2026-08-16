@@ -126,8 +126,54 @@ def has_strong_ml_signals(
     return len(matches) >= 2
 
 
+def profile_matches_job(
+    job: dict,
+    profile: dict,
+) -> bool:
+    """Return whether the job has deterministic evidence of profile fit."""
+    title = normalize(job.get("title", ""))
+    def profile_values(field: str) -> list[str]:
+        value = profile.get(field) or []
+        if isinstance(value, str):
+            return [value]
+        if isinstance(value, dict):
+            values = []
+            for nested in value.values():
+                if isinstance(nested, list):
+                    values.extend(str(item) for item in nested)
+                elif isinstance(nested, str):
+                    values.append(nested)
+            return values
+        return [str(item) for item in value]
+
+    roles = [
+        *profile_values("target_roles"),
+        *profile_values("current_or_recent_roles"),
+    ]
+    role_phrases = {
+        phrase.strip()
+        for role in roles
+        for phrase in re.split(r"\s*(?:&|/|,|\band\b)\s*", normalize(role))
+        if len(phrase.strip().split()) >= 2
+    }
+    role_match = any(
+        phrase in title
+        for phrase in role_phrases
+    )
+    profile_role_domain = any(
+        contains_any(
+            normalize(role),
+            ["data", "analytics", "bi", "warehouse", "snowflake"],
+        )
+        for role in roles
+    )
+    taxonomy_match = profile_role_domain and is_target_role(title)
+    return role_match or taxonomy_match
+
+
 def classify_job(
     job: dict,
+    profile: dict | None = None,
 ) -> str:
 
     title = job.get(
@@ -139,6 +185,19 @@ def classify_job(
         "description",
         "",
     )
+
+    # An uploaded profile is the source of truth for personalized scans.
+    # This allows roles outside the generic taxonomy while still requiring
+    # deterministic evidence before spending an LLM call.
+    if profile and profile_matches_job(job, profile):
+        if has_strong_ml_signals(description):
+            return "REVIEW"
+        return "TARGET"
+
+    # Do not fall back to the generic taxonomy after a profile is available;
+    # otherwise a generic "Data Engineer" target can bypass the user's career.
+    if profile:
+        return "REVIEW"
 
     # --------------------------------------------------
     # 1. Clearly unrelated roles
@@ -219,7 +278,14 @@ def print_job_list(
 
 def main():
 
+    config = load_config()
     jobs = load_jobs()
+
+    profile = None
+    if config.profile_path.exists():
+        import json
+
+        profile = json.loads(config.profile_path.read_text(encoding="utf-8"))
 
     print(
         f"Loaded {len(jobs)} job(s)."
@@ -229,11 +295,12 @@ def main():
     review_jobs = []
     excluded_jobs = []
 
-    with JobStore(load_config().resolved_database_url) as store:
+    with JobStore(config.resolved_database_url) as store:
         for job in jobs:
 
             classification = classify_job(
-                job
+                job,
+                profile,
             )
 
             job["local_relevance"] = (
@@ -266,7 +333,7 @@ def main():
     print()
 
     print(
-        "Local relevance filtering:"
+        "Profile-aware relevance filtering:"
     )
 
     print(
