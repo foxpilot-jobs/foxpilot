@@ -112,11 +112,14 @@ def _job(
     )
 
 
-def fetch_remoteok(client: PublicSourceClient) -> list[SourceJob]:
+def fetch_remoteok(client: PublicSourceClient, queries: list[str] | None = None) -> list[SourceJob]:
     payload = client.get_json("https://remoteok.com/api")
     jobs: list[SourceJob] = []
     for raw in payload if isinstance(payload, list) else []:
         if not isinstance(raw, dict) or not raw.get("id"):
+            continue
+        searchable = _clean(f"{raw.get('position', '')} {raw.get('description', '')}").casefold()
+        if queries and not any(str(query).casefold() in searchable for query in queries):
             continue
         item = _job(
             "remoteok",
@@ -245,7 +248,7 @@ def fetch_configured_sources(profile: dict, user_id: str = "local-user") -> int:
     client = PublicSourceClient()
     total = 0
     adapters = [
-        ("RemoteOK", lambda: fetch_remoteok(client), config.get("remoteok", {}).get("enabled", True)),
+        ("RemoteOK", lambda: fetch_remoteok(client, queries), config.get("remoteok", {}).get("enabled", True)),
         ("Remotive", lambda: fetch_remotive(client, queries), config.get("remotive", {}).get("enabled", True)),
         ("Lever", lambda: fetch_lever(client, config.get("lever", {}).get("boards", [])), bool(config.get("lever", {}).get("boards"))),
         ("Hacker News", lambda: fetch_hacker_news(client, queries, int(config.get("hacker_news", {}).get("comment_limit", 500))), config.get("hacker_news", {}).get("enabled", True)),

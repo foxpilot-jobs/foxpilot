@@ -1,5 +1,5 @@
 from career_agent.config import AppConfig
-from career_agent.matching import match_job
+from career_agent.matching import build_match_prompt, match_job
 
 
 class RetryingProvider:
@@ -31,3 +31,18 @@ def test_matching_retries_schema_violation() -> None:
     )
     assert result["recommendation"] == "CONSIDER"
     assert provider.calls == 2
+
+
+def test_match_prompt_is_compact_and_bounded() -> None:
+    prompt = build_match_prompt(
+        {"skills": ["Python"]},
+        {
+            "title": "Data Engineer",
+            "company": "Example",
+            "description": "x" * 20_000,
+            "source_payload": {"large": "private source payload"},
+        },
+    )
+
+    assert "[description truncated]" in prompt
+    assert "private source payload" not in prompt

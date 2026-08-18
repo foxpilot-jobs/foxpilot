@@ -75,6 +75,7 @@ class CareerService:
 
     def queue_profile_generation(self, resume_text: str, resume_filename: str) -> str:
         job_id = str(uuid4())
+        resume_hash = hashlib.sha256(resume_text.encode("utf-8")).hexdigest()
         with self._store() as store:
             existing = store.get_profile()
             if existing and existing["resume_text"] == resume_text and existing["profile_json"]:
@@ -82,7 +83,15 @@ class CareerService:
                 store.update_background_job(job_id, "completed", {"profile": existing["profile_json"]})
                 return job_id
             store.save_profile(resume_text, resume_filename, {})
-            store.create_background_job(job_id, "profile_generation")
+            store.create_background_job(
+                job_id,
+                "profile_generation",
+                {
+                    "resume_hash": resume_hash,
+                    "resume_text": resume_text,
+                    "resume_filename": resume_filename,
+                },
+            )
         return job_id
 
     def run_profile_generation(self, job_id: str) -> None:
@@ -95,9 +104,20 @@ class CareerService:
                 if job["status"] == "completed":
                     return
                 store.update_background_job(job_id, "running")
-            profile = create_profile_from_text(self.config, profile_row["resume_text"], persist=False)
+            job_payload = job.get("result_json") or {}
+            resume_text = job_payload.get("resume_text", profile_row["resume_text"])
+            resume_filename = job_payload.get("resume_filename", profile_row["resume_filename"])
+            profile = create_profile_from_text(self.config, resume_text, persist=False)
             with self._store() as store:
-                store.save_profile(profile_row["resume_text"], profile_row["resume_filename"], profile)
+                current = store.get_profile()
+                if not current or current["resume_text"] != resume_text:
+                    store.update_background_job(
+                        job_id,
+                        "completed",
+                        {"stale": True, "message": "A newer resume upload superseded this job."},
+                    )
+                    return
+                store.save_profile(resume_text, resume_filename, profile)
                 store.update_background_job(job_id, "completed", {"profile": profile})
         except Exception as error:  # noqa: BLE001 - persist failure for polling clients
             with self._store() as store:
@@ -147,11 +167,14 @@ class CareerService:
             job = store.get_background_job(job_id)
         if not job:
             return None
+        result = job["result_json"]
+        if job["kind"] == "profile_generation" and isinstance(result, dict):
+            result = {key: value for key, value in result.items() if key != "resume_text"}
         return {
             "job_id": job["job_id"],
             "kind": job["kind"],
             "status": job["status"],
-            "result": job["result_json"],
+            "result": result,
             "error": job["error"],
             "created_at": job["created_at"],
             "updated_at": job["updated_at"],

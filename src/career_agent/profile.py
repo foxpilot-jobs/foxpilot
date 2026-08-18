@@ -38,6 +38,7 @@ PROFILE_RESPONSE_SCHEMA = {
     },
     "required": PROFILE_FIELDS,
 }
+MAX_RESUME_TEXT_CHARS = 24000
 
 
 def resume_fingerprint(path: Path) -> str:
@@ -103,6 +104,12 @@ def extract_resume_text_from_bytes(content: bytes, filename: str) -> str:
 
 
 def build_profile_prompt(resume_text: str) -> str:
+    if len(resume_text) > MAX_RESUME_TEXT_CHARS:
+        resume_text = (
+            resume_text[:18000]
+            + "\n...[resume text truncated]...\n"
+            + resume_text[-6000:]
+        )
     fields = ",\n  ".join(f'"{field}": null' for field in PROFILE_FIELDS)
     return f"""You are a careful career profile extraction assistant.
 

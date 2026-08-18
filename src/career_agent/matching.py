@@ -16,6 +16,7 @@ MATCH_FIELDS = [
     "experience_match",
     "concerns",
 ]
+MAX_JOB_DESCRIPTION_CHARS = 8000
 
 MATCH_RESPONSE_SCHEMA = {
     "type": "object",
@@ -34,6 +35,17 @@ MATCH_RESPONSE_SCHEMA = {
 
 
 def build_match_prompt(profile: dict, job: dict) -> str:
+    compact_job = {
+        field: job.get(field, "")
+        for field in ("title", "company", "location", "url", "description")
+    }
+    description = str(compact_job["description"])
+    if len(description) > MAX_JOB_DESCRIPTION_CHARS:
+        compact_job["description"] = (
+            description[:6500]
+            + "\n...[description truncated]...\n"
+            + description[-1500:]
+        )
     return f"""You are a conservative job-matching assistant.
 
 Compare the candidate profile with the job posting. Do not invent candidate
@@ -67,7 +79,7 @@ CANDIDATE PROFILE:
 
 JOB:
 ---
-{json.dumps(job, indent=2)}
+{json.dumps(compact_job, indent=2)}
 ---
 """
 

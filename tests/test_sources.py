@@ -39,6 +39,21 @@ def test_remoteok_normalizes_jobs() -> None:
     assert jobs[0].title == "Data Engineer"
 
 
+def test_remoteok_filters_at_source_boundary() -> None:
+    client = FakeClient(
+        {
+            "https://remoteok.com/api": [
+                {"id": 1, "position": "Data Engineer", "description": "pipelines"},
+                {"id": 2, "position": "Copywriter", "description": "content"},
+            ]
+        }
+    )
+
+    jobs = fetch_remoteok(client, ["Data Engineer"])
+
+    assert [job.source_job_id for job in jobs] == ["1"]
+
+
 def test_remotive_deduplicates_query_results() -> None:
     response = {"jobs": [{"id": 7, "title": "Analytics Engineer", "company_name": "Example", "url": "https://example.com", "description": "SQL"}]}
     client = FakeClient(

@@ -328,9 +328,9 @@ def fetch_single_search(
 
         # Give the React application time to load
         # and request the search data.
-        page.wait_for_timeout(
-            8000
-        )
+        # Search responses are captured by the listener above; avoid an
+        # unconditional eight-second sleep for every profile-derived query.
+        page.wait_for_timeout(2500)
 
         raw_jobs = (
             extract_job_posts_from_responses(

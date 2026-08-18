@@ -391,7 +391,7 @@ class JobStore:
             ).mappings().first()
         return dict(row) if row else None
 
-    def create_background_job(self, job_id: str, kind: str) -> None:
+    def create_background_job(self, job_id: str, kind: str, result: dict | None = None) -> None:
         now = utc_now()
         with self.engine.begin() as connection:
             connection.execute(
@@ -400,6 +400,7 @@ class JobStore:
                     user_id=self.user_id,
                     kind=kind,
                     status="queued",
+                    result_json=result,
                     created_at=now,
                     updated_at=now,
                 )

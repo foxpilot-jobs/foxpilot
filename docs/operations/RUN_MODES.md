@@ -66,7 +66,7 @@ Open `http://localhost:8080` after the scan completes.
 
 ## Job Sources
 
-`foxpilot scan` derives Greenhouse and public-source queries from the saved profile before fetching. A scan cannot run without a profile; there is no hardcoded role fallback. The web profile page exposes the same profile-driven scan for authenticated public-source ingestion, while Greenhouse browser ingestion remains available through the local CLI because it requires the saved host browser session.
+`foxpilot scan` derives Greenhouse and public-source queries from the saved profile before fetching. A scan cannot run without a profile; there is no hardcoded role fallback. Source adapters filter profile-derived candidates before persistence, and match prompts omit raw source payloads and cap job descriptions to keep local inference bounded. The web profile page exposes the same profile-driven scan for authenticated public-source ingestion, while Greenhouse browser ingestion remains available through the local CLI because it requires the saved host browser session.
 
 - RemoteOK is enabled by default and reads its documented public feed.
 - Remotive is enabled by default and searches the profile-derived role queries.
