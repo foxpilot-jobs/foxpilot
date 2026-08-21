@@ -40,7 +40,6 @@ data/reports/
 data/exports/
 
 # Keep only explicitly safe example/configuration files under data.
-!data/searches.json
 !data/*.example.json
 !data/**/*.example.json
 

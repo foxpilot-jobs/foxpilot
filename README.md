@@ -55,6 +55,7 @@ The current repository is a proof of concept containing a working scraper, heuri
 
 See:
 
+- [Setup guide](docs/operations/SETUP.md)
 - [Product brief](docs/product/PRODUCT_BRIEF.md)
 - [Architecture](docs/architecture/ARCHITECTURE.md)
 - [Architecture decisions](docs/architecture/DECISIONS.md)
@@ -110,6 +111,8 @@ foxpilot scan
 The first local model request can take a few minutes. Ollama requires local compute and disk space, but no API key. OpenAI remains available as an explicit opt-in provider by setting `LLM_PROVIDER=openai`, `LLM_MODEL=<model>`, and `OPENAI_API_KEY` in `.env`.
 
 See [Local AI](docs/operations/LOCAL_AI.md) for troubleshooting and provider behavior.
+
+For a fresh machine using SQLite and OpenAI without Docker or Ollama, follow the [Setup guide](docs/operations/SETUP.md).
 
 ## Repository Shape
 

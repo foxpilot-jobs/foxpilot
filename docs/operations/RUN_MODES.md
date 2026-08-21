@@ -68,6 +68,8 @@ Open `http://localhost:8080` after the scan completes.
 
 `foxpilot scan` derives Greenhouse and public-source queries from the saved profile before fetching. A scan cannot run without a profile; there is no hardcoded role fallback. Source adapters filter profile-derived candidates before persistence, and match prompts omit raw source payloads and cap job descriptions to keep local inference bounded. The web profile page exposes the same profile-driven scan for authenticated public-source ingestion, while Greenhouse browser ingestion remains available through the local CLI because it requires the saved host browser session.
 
+Ollama can run in Docker with `docker compose --profile container-llm up -d ollama`. To reuse an existing host model cache instead of downloading models again, set `OLLAMA_DATA_PATH=$HOME/.ollama` before starting the service. On macOS, native Ollama generally performs better because it can use Apple Metal; Docker Ollama is primarily an isolation/deployment option unless the host provides a Linux GPU passthrough.
+
 - RemoteOK is enabled by default and reads its documented public feed.
 - Remotive is enabled by default and searches the profile-derived role queries.
 - Hacker News is enabled by default and filters public `Ask HN: Who is hiring?` comments with profile-derived role queries.

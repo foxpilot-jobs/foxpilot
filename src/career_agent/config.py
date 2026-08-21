@@ -78,7 +78,7 @@ def load_config(path: Path | None = None) -> AppConfig:
             "OLLAMA_BASE_URL",
             values.get("ollama_base_url", "http://localhost:11434"),
         ),
-        database_url=os.getenv("DATABASE_URL", values.get("database_url")),
+        database_url=os.getenv("DATABASE_URL") or values.get("database_url") or None,
         target_roles=list(values.get("target_roles", [])),
         locations=list(values.get("locations", [])),
     )
