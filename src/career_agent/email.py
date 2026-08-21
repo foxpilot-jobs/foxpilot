@@ -8,7 +8,15 @@ from email.message import EmailMessage
 
 
 def configured() -> bool:
-    return bool(os.getenv("EMAIL_SMTP_HOST") and os.getenv("EMAIL_FROM"))
+    return all(
+        os.getenv(name, "").strip()
+        for name in (
+            "EMAIL_SMTP_HOST",
+            "EMAIL_FROM",
+            "EMAIL_SMTP_USERNAME",
+            "EMAIL_SMTP_PASSWORD",
+        )
+    )
 
 
 def send_email(recipient: str, subject: str, body: str) -> None:
