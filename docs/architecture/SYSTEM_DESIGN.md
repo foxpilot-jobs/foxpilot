@@ -32,7 +32,7 @@ Managed queue  --->  Python worker service
 Static web assets ---> CDN/object storage
 ```
 
-The first production region is India. The default cloud target is AWS `ap-south-1` (Mumbai) because it provides the broadest production primitives in an India region: managed PostgreSQL, object storage, queues, secrets, compute, TLS, logging, and CDN integration.
+The first limited staging region is Railway Singapore for low operational overhead and a small beta audience. The production target remains AWS `ap-south-1` (Mumbai) because it provides the broadest production primitives in an India region: managed PostgreSQL, object storage, queues, secrets, compute, TLS, logging, and CDN integration.
 
 ## Approved Languages And Responsibilities
 
@@ -115,7 +115,7 @@ Each job must have:
 - Idempotency key.
 - Progress metadata where useful.
 
-Workers must claim jobs atomically and use leases/heartbeats. FastAPI in-process background tasks are acceptable only for local development, not production.
+Workers must claim jobs atomically and use leases/heartbeats. The repository now includes a durable database-backed worker for low-traffic staging and production-shaped local testing; set `FOXPILOT_WORKER_MODE=external` and run `python -m career_agent.worker`. AWS production should replace the database polling transport with SQS when traffic or operational requirements justify it. FastAPI in-process background tasks are acceptable only for local development, not production.
 
 ## AI Boundary
 
@@ -205,7 +205,7 @@ The recommended initial AWS implementation in Mumbai is:
 - CloudWatch for logs, metrics, alarms, and worker health.
 - ACM and Route 53 for TLS and domain routing.
 
-For a low-cost single-server proof of deployment, a Mumbai VM running Docker Compose can be used temporarily. It is not equivalent to the managed production topology and does not provide managed backups, failover, or durable worker guarantees by itself.
+For a low-cost single-server proof of deployment, a Mumbai VM running Docker Compose can be used temporarily. It is not equivalent to the managed production topology and does not provide managed backups, failover, or durable worker guarantees by itself. Railway Hobby in Singapore is the preferred limited-beta staging option; it is not India-region hosting or a production availability commitment.
 
 ## Cost And Free-Tier Position
 

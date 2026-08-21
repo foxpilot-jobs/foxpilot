@@ -4,7 +4,7 @@ This runbook is the gate for deploying FoxPilot. Do not deploy production until 
 
 ## Deployment Decision
 
-Use the managed AWS shape for production:
+Use Railway Hobby for the limited beta staging phase and the managed AWS shape for production:
 
 ```text
 CloudFront/S3       React frontend
@@ -19,6 +19,8 @@ ACM/Route 53        TLS and domain routing
 ```
 
 A single VM or Docker Compose deployment is acceptable only for a private staging rehearsal. It is not the production target because it lacks managed database failover, durable job execution, and independent service scaling.
+
+Railway Hobby is acceptable for a small, explicitly limited beta while product and reliability work continues. Deploy the API, worker, and PostgreSQL in Railway's Singapore region. Do not present this as India-region hosting, high availability, or a production SLA. Resume data is centralized outside India in this staging mode, so beta users must receive the appropriate privacy disclosure and consent.
 
 ## Current Staging Domain
 
@@ -105,7 +107,7 @@ The following are blocking engineering items, not optional deployment configurat
 
 - [ ] API-only authenticated CLI operations are implemented.
 - [ ] Production clients cannot connect directly to PostgreSQL.
-- [ ] FastAPI in-process background tasks are replaced by a durable worker/queue.
+- [x] A durable database-backed worker is available for low-traffic staging and production-shaped local testing; SQS remains the AWS scale-out transport.
 - [ ] Job claiming is atomic and workers use leases/heartbeats.
 - [ ] Profile and match jobs are revision-safe and idempotent.
 - [ ] Source retries are bounded and classified as transient/permanent.

@@ -38,4 +38,4 @@ Job ingestion uses isolated adapters with a shared normalized job contract. Publ
 
 ## India Production Architecture
 
-Production targets AWS `ap-south-1` (Mumbai) with managed PostgreSQL, encrypted object storage, a durable queue, separate API and worker services, and authenticated API-only access for web and CLI clients. Local SQLite/Ollama remains supported for privacy and development, but production clients must not connect directly to PostgreSQL. See `SYSTEM_DESIGN.md` for the complete boundary and rollout contract.
+Limited beta staging uses Railway Hobby in Singapore for speed and low operational overhead, with an explicit small-user/no-SLA boundary. Production targets AWS `ap-south-1` (Mumbai) with managed PostgreSQL, encrypted object storage, a durable queue, separate API and worker services, and authenticated API-only access for web and CLI clients. Local SQLite/Ollama remains supported for privacy and development, but production clients must not connect directly to PostgreSQL. See `SYSTEM_DESIGN.md` for the complete boundary and rollout contract.

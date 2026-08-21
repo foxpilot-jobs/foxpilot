@@ -33,6 +33,17 @@ def test_application_status_is_validated(tmp_path: Path) -> None:
             raise AssertionError("Expected invalid application status to fail")
 
 
+def test_background_job_is_claimed_once(tmp_path: Path) -> None:
+    database = tmp_path / "career.sqlite3"
+    with JobStore(database, user_id="user-a") as store:
+        store.create_background_job("job-1", "matching")
+        claimed = store.claim_next_background_job()
+        assert claimed is not None
+        assert claimed["job_id"] == "job-1"
+        assert claimed["status"] == "running"
+        assert store.claim_next_background_job() is None
+
+
 def test_user_owned_state_is_isolated(tmp_path: Path) -> None:
     database = tmp_path / "career.sqlite3"
     with JobStore(database, user_id="user-a") as user_a:

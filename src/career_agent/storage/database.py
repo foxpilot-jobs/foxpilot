@@ -19,6 +19,7 @@ from sqlalchemy import (
     UniqueConstraint,
     create_engine,
     delete,
+    or_,
     select,
     update,
 )
@@ -428,6 +429,39 @@ class JobStore:
                 .order_by(background_jobs_table.c.updated_at.desc())
             ).mappings().first()
         return dict(row) if row else None
+
+    def claim_next_background_job(self, stale_after_minutes: int = 15) -> dict | None:
+        """Atomically claim queued work or work abandoned by a dead worker."""
+        stale_before = utc_now() - timedelta(minutes=stale_after_minutes)
+        with self.engine.begin() as connection:
+            candidate = connection.execute(
+                select(background_jobs_table)
+                .where(
+                    or_(
+                        background_jobs_table.c.status == "queued",
+                        (background_jobs_table.c.status == "running")
+                        & (background_jobs_table.c.updated_at < stale_before),
+                    )
+                )
+                .order_by(background_jobs_table.c.created_at)
+                .limit(1)
+            ).mappings().first()
+            if not candidate:
+                return None
+            claimed = connection.execute(
+                update(background_jobs_table)
+                .where(
+                    background_jobs_table.c.job_id == candidate["job_id"],
+                    background_jobs_table.c.status == candidate["status"],
+                    background_jobs_table.c.updated_at == candidate["updated_at"],
+                )
+                .values(status="running", updated_at=utc_now())
+            )
+            if claimed.rowcount != 1:
+                return None
+        claimed_job = dict(candidate)
+        claimed_job["status"] = "running"
+        return claimed_job
 
     def recover_interrupted_background_jobs(self) -> None:
         with self.engine.begin() as connection:
