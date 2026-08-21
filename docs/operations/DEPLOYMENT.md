@@ -62,6 +62,10 @@ Static React frontend -> FastAPI service -> PostgreSQL
 
 PostgreSQL replaces SQLite only at the storage boundary. Domain and application services must not be coupled to a specific database.
 
+The production target is AWS `ap-south-1` (Mumbai): managed PostgreSQL, encrypted object storage for original resumes, a durable queue, separate API and worker services, and a static frontend behind a CDN. The API and worker are the only PostgreSQL clients; production CLI clients use authenticated API endpoints. See [System design](../architecture/SYSTEM_DESIGN.md) before adding deployment infrastructure.
+
+Use [Production readiness](PRODUCTION_READINESS.md) as the deployment gate and manual AWS/domain/provider runbook. It intentionally blocks deployment until durable workers, API-only client access, encrypted resume storage, backups, restore testing, and user-isolation checks are complete.
+
 Set the hosted database explicitly:
 
 ```env

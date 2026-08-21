@@ -56,6 +56,8 @@ The current repository is a proof of concept containing a working scraper, heuri
 See:
 
 - [Setup guide](docs/operations/SETUP.md)
+- [System design](docs/architecture/SYSTEM_DESIGN.md)
+- [Production readiness](docs/operations/PRODUCTION_READINESS.md)
 - [Product brief](docs/product/PRODUCT_BRIEF.md)
 - [Architecture](docs/architecture/ARCHITECTURE.md)
 - [Architecture decisions](docs/architecture/DECISIONS.md)

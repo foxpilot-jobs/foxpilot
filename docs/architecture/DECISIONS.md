@@ -35,3 +35,7 @@ The first browser product targets desktop and mobile layouts through one respons
 ## Source Adapter Expansion
 
 Job ingestion uses isolated adapters with a shared normalized job contract. Public HTTP sources use their documented public endpoints; authenticated browser access is limited to Greenhouse's saved local session. Adapters are independently rate-limited and failure-isolated so one source outage cannot prevent other sources from contributing jobs. Source-specific configuration is explicit, particularly for Lever board slugs.
+
+## India Production Architecture
+
+Production targets AWS `ap-south-1` (Mumbai) with managed PostgreSQL, encrypted object storage, a durable queue, separate API and worker services, and authenticated API-only access for web and CLI clients. Local SQLite/Ollama remains supported for privacy and development, but production clients must not connect directly to PostgreSQL. See `SYSTEM_DESIGN.md` for the complete boundary and rollout contract.
