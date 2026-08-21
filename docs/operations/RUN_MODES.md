@@ -12,7 +12,7 @@ foxpilot CLI -> SQLite (~/.foxpilot) -> host Ollama
                     host Playwright
 ```
 
-Use this for the simplest private workflow:
+Use this for the simplest private workflow. Profile extraction is cached against the configured resume path and content, so repeating `create_profile` or scanning does not invoke the LLM unless the resume changes:
 
 ```bash
 source .venv/bin/activate
@@ -66,11 +66,13 @@ Open `http://localhost:8080` after the scan completes.
 
 ## Job Sources
 
-`foxpilot scan` runs the saved Greenhouse browser searches plus the public adapters configured in `data/sources.json`.
+`foxpilot scan` derives Greenhouse and public-source queries from the saved profile before fetching. A scan cannot run without a profile; there is no hardcoded role fallback. Source adapters filter profile-derived candidates before persistence, and match prompts omit raw source payloads and cap job descriptions to keep local inference bounded. The web profile page exposes the same profile-driven scan for authenticated public-source ingestion, while Greenhouse browser ingestion remains available through the local CLI because it requires the saved host browser session.
+
+Ollama can run in Docker with `docker compose --profile container-llm up -d ollama`. To reuse an existing host model cache instead of downloading models again, set `OLLAMA_DATA_PATH=$HOME/.ollama` before starting the service. On macOS, native Ollama generally performs better because it can use Apple Metal; Docker Ollama is primarily an isolation/deployment option unless the host provides a Linux GPU passthrough.
 
 - RemoteOK is enabled by default and reads its documented public feed.
-- Remotive is enabled by default and searches the configured query list.
-- Hacker News is enabled by default and reads public `Ask HN: Who is hiring?` comments.
+- Remotive is enabled by default and searches the profile-derived role queries.
+- Hacker News is enabled by default and filters public `Ask HN: Who is hiring?` comments with profile-derived role queries.
 - Lever is enabled when board slugs are added under `lever.boards`, for example:
 
 ```json
@@ -85,7 +87,7 @@ Open `http://localhost:8080` after the scan completes.
 
 Use `FOXPILOT_SOURCES_CONFIG=/path/to/sources.json` for a separate configuration. Each source is deduplicated through the shared database and a failed source does not stop the rest of the scan.
 
-For hosted web profile setup, open `/app/profile` after signing in. Uploading a PDF stores extracted resume text and immediately returns a background job ID; profile extraction continues asynchronously. Use `Run matching` to queue analysis of jobs that pass the same profile-aware relevance classifier used by the CLI. The UI polls job status and shows completed results on `/app` sorted by match score, without holding the browser request open.
+For hosted web profile setup, open `/app/profile` after signing in. Uploading a PDF stores extracted resume text and immediately returns a background job ID; profile extraction continues asynchronously. Use `Scan profile-specific jobs` to fetch public-source jobs using that account's saved roles, then use `Run matching` to queue analysis of the resulting profile-specific shortlist. The UI polls job status and shows completed results on `/app` sorted by match score, without holding the browser request open.
 
 ## Google Sign-In
 

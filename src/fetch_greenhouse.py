@@ -8,69 +8,45 @@ from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import sync_playwright
 
 from career_agent.config import load_config
+from career_agent.search import profile_searches
 from career_agent.storage import JobStore
 
 JOBS_PATH = Path("data/jobs")
 BROWSER_PROFILE = Path("data/browser-profile")
-SEARCHES_PATH = Path("data/searches.json")
 
 
 def clean_text(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
-def job_already_exists(job: dict) -> bool:
+def job_already_exists(job: dict, user_id: str = "local-user") -> bool:
     """
     Check whether this job has already been saved.
     """
 
     job_id = job["source_job_id"]
 
-    with JobStore(load_config().resolved_database_url) as store:
+    with JobStore(load_config().resolved_database_url, user_id=user_id) as store:
         return store.get_job(f"mygreenhouse_{job_id}") is not None
 
 
-def save_job(job: dict) -> None:
+def save_job(job: dict, user_id: str = "local-user") -> None:
     """
     Save a new job locally.
     """
 
-    with JobStore(load_config().resolved_database_url) as store:
+    with JobStore(load_config().resolved_database_url, user_id=user_id) as store:
         store.upsert_job(job)
 
 
-def load_searches() -> list[dict]:
+def load_searches(profile: dict | None = None) -> list[dict]:
     """
     Load configured MyGreenhouse searches.
     """
 
-    if not SEARCHES_PATH.exists():
-        raise FileNotFoundError(
-            f"Search configuration not found: "
-            f"{SEARCHES_PATH}"
-        )
-
-    with SEARCHES_PATH.open(
-        "r",
-        encoding="utf-8",
-    ) as file:
-
-        data = json.load(file)
-
-    searches = data.get(
-        "searches",
-        [],
-    )
-
-    if not isinstance(
-        searches,
-        list,
-    ):
-        raise TypeError(
-            "'searches' must be a list."
-        )
-
-    return searches
+    if profile is None:
+        raise ValueError("A profile is required to create job searches")
+    return profile_searches(profile)
 
 
 def build_search_url(search: dict) -> str:
@@ -287,6 +263,7 @@ def fetch_single_search(
     context,
     search_url: str,
     search_name: str,
+    user_id: str = "local-user",
 ) -> list[dict] | None:
 
     captured_responses = []
@@ -351,9 +328,9 @@ def fetch_single_search(
 
         # Give the React application time to load
         # and request the search data.
-        page.wait_for_timeout(
-            8000
-        )
+        # Search responses are captured by the listener above; avoid an
+        # unconditional eight-second sleep for every profile-derived query.
+        page.wait_for_timeout(2500)
 
         raw_jobs = (
             extract_job_posts_from_responses(
@@ -417,7 +394,8 @@ def fetch_single_search(
         for job in normalized_jobs:
 
             if job_already_exists(
-                job
+                job,
+                user_id,
             ):
 
                 existing_jobs.append(
@@ -459,7 +437,7 @@ def fetch_single_search(
                 job,
             )
 
-            save_job(job)
+            save_job(job, user_id)
 
             jobs.append(
                 job
@@ -476,6 +454,7 @@ def fetch_single_search(
 
 def fetch_jobs(
     searches: list[dict],
+    user_id: str = "local-user",
 ) -> list[dict]:
 
     """
@@ -485,7 +464,7 @@ def fetch_jobs(
 
     all_new_jobs = []
 
-    with JobStore(load_config().resolved_database_url) as store:
+    with JobStore(load_config().resolved_database_url, user_id=user_id) as store:
         store.import_legacy_jobs(JOBS_PATH)
 
     with sync_playwright() as playwright:
@@ -530,6 +509,7 @@ def fetch_jobs(
                 context,
                 search_url,
                 search_name,
+                user_id,
             )
 
             if new_jobs is None:
@@ -608,7 +588,11 @@ def main():
 
         return
 
-    searches = load_searches()
+    config = load_config()
+    if not config.profile_path.exists():
+        raise SystemExit("Create a career profile before searching for jobs.")
+    profile = json.loads(config.profile_path.read_text(encoding="utf-8"))
+    searches = load_searches(profile)
 
     print(
         f"Loaded {len(searches)} "

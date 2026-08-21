@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import {
   getBackgroundJob,
   getProfile,
+  runScan,
   runMatching,
   uploadResume,
   type BackgroundJob,
@@ -58,6 +59,13 @@ export function ProfileSetupPage() {
           );
           return;
         }
+        if (job.status === "completed" && job.kind === "scan") {
+          const result = job.result as { new_jobs?: number } | null;
+          setMessage(
+            `Scan complete: ${result?.new_jobs ?? 0} new jobs discovered. Run matching when ready.`,
+          );
+          return;
+        }
         if (job.status === "failed") {
           setError(job.error ?? "The background job failed");
           return;
@@ -101,6 +109,20 @@ export function ProfileSetupPage() {
       );
     } catch (reason: unknown) {
       setError(reason instanceof Error ? reason.message : "Unable to run matching");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleScan() {
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      setActiveJob(await runScan());
+      setMessage("Scan started. FoxPilot is searching for roles derived from your profile.");
+    } catch (reason: unknown) {
+      setError(reason instanceof Error ? reason.message : "Unable to scan for jobs");
     } finally {
       setBusy(false);
     }
@@ -165,6 +187,9 @@ export function ProfileSetupPage() {
                 View your matches
               </Link>
             )}
+            <Button disabled={processing} onClick={() => void handleScan()}>
+              Scan profile-specific jobs
+            </Button>
             <Button disabled={processing} onClick={() => void handleMatching()}>
               Run matching
             </Button>
@@ -188,7 +213,9 @@ function AsyncStatus({ job }: { job: BackgroundJob | null }) {
       ? `Comparing roles against your profile... ${progress.processed ?? 0}/${progress.total}`
       : job.kind === "profile_generation"
         ? "Reading your experience and skills..."
-        : "Comparing roles against your profile...";
+        : job.kind === "scan"
+          ? "Searching sources for profile-specific roles..."
+          : "Comparing roles against your profile...";
   return (
     <div className="async-status">
       <span className="loading-spinner" aria-hidden="true" />

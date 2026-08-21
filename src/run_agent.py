@@ -2,6 +2,7 @@ import subprocess
 import sys
 
 from career_agent.config import load_config
+from career_agent.profile import has_current_local_profile
 from career_agent.runtime import ScanAlreadyRunning, ScanLock
 from career_agent.storage import JobStore
 
@@ -62,20 +63,8 @@ def _run_pipeline():
         "=" * 70
     )
 
-    # --------------------------------------------------
-    # STEP 1 — FETCH JOBS
-    # --------------------------------------------------
-
-    run_step(
-        "Job ingestion",
-        [
-            python,
-            "src/fetch_sources.py",
-        ],
-    )
-
     config = load_config()
-    if not config.profile_path.exists():
+    if not has_current_local_profile(config):
         run_step(
             "Career profile creation",
             [
@@ -83,6 +72,18 @@ def _run_pipeline():
                 "src/create_profile.py",
             ],
         )
+
+    # --------------------------------------------------
+    # STEP 1 — PROFILE-DRIVEN JOB INGESTION
+    # --------------------------------------------------
+
+    run_step(
+        "Profile-driven job ingestion",
+        [
+            python,
+            "src/fetch_sources.py",
+        ],
+    )
 
     # --------------------------------------------------
     # STEP 2 — PROFILE-AWARE RELEVANCE FILTER

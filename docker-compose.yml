@@ -19,7 +19,8 @@ services:
     profiles: ["container-llm"]
     image: ollama/ollama:latest
     volumes:
-      - ollama_data:/root/.ollama
+      # Set OLLAMA_DATA_PATH=$HOME/.ollama to reuse the host model cache.
+      - ${OLLAMA_DATA_PATH:-ollama_data}:/root/.ollama
     ports:
       - "11434:11434"
 

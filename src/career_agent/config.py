@@ -31,6 +31,10 @@ class AppConfig:
         return self.data_dir / "career_profile.json"
 
     @property
+    def profile_metadata_path(self) -> Path:
+        return self.data_dir / "career_profile.meta.json"
+
+    @property
     def database_path(self) -> Path:
         legacy_database = self.data_dir / "career_agent.sqlite3"
         if self.data_dir == LEGACY_DATA_DIR and legacy_database.exists():
@@ -74,7 +78,7 @@ def load_config(path: Path | None = None) -> AppConfig:
             "OLLAMA_BASE_URL",
             values.get("ollama_base_url", "http://localhost:11434"),
         ),
-        database_url=os.getenv("DATABASE_URL", values.get("database_url")),
+        database_url=os.getenv("DATABASE_URL") or values.get("database_url") or None,
         target_roles=list(values.get("target_roles", [])),
         locations=list(values.get("locations", [])),
     )

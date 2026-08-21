@@ -46,14 +46,17 @@ The first real scan may open a browser for the configured job source. Ollama mus
 - Out of memory: use a smaller model and set `LLM_MODEL` accordingly.
 - Invalid JSON: the provider requests JSON mode and the application validates the response; retrying with a stronger model may help.
 
-## Optional Hosted Provider
+## OpenAI Provider
 
-OpenAI is not required. If explicitly selected, configure:
+OpenAI is optional. For a no-Docker local setup, configure:
 
 ```env
 LLM_PROVIDER=openai
-LLM_MODEL=<supported-model>
+LLM_MODEL=gpt-4o-mini
 OPENAI_API_KEY=<local-secret>
+DATABASE_URL=
 ```
 
 Hosted providers can incur cost and may receive resume or job data. Use them only with that understanding.
+
+For the complete fresh-machine workflow, including Python bootstrap, profile initialization, SQLite behavior, and troubleshooting, use [Setup](SETUP.md).

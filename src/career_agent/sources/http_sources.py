@@ -14,6 +14,7 @@ from typing import Any
 import httpx
 
 from ..config import load_config
+from ..search import profile_search_queries
 from ..storage import JobStore
 
 DEFAULT_SOURCES_PATH = Path("data/sources.json")
@@ -111,11 +112,14 @@ def _job(
     )
 
 
-def fetch_remoteok(client: PublicSourceClient) -> list[SourceJob]:
+def fetch_remoteok(client: PublicSourceClient, queries: list[str] | None = None) -> list[SourceJob]:
     payload = client.get_json("https://remoteok.com/api")
     jobs: list[SourceJob] = []
     for raw in payload if isinstance(payload, list) else []:
         if not isinstance(raw, dict) or not raw.get("id"):
+            continue
+        searchable = _clean(f"{raw.get('position', '')} {raw.get('description', '')}").casefold()
+        if queries and not any(str(query).casefold() in searchable for query in queries):
             continue
         item = _job(
             "remoteok",
@@ -231,20 +235,20 @@ def _load_source_config() -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def _save_jobs(jobs: list[SourceJob]) -> int:
-    with JobStore(load_config().resolved_database_url) as store:
+def _save_jobs(jobs: list[SourceJob], user_id: str) -> int:
+    with JobStore(load_config().resolved_database_url, user_id=user_id) as store:
         for job in jobs:
             store.upsert_job(job.as_dict())
     return len(jobs)
 
 
-def fetch_configured_sources() -> int:
+def fetch_configured_sources(profile: dict, user_id: str = "local-user") -> int:
     config = _load_source_config()
-    queries = [str(query) for query in config.get("queries", [])]
+    queries = profile_search_queries(profile)
     client = PublicSourceClient()
     total = 0
     adapters = [
-        ("RemoteOK", lambda: fetch_remoteok(client), config.get("remoteok", {}).get("enabled", True)),
+        ("RemoteOK", lambda: fetch_remoteok(client, queries), config.get("remoteok", {}).get("enabled", True)),
         ("Remotive", lambda: fetch_remotive(client, queries), config.get("remotive", {}).get("enabled", True)),
         ("Lever", lambda: fetch_lever(client, config.get("lever", {}).get("boards", [])), bool(config.get("lever", {}).get("boards"))),
         ("Hacker News", lambda: fetch_hacker_news(client, queries, int(config.get("hacker_news", {}).get("comment_limit", 500))), config.get("hacker_news", {}).get("enabled", True)),
@@ -256,7 +260,7 @@ def fetch_configured_sources() -> int:
                 continue
             try:
                 jobs = fetch()
-                saved = _save_jobs(jobs)
+                saved = _save_jobs(jobs, user_id)
                 total += saved
                 print(f"[SOURCE] {name}: fetched {len(jobs)}, upserted {saved}")
             except Exception as error:  # noqa: BLE001 - isolate every external source
