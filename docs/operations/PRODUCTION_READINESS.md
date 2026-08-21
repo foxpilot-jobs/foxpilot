@@ -81,6 +81,10 @@ Complete these steps before requesting a deployment:
 6. Store the key only in AWS Secrets Manager.
 7. Never put the key in `.env`, CI logs, source code, or issue comments.
 
+### Transactional email
+
+Use Resend for staging and production. Follow [Transactional email](EMAIL.md) to verify `foxpilot.in`, add the GoDaddy SPF/DKIM/DMARC records, create a restricted key, and configure SMTP secrets. Gmail is only a local-development fallback.
+
 ### Google OAuth
 
 1. Create a Google OAuth web client for production.

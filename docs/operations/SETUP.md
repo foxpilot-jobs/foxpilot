@@ -141,3 +141,4 @@ ls -l "/absolute/path/to/resume.pdf"
 - `docs/operations/RUN_MODES.md`: local CLI, Docker web, source, and containerized Ollama layouts.
 - `docs/operations/DEPLOYMENT.md`: deployment and environment operations.
 - `docs/operations/SECURITY_AND_PRIVACY.md`: data handling and production security.
+- `docs/operations/EMAIL.md`: Resend, Gmail fallback, DNS, and transactional email setup.
