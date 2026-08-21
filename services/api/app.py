@@ -122,8 +122,9 @@ def _google_failure(message: str) -> RedirectResponse:
 def create_app() -> FastAPI:
     @asynccontextmanager
     async def lifespan(application: FastAPI):
-        with JobStore(application.state.service.config.resolved_database_url) as store:
-            store.recover_interrupted_background_jobs()
+        if os.getenv("FOXPILOT_WORKER_MODE", "inline").lower() != "external":
+            with JobStore(application.state.service.config.resolved_database_url) as store:
+                store.recover_interrupted_background_jobs()
         yield
 
     app = FastAPI(
@@ -174,6 +175,9 @@ def create_app() -> FastAPI:
                 detail="Too many requests. Please try again shortly.",
                 headers={"Retry-After": "60"},
             )
+
+    def run_in_process() -> bool:
+        return os.getenv("FOXPILOT_WORKER_MODE", "inline").lower() != "external"
 
     @app.get("/api/v1/health")
     def health() -> dict[str, str]:
@@ -436,7 +440,8 @@ def create_app() -> FastAPI:
             if not resume_text.strip():
                 raise ValueError("The uploaded PDF did not contain readable text")
             job_id = career_service.queue_profile_generation(resume_text, filename)
-            background_tasks.add_task(career_service.run_profile_generation, job_id)
+            if run_in_process():
+                background_tasks.add_task(career_service.run_profile_generation, job_id)
         except (PdfReadError, ValueError) as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
         except LLMError as error:
@@ -469,7 +474,8 @@ def create_app() -> FastAPI:
         enforce_rate_limit(request, "profile-matching", 5)
         try:
             job_id = career_service.queue_matching()
-            background_tasks.add_task(career_service.run_matching_job, job_id)
+            if run_in_process():
+                background_tasks.add_task(career_service.run_matching_job, job_id)
             return {"job_id": job_id, "kind": "matching", "status": "queued"}
         except ValueError as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
@@ -483,7 +489,8 @@ def create_app() -> FastAPI:
         enforce_rate_limit(request, "job-scan", 3)
         try:
             job_id = career_service.queue_scan()
-            background_tasks.add_task(career_service.run_scan_job, job_id)
+            if run_in_process():
+                background_tasks.add_task(career_service.run_scan_job, job_id)
             return {"job_id": job_id, "kind": "scan", "status": "queued"}
         except ValueError as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
