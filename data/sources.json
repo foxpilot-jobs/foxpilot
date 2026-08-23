@@ -8,8 +8,26 @@
   "lever": {
     "boards": []
   },
+  "greenhouse": {
+    "boards": []
+  },
+  "ashby": {
+    "boards": []
+  },
+  "workable": {
+    "boards": []
+  },
+  "smartrecruiters": {
+    "boards": []
+  },
   "hacker_news": {
     "enabled": true,
     "comment_limit": 500
+  },
+  "arbeitnow": {
+    "enabled": true
+  },
+  "jobicy": {
+    "enabled": true
   }
 }

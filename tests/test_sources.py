@@ -1,8 +1,14 @@
 from career_agent.sources.http_sources import (
+    fetch_arbeitnow,
+    fetch_ashby,
+    fetch_greenhouse,
     fetch_hacker_news,
+    fetch_jobicy,
     fetch_lever,
     fetch_remoteok,
     fetch_remotive,
+    fetch_smartrecruiters,
+    fetch_workable,
 )
 
 
@@ -87,6 +93,110 @@ def test_lever_uses_configured_board_slug() -> None:
 
     assert jobs[0].company == "Example Co"
     assert jobs[0].work_type == "Full-time"
+
+
+def test_greenhouse_uses_public_board_api() -> None:
+    client = FakeClient(
+        {
+            ("https://boards-api.greenhouse.io/v1/boards/example/jobs", (("content", "true"),)): {
+                "jobs": [
+                    {
+                        "id": 1,
+                        "title": "Backend Engineer",
+                        "location": {"name": "Remote"},
+                        "absolute_url": "https://boards.greenhouse.io/example/jobs/1",
+                        "content": "<p>Build APIs</p>",
+                    }
+                ]
+            }
+        }
+    )
+
+    jobs = fetch_greenhouse(client, [{"slug": "example", "company": "Example Co"}])
+
+    assert jobs[0].source == "greenhouse"
+    assert jobs[0].description == "Build APIs"
+
+
+def test_ashby_uses_public_job_board_api() -> None:
+    client = FakeClient(
+        {
+            "https://api.ashbyhq.com/posting-api/job-board/example": {
+                "jobs": [
+                    {
+                        "id": "ashby-1",
+                        "title": "Data Scientist",
+                        "location": "Remote",
+                        "jobUrl": "https://jobs.ashbyhq.com/example/ashby-1",
+                        "descriptionHtml": "<p>Analyze data</p>",
+                    }
+                ]
+            }
+        }
+    )
+
+    jobs = fetch_ashby(client, [{"slug": "example", "company": "Example Co"}])
+
+    assert jobs[0].source_job_id == "ashby-1"
+    assert jobs[0].description == "Analyze data"
+
+
+def test_workable_uses_public_account_api() -> None:
+    client = FakeClient(
+        {
+            "https://apply.workable.com/api/v3/accounts/example/jobs": {
+                "results": [
+                    {
+                        "shortcode": "workable-1",
+                        "title": "Platform Engineer",
+                        "location": {"city": "Remote"},
+                        "url": "https://apply.workable.com/example/j/workable-1",
+                    }
+                ]
+            }
+        }
+    )
+
+    jobs = fetch_workable(client, [{"slug": "example", "company": "Example Co"}])
+
+    assert jobs[0].source == "workable"
+
+
+def test_smartrecruiters_uses_public_company_api() -> None:
+    client = FakeClient(
+        {
+            ("https://api.smartrecruiters.com/v1/companies/example/postings", (("limit", 100),)): {
+                "content": [
+                    {
+                        "id": "smart-1",
+                        "name": "ML Engineer",
+                        "location": {"city": "Bengaluru", "country": "India"},
+                        "refNumber": "smart-1",
+                    }
+                ]
+            }
+        }
+    )
+
+    jobs = fetch_smartrecruiters(client, [{"slug": "example", "company": "Example Co"}])
+
+    assert jobs[0].location == "Bengaluru, India"
+
+
+def test_public_remote_aggregators_filter_queries() -> None:
+    client = FakeClient(
+        {
+            "https://www.arbeitnow.com/api/job-board-api": {
+                "data": [{"slug": "a1", "title": "Data Engineer", "description": "SQL"}]
+            },
+            ("https://jobicy.com/api/v2/remote-jobs", (("count", 50),)): {
+                "jobs": [{"id": "j1", "jobTitle": "Data Engineer", "jobDescription": "Python"}]
+            },
+        }
+    )
+
+    assert len(fetch_arbeitnow(client, ["data engineer"])) == 1
+    assert len(fetch_jobicy(client, ["data engineer"])) == 1
 
 
 def test_hacker_news_normalizes_matching_comments() -> None:
