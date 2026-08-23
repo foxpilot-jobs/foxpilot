@@ -407,9 +407,9 @@ def _save_jobs(jobs: list[SourceJob], user_id: str) -> int:
     return len(jobs)
 
 
-def fetch_configured_sources(profile: dict, user_id: str = "local-user") -> int:
+def fetch_configured_sources(profile: dict | None = None, user_id: str = "local-user") -> int:
     config = _load_source_config()
-    queries = profile_search_queries(profile)
+    queries = profile_search_queries(profile) if profile else []
     client = PublicSourceClient()
     total = 0
     adapters = [

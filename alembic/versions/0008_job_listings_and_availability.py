@@ -4,7 +4,7 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision = "0008_job_listings_and_availability"
+revision = "0008_job_sources"
 down_revision = "0007_google_identity"
 branch_labels = None
 depends_on = None

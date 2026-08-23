@@ -148,7 +148,7 @@ npm run dev
 
 The web stack requires Node 22.18 or newer; Node 24.19 is the validated runtime. The repository includes `.nvmrc` with the recommended major version.
 
-For the exact process layout, see [Run Modes](docs/operations/RUN_MODES.md). For deployment details, see [Deployment](docs/operations/DEPLOYMENT.md).
+For the exact process layout, see [Run Modes](docs/operations/RUN_MODES.md). For deployment details, see [Deployment](docs/operations/DEPLOYMENT.md) and the [local ingestion runbook](docs/operations/LOCAL_INGESTION.md).
 
 After starting Docker and host Ollama, run the integrated scan wrapper:
 

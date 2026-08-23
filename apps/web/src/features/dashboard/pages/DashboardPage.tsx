@@ -28,6 +28,7 @@ export function DashboardPage() {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [includeInactive, setIncludeInactive] = useState(false);
+  const [view, setView] = useState<"matches" | "all">("matches");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [updatingJob, setUpdatingJob] = useState<string | null>(null);
@@ -65,7 +66,7 @@ export function DashboardPage() {
       .filter((job) => {
         const jobId = job.job_id ?? "";
         const match = matchByJob.get(jobId);
-        if (profile && !match) return false;
+        if (profile && view === "matches" && !match) return false;
         const application = applications[job.job_id ?? ""];
         const matchesStatus = statusFilter === "all" || application?.status === statusFilter;
         const matchesQuery =
@@ -80,7 +81,7 @@ export function DashboardPage() {
         const rightScore = matchByJob.get(right.job_id ?? "")?.match_score ?? -1;
         return rightScore - leftScore;
       });
-  }, [applications, jobs, matchByJob, profile, query, statusFilter]);
+  }, [applications, jobs, matchByJob, profile, query, statusFilter, view]);
 
   const matchedJobs = useMemo(
     () => jobs.filter((job) => matchByJob.has(job.job_id ?? "")),
@@ -183,10 +184,35 @@ export function DashboardPage() {
         <>
           <MetricsSummary applied={appliedCount} matches={matchedJobs.length} saved={savedCount} />
 
+          <div className="dashboard-views" role="tablist" aria-label="Job views">
+            {profile && (
+              <button
+                className={view === "matches" ? "view-tab active" : "view-tab"}
+                role="tab"
+                type="button"
+                aria-selected={view === "matches"}
+                onClick={() => setView("matches")}
+              >
+                Personalized matches
+              </button>
+            )}
+            <button
+              className={view === "all" || !profile ? "view-tab active" : "view-tab"}
+              role="tab"
+              type="button"
+              aria-selected={view === "all" || !profile}
+              onClick={() => setView("all")}
+            >
+              All active jobs
+            </button>
+          </div>
+
           <section className="section-heading">
             <div>
-              <p className="eyebrow">SHORTLIST</p>
-              <h2>Worth a closer look</h2>
+              <p className="eyebrow">
+                {view === "all" || !profile ? "JOB CORPUS" : "PERSONALIZED"}
+              </p>
+              <h2>{view === "all" || !profile ? "All active roles" : "Worth a closer look"}</h2>
             </div>
             <span className="count-pill">{filteredJobs.length} showing</span>
           </section>
