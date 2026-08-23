@@ -13,6 +13,7 @@ from pathlib import Path
 
 from .config import DEFAULT_DATA_DIR, LEGACY_DATA_DIR, load_config
 from .sources import refresh_listing_availability
+from .sources.http_sources import fetch_configured_sources
 from .storage import JobStore
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
@@ -71,6 +72,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     availability_parser.add_argument("--limit", type=int, default=100)
     availability_parser.add_argument("--stale-after-hours", type=int, default=24)
+
+    subparsers.add_parser(
+        "ingest",
+        help="Fetch all configured public jobs into the shared database.",
+    )
 
     return parser
 
@@ -170,6 +176,10 @@ def main() -> int:
     if args.command == "check-availability":
         result = refresh_listing_availability(args.limit, args.stale_after_hours)
         print(json.dumps(result, sort_keys=True))
+        return 0
+    if args.command == "ingest":
+        total = fetch_configured_sources(profile=None, user_id="public-ingestion")
+        print(f"Ingested {total} job listing(s).")
         return 0
     return 1
 
