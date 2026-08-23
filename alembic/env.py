@@ -4,6 +4,7 @@ from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 
 from alembic import context
+from career_agent.config import normalize_database_url
 from career_agent.storage.database import metadata
 
 config = context.config
@@ -17,7 +18,7 @@ def database_url() -> str:
     value = os.getenv("DATABASE_URL")
     if not value:
         raise RuntimeError("DATABASE_URL must be set when running Alembic migrations.")
-    return value
+    return normalize_database_url(value)
 
 
 def run_migrations_offline() -> None:

@@ -15,6 +15,13 @@ LEGACY_DATA_DIR = Path.home() / ".career-agent"
 DEFAULT_CONFIG_PATH = DEFAULT_DATA_DIR / "config.json"
 
 
+def normalize_database_url(url: str | None) -> str | None:
+    """Use the installed Psycopg 3 driver for generic PostgreSQL URLs."""
+    if url and url.startswith("postgresql://"):
+        return url.replace("postgresql://", "postgresql+psycopg://", 1)
+    return url
+
+
 @dataclass
 class AppConfig:
     data_dir: Path = DEFAULT_DATA_DIR
@@ -78,7 +85,7 @@ def load_config(path: Path | None = None) -> AppConfig:
             "OLLAMA_BASE_URL",
             values.get("ollama_base_url", "http://localhost:11434"),
         ),
-        database_url=os.getenv("DATABASE_URL") or values.get("database_url") or None,
+        database_url=normalize_database_url(os.getenv("DATABASE_URL") or values.get("database_url")),
         target_roles=list(values.get("target_roles", [])),
         locations=list(values.get("locations", [])),
     )
