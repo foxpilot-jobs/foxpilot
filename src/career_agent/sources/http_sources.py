@@ -83,6 +83,10 @@ def _clean(value: Any) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+def _clean_html(value: Any) -> str:
+    return _clean(re.sub(r"<[^>]+>", " ", html.unescape(str(value or ""))))
+
+
 def _job(
     source: str,
     source_job_id: Any,
@@ -190,6 +194,167 @@ def fetch_lever(client: PublicSourceClient, boards: list[dict[str, Any]]) -> lis
     return jobs
 
 
+def fetch_greenhouse(client: PublicSourceClient, boards: list[dict[str, Any]]) -> list[SourceJob]:
+    jobs: list[SourceJob] = []
+    for board in boards:
+        slug = str(board.get("slug", "")).strip()
+        if not slug:
+            continue
+        payload = client.get_json(f"https://boards-api.greenhouse.io/v1/boards/{slug}/jobs", {"content": "true"})
+        for raw in payload.get("jobs", []) if isinstance(payload, dict) else []:
+            location = raw.get("location") or {}
+            item = _job(
+                "greenhouse",
+                raw.get("id") or raw.get("internal_job_id"),
+                raw.get("title"),
+                board.get("company") or slug,
+                location.get("name") if isinstance(location, dict) else location,
+                raw.get("absolute_url"),
+                _clean_html(raw.get("content")),
+                raw.get("updated_at"),
+                None,
+                raw,
+            )
+            if item:
+                jobs.append(item)
+    return jobs
+
+
+def fetch_ashby(client: PublicSourceClient, boards: list[dict[str, Any]]) -> list[SourceJob]:
+    jobs: list[SourceJob] = []
+    for board in boards:
+        slug = str(board.get("slug", "")).strip()
+        if not slug:
+            continue
+        payload = client.get_json(f"https://api.ashbyhq.com/posting-api/job-board/{slug}")
+        for raw in payload.get("jobs", []) if isinstance(payload, dict) else []:
+            item = _job(
+                "ashby",
+                raw.get("id") or raw.get("jobUrl"),
+                raw.get("title"),
+                board.get("company") or raw.get("teamName") or slug,
+                raw.get("location") or ("Remote" if raw.get("isRemote") else ""),
+                raw.get("jobUrl"),
+                _clean_html(raw.get("descriptionHtml") or raw.get("descriptionPlain")),
+                raw.get("publishedAt"),
+                raw.get("employmentType"),
+                raw,
+            )
+            if item:
+                jobs.append(item)
+    return jobs
+
+
+def fetch_workable(client: PublicSourceClient, boards: list[dict[str, Any]]) -> list[SourceJob]:
+    jobs: list[SourceJob] = []
+    for board in boards:
+        slug = str(board.get("slug", "")).strip()
+        if not slug:
+            continue
+        payload = client.get_json(f"https://apply.workable.com/api/v3/accounts/{slug}/jobs")
+        raw_jobs = payload.get("results", payload.get("jobs", [])) if isinstance(payload, dict) else []
+        for raw in raw_jobs if isinstance(raw_jobs, list) else []:
+            location = raw.get("location") or raw.get("locations") or ""
+            if isinstance(location, list):
+                location = ", ".join(_clean(item.get("city") or item.get("name")) for item in location if isinstance(item, dict))
+            item = _job(
+                "workable",
+                raw.get("shortcode") or raw.get("id"),
+                raw.get("title"),
+                board.get("company") or raw.get("company") or slug,
+                location,
+                raw.get("url") or raw.get("shortlink") or f"https://apply.workable.com/{slug}/j/{raw.get('shortcode')}",
+                _clean_html(raw.get("description") or raw.get("descriptionHtml")),
+                raw.get("published") or raw.get("created_at"),
+                raw.get("employment_type"),
+                raw,
+            )
+            if item:
+                jobs.append(item)
+    return jobs
+
+
+def fetch_smartrecruiters(client: PublicSourceClient, boards: list[dict[str, Any]]) -> list[SourceJob]:
+    jobs: list[SourceJob] = []
+    for board in boards:
+        slug = str(board.get("slug", "")).strip()
+        if not slug:
+            continue
+        payload = client.get_json(f"https://api.smartrecruiters.com/v1/companies/{slug}/postings", {"limit": 100})
+        for raw in payload.get("content", []) if isinstance(payload, dict) else []:
+            location = raw.get("location") or {}
+            if isinstance(location, dict):
+                location = ", ".join(
+                    _clean(location.get(key)) for key in ("city", "region", "country") if _clean(location.get(key))
+                )
+            job_id = raw.get("id") or raw.get("refNumber")
+            item = _job(
+                "smartrecruiters",
+                job_id,
+                raw.get("name"),
+                board.get("company") or slug,
+                location,
+                raw.get("refNumber") and f"https://jobs.smartrecruiters.com/{slug}/{raw['refNumber']}",
+                _clean_html(raw.get("jobAd", {}).get("sections", {}).get("jobDescription", {}).get("text"))
+                if isinstance(raw.get("jobAd"), dict)
+                else "",
+                raw.get("releasedDate"),
+                raw.get("typeOfEmployment"),
+                raw,
+            )
+            if item:
+                jobs.append(item)
+    return jobs
+
+
+def fetch_arbeitnow(client: PublicSourceClient, queries: list[str]) -> list[SourceJob]:
+    payload = client.get_json("https://www.arbeitnow.com/api/job-board-api")
+    jobs: list[SourceJob] = []
+    for raw in payload.get("data", []) if isinstance(payload, dict) else []:
+        searchable = _clean(f"{raw.get('title', '')} {raw.get('description', '')}").casefold()
+        if queries and not any(str(query).casefold() in searchable for query in queries):
+            continue
+        item = _job(
+            "arbeitnow",
+            raw.get("slug") or raw.get("id"),
+            raw.get("title"),
+            raw.get("company_name"),
+            raw.get("location"),
+            raw.get("url"),
+            _clean_html(raw.get("description")),
+            raw.get("created_at"),
+            "remote" if raw.get("remote") else None,
+            raw,
+        )
+        if item:
+            jobs.append(item)
+    return jobs
+
+
+def fetch_jobicy(client: PublicSourceClient, queries: list[str]) -> list[SourceJob]:
+    payload = client.get_json("https://jobicy.com/api/v2/remote-jobs", {"count": 50})
+    jobs: list[SourceJob] = []
+    for raw in payload.get("jobs", []) if isinstance(payload, dict) else []:
+        searchable = _clean(f"{raw.get('jobTitle', '')} {raw.get('jobDescription', '')}").casefold()
+        if queries and not any(str(query).casefold() in searchable for query in queries):
+            continue
+        item = _job(
+            "jobicy",
+            raw.get("id") or raw.get("url"),
+            raw.get("jobTitle"),
+            raw.get("companyName"),
+            raw.get("jobGeo") or "Remote",
+            raw.get("url"),
+            _clean_html(raw.get("jobDescription")),
+            raw.get("pubDate"),
+            raw.get("jobType"),
+            raw,
+        )
+        if item:
+            jobs.append(item)
+    return jobs
+
+
 def _hn_title(text: str) -> str:
     return (_clean(text).split(" | ")[0].split("\n")[0] or "Hacker News hiring opportunity")[:160]
 
@@ -251,7 +416,13 @@ def fetch_configured_sources(profile: dict, user_id: str = "local-user") -> int:
         ("RemoteOK", lambda: fetch_remoteok(client, queries), config.get("remoteok", {}).get("enabled", True)),
         ("Remotive", lambda: fetch_remotive(client, queries), config.get("remotive", {}).get("enabled", True)),
         ("Lever", lambda: fetch_lever(client, config.get("lever", {}).get("boards", [])), bool(config.get("lever", {}).get("boards"))),
+        ("Greenhouse", lambda: fetch_greenhouse(client, config.get("greenhouse", {}).get("boards", [])), bool(config.get("greenhouse", {}).get("boards"))),
+        ("Ashby", lambda: fetch_ashby(client, config.get("ashby", {}).get("boards", [])), bool(config.get("ashby", {}).get("boards"))),
+        ("Workable", lambda: fetch_workable(client, config.get("workable", {}).get("boards", [])), bool(config.get("workable", {}).get("boards"))),
+        ("SmartRecruiters", lambda: fetch_smartrecruiters(client, config.get("smartrecruiters", {}).get("boards", [])), bool(config.get("smartrecruiters", {}).get("boards"))),
         ("Hacker News", lambda: fetch_hacker_news(client, queries, int(config.get("hacker_news", {}).get("comment_limit", 500))), config.get("hacker_news", {}).get("enabled", True)),
+        ("Arbeitnow", lambda: fetch_arbeitnow(client, queries), config.get("arbeitnow", {}).get("enabled", True)),
+        ("Jobicy", lambda: fetch_jobicy(client, queries), config.get("jobicy", {}).get("enabled", True)),
     ]
     try:
         for name, fetch, enabled in adapters:

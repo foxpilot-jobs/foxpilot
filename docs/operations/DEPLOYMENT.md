@@ -49,7 +49,9 @@ foxpilot scan
 
 For Google sign-in, configure `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and an exact `GOOGLE_REDIRECT_URI` matching the Google Cloud OAuth client. Never expose the client secret to the frontend.
 
-The scan still runs on the host because it uses the interactive Playwright browser. The API and web app then read the PostgreSQL data.
+The legacy scan still runs on the host because it uses the interactive Playwright browser. The hosted worker uses public HTTP/API source adapters instead; it must not depend on a developer's browser profile or login session.
+
+The hosted source adapters currently support RemoteOK, Remotive, Hacker News, Arbeitnow, Jobicy, and configured public boards from Lever, Greenhouse, Ashby, Workable, and SmartRecruiters. Configure board slugs in `data/sources.json` or through the `FOXPILOT_SOURCES_CONFIG` file. Login-gated sources such as LinkedIn, Indeed, and Glassdoor are intentionally not automated.
 
 ## Hosted Deployment
 
