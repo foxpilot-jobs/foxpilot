@@ -13,6 +13,8 @@ import { Alert } from "../../../shared/components/Alert";
 import { Button } from "../../../shared/components/Button";
 import { LoadingState } from "../../../shared/components/LoadingState";
 
+const JOB_POLL_DELAYS_MS = [3000, 6000, 12000, 24000, 30000, 30000, 30000, 30000, 30000];
+
 export function ProfileSetupPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -35,6 +37,8 @@ export function ProfileSetupPage() {
     if (!jobId) return;
     let stopped = false;
     let timer: number | undefined;
+    let pollCount = 0;
+    const startedAt = Date.now();
     const poll = async () => {
       try {
         const job = await getBackgroundJob(jobId);
@@ -70,7 +74,14 @@ export function ProfileSetupPage() {
           setError(job.error ?? "The background job failed");
           return;
         }
-        timer = window.setTimeout(() => void poll(), job.kind === "matching" ? 5000 : 3000);
+        const delay = JOB_POLL_DELAYS_MS[pollCount] ?? JOB_POLL_DELAYS_MS.at(-1)!;
+        pollCount += 1;
+        if (Date.now() - startedAt + delay > 5 * 60 * 1000) {
+          setActiveJob(null);
+          setError("Processing is taking longer than expected. Please try again shortly.");
+          return;
+        }
+        timer = window.setTimeout(() => void poll(), delay);
       } catch (reason: unknown) {
         if (!stopped)
           setError(reason instanceof Error ? reason.message : "Unable to check job status");
