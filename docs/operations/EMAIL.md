@@ -1,19 +1,19 @@
 # Transactional Email Setup
 
-FoxPilot sends account verification, password-reset, and security messages through SMTP. Resend is the recommended provider for staging and production. Gmail is supported only as a private local-development fallback.
+FoxPilot sends account verification, password-reset, and security messages through Resend’s HTTPS API. SMTP is supported as a local fallback. Gmail is supported only for private local development.
 
 ## Recommendation
 
 Use Resend with the `foxpilot.in` domain:
 
 ```text
-Provider: Resend SMTP
-Host: smtp.resend.com
-Port: 587
-Username: resend
-Password: Resend API key
+Provider: Resend HTTPS API
+Endpoint: https://api.resend.com/emails
+Authentication: RESEND_API_KEY
 Sender: accounts@foxpilot.in
 ```
+
+For Railway and other hosted deployments, use the Resend HTTPS API. It avoids SMTP egress restrictions and uses standard HTTPS port 443. SMTP remains available as a local fallback.
 
 Resend currently offers a free transactional tier with a monthly allowance and a daily cap. Confirm current limits in the Resend account before relying on them. OpenAI usage, Railway usage, and email usage are separate billing concerns.
 
@@ -26,13 +26,14 @@ Resend currently offers a free transactional tier with a monthly allowance and a
 5. Complete SPF and DKIM verification.
 6. Add a DMARC record after confirming the sender domain works. Start with a monitoring policy appropriate to the domain’s existing email use.
 7. Create a restricted Resend API key for FoxPilot staging.
-8. Store the key as `EMAIL_SMTP_PASSWORD` in Railway or the deployment secret manager.
+8. Store the key as `RESEND_API_KEY` in Railway or the deployment secret manager.
 9. Do not put the key in the repository, frontend variables, Docker image, or chat.
 
 ## Environment Variables
 
 ```env
 EMAIL_FROM=FoxPilot <accounts@foxpilot.in>
+RESEND_API_KEY=<secret>
 EMAIL_SMTP_HOST=smtp.resend.com
 EMAIL_SMTP_PORT=587
 EMAIL_SMTP_USERNAME=resend
@@ -40,7 +41,7 @@ EMAIL_SMTP_PASSWORD=<secret>
 EMAIL_SMTP_TLS=true
 ```
 
-Configure these only on the API service. The worker does not need email credentials unless email delivery is moved into the worker later.
+Configure these only on the API service. For hosted deployments, `RESEND_API_KEY` is preferred and the SMTP variables may be omitted. The worker does not need email credentials unless email delivery is moved into the worker later.
 
 ## Local Test
 
