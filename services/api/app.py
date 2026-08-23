@@ -48,6 +48,7 @@ from .auth import (
     create_session,
     get_user_by_email,
     hash_password,
+    hosted_cookie,
     is_breached_password,
     normalize_email,
     require_api_access,
@@ -287,8 +288,10 @@ def create_app() -> FastAPI:
             f"{state}.{nonce}",
             max_age=GOOGLE_STATE_MAX_AGE,
             httponly=True,
-            secure=os.getenv("FOXPILOT_ENV", "local").lower() == "production",
-            samesite="lax",
+            secure=hosted_cookie(os.getenv("FOXPILOT_ENV", "local").lower() == "production"),
+            samesite="none"
+            if hosted_cookie(os.getenv("FOXPILOT_ENV", "local").lower() == "production")
+            else "lax",
             path="/",
         )
         return redirect
