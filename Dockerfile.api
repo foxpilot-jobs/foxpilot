@@ -21,4 +21,4 @@ RUN for host in ${PIP_TRUSTED_HOSTS}; do TRUSTED_HOST_ARGS="$TRUSTED_HOST_ARGS -
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "alembic upgrade head && uvicorn services.api.app:app --host 0.0.0.0 --port 8000"]
+CMD ["sh", "-c", "alembic upgrade head && uvicorn services.api.app:app --host 0.0.0.0 --port ${PORT:-8000}"]
