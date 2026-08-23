@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import logging
 import os
 import secrets
 from contextlib import asynccontextmanager
@@ -222,11 +223,18 @@ def create_app() -> FastAPI:
             if email_configured():
                 verification_token = create_auth_token(store, user_id, "email_verification")
                 public_url = os.getenv("FOXPILOT_PUBLIC_URL", "http://localhost:8080")
-                send_email(
-                    email,
-                    "Verify your FoxPilot email",
-                    f"Verify your FoxPilot account: {public_url}/verify-email?token={verification_token}",
-                )
+                try:
+                    send_email(
+                        email,
+                        "Verify your FoxPilot email",
+                        f"Verify your FoxPilot account: {public_url}/verify-email?token={verification_token}",
+                    )
+                except Exception as error:
+                    logger.exception("Verification email delivery failed")
+                    raise HTTPException(
+                        status_code=503,
+                        detail="Email delivery is temporarily unavailable. Try again later.",
+                    ) from error
             token = create_session(store, user_id)
         finally:
             store.close()
@@ -559,3 +567,4 @@ def create_app() -> FastAPI:
 
 
 app = create_app()
+logger = logging.getLogger(__name__)
