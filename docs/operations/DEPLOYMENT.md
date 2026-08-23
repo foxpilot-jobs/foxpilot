@@ -53,6 +53,14 @@ The legacy scan still runs on the host because it uses the interactive Playwrigh
 
 The hosted source adapters currently support RemoteOK, Remotive, Hacker News, Arbeitnow, Jobicy, and configured public boards from Lever, Greenhouse, Ashby, Workable, and SmartRecruiters. Configure board slugs in `data/sources.json` or through the `FOXPILOT_SOURCES_CONFIG` file. Login-gated sources such as LinkedIn, Indeed, and Glassdoor are intentionally not automated.
 
+Run the availability checker from a scheduler against the same database to retire stale links without deleting history:
+
+```bash
+DATABASE_URL=postgresql+psycopg://... foxpilot check-availability --limit 100 --stale-after-hours 24
+```
+
+The default API job list contains active canonical jobs only. Pass `include_inactive=true` to inspect closed roles.
+
 ## Hosted Deployment
 
 Hosted deployment is optional and requires explicit decisions about resume privacy, authentication, data retention, model cost, and source access. The expected shape is:

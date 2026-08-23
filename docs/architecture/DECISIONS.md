@@ -34,7 +34,11 @@ The first browser product targets desktop and mobile layouts through one respons
 
 ## Source Adapter Expansion
 
-Job ingestion uses isolated adapters with a shared normalized job contract. Public HTTP sources use their documented public endpoints; authenticated browser access is limited to Greenhouse's saved local session. Adapters are independently rate-limited and failure-isolated so one source outage cannot prevent other sources from contributing jobs. Source-specific configuration is explicit, particularly for Lever board slugs.
+Job ingestion uses isolated adapters with a shared normalized job contract. Public HTTP sources use their documented public endpoints; authenticated browser access runs locally and is not shared with hosted services unless redistribution rights exist. Adapters are independently rate-limited and failure-isolated so one source outage cannot prevent other sources from contributing jobs. Source-specific configuration is explicit, particularly for ATS board slugs.
+
+## Shared Canonical Job Corpus
+
+Public and licensed ingestion builds a shared canonical job corpus. A canonical job may have multiple source listings, which are retained for attribution and fallback links. Cross-source merging is conservative and does not merge same-title roles without strong description evidence. User profiles, match results, applications, and notes remain user-scoped. Listing availability is checked separately and inactive listings are retained but hidden by default. Authenticated local imports are private listings unless explicitly marked public by an authorized ingestion process.
 
 ## India Production Architecture
 

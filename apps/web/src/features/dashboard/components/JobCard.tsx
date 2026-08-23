@@ -19,7 +19,10 @@ export function JobCard({ application, job, match, onStatusChange, updating }: J
   return (
     <article className="job-card">
       <div className="card-topline">
-        <span className="source-label">{job.source ?? "JOB SOURCE"}</span>
+        <span className="source-label">
+          {job.sources?.map((source) => source.source).join(" + ") || job.source || "JOB SOURCE"}
+        </span>
+        {job.is_active === false && <span className="count-pill">Closed</span>}
         {match && <span className={`score score-${scoreTone}`}>{match.match_score}% fit</span>}
       </div>
       <h3>{job.title}</h3>
@@ -61,11 +64,22 @@ export function JobCard({ application, job, match, onStatusChange, updating }: J
         </details>
       )}
       <div className="card-actions">
-        {job.url && (
-          <a href={job.url} target="_blank" rel="noreferrer">
-            View role
-          </a>
-        )}
+        {job.sources && job.sources.length > 0
+          ? job.sources.map((source) => (
+              <a
+                href={source.url}
+                key={`${source.source}-${source.source_job_id}`}
+                rel="noreferrer"
+                target="_blank"
+              >
+                View on {source.source}
+              </a>
+            ))
+          : job.url && (
+              <a href={job.url} target="_blank" rel="noreferrer">
+                View role
+              </a>
+            )}
         <ApplicationStatusSelect
           disabled={updating}
           jobTitle={job.title}

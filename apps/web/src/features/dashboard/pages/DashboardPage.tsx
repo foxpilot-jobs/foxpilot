@@ -27,6 +27,7 @@ export function DashboardPage() {
   const [applications, setApplications] = useState<Record<string, Application>>({});
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [includeInactive, setIncludeInactive] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [updatingJob, setUpdatingJob] = useState<string | null>(null);
@@ -36,7 +37,7 @@ export function DashboardPage() {
       return;
     }
     setLoading(true);
-    Promise.all([getJobs(), getMatches(), getApplications(), getProfile()])
+    Promise.all([getJobs(includeInactive), getMatches(), getApplications(), getProfile()])
       .then(([loadedJobs, loadedMatches, loadedApplications, loadedProfile]) => {
         setJobs(loadedJobs);
         setMatches(loadedMatches);
@@ -51,7 +52,7 @@ export function DashboardPage() {
         setError(reason instanceof Error ? reason.message : "Unable to load your shortlist");
       })
       .finally(() => setLoading(false));
-  }, [user]);
+  }, [includeInactive, user]);
 
   const matchByJob = useMemo(
     () => new Map(matches.map((item) => [item.job_id, item.match])),
@@ -64,7 +65,7 @@ export function DashboardPage() {
       .filter((job) => {
         const jobId = job.job_id ?? "";
         const match = matchByJob.get(jobId);
-        if (!match) return false;
+        if (profile && !match) return false;
         const application = applications[job.job_id ?? ""];
         const matchesStatus = statusFilter === "all" || application?.status === statusFilter;
         const matchesQuery =
@@ -79,7 +80,7 @@ export function DashboardPage() {
         const rightScore = matchByJob.get(right.job_id ?? "")?.match_score ?? -1;
         return rightScore - leftScore;
       });
-  }, [applications, jobs, matchByJob, query, statusFilter]);
+  }, [applications, jobs, matchByJob, profile, query, statusFilter]);
 
   const matchedJobs = useMemo(
     () => jobs.filter((job) => matchByJob.has(job.job_id ?? "")),
@@ -196,6 +197,14 @@ export function DashboardPage() {
             onQueryChange={setQuery}
             onStatusChange={setStatusFilter}
           />
+          <label className="closed-jobs-toggle">
+            <input
+              checked={includeInactive}
+              type="checkbox"
+              onChange={(event) => setIncludeInactive(event.target.checked)}
+            />
+            Include closed roles
+          </label>
 
           <section className="job-grid">
             {filteredJobs.map((job) => {

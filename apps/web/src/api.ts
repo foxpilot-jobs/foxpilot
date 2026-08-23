@@ -7,6 +7,16 @@ export type Job = {
   url?: string;
   description?: string;
   local_relevance?: "TARGET" | "REVIEW" | "EXCLUDE" | null;
+  is_active?: boolean;
+  last_seen_at?: string | null;
+  sources?: Array<{
+    source: string;
+    source_job_id: string;
+    url: string;
+    availability_status: "active" | "inactive" | "unknown";
+    last_seen_at: string;
+    last_checked_at: string | null;
+  }>;
 };
 
 export type Match = {
@@ -187,8 +197,9 @@ async function request<T>(path: string): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export function getJobs(): Promise<Job[]> {
-  return request<Job[]>("/api/v1/jobs");
+export function getJobs(includeInactive = false): Promise<Job[]> {
+  const query = includeInactive ? "?include_inactive=true" : "";
+  return request<Job[]>(`/api/v1/jobs${query}`);
 }
 
 export function getMatches(): Promise<Match[]> {
