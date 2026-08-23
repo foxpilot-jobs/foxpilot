@@ -12,6 +12,7 @@ import sys
 from pathlib import Path
 
 from .config import DEFAULT_DATA_DIR, LEGACY_DATA_DIR, load_config
+from .sources import refresh_listing_availability
 from .storage import JobStore
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
@@ -63,6 +64,13 @@ def build_parser() -> argparse.ArgumentParser:
         "migrate",
         help="Import legacy JSON jobs into the local SQLite database.",
     )
+
+    availability_parser = subparsers.add_parser(
+        "check-availability",
+        help="Check stale job links and mark unavailable listings inactive.",
+    )
+    availability_parser.add_argument("--limit", type=int, default=100)
+    availability_parser.add_argument("--stale-after-hours", type=int, default=24)
 
     return parser
 
@@ -159,6 +167,10 @@ def main() -> int:
         return scan_project(args)
     if args.command == "migrate":
         return migrate_project()
+    if args.command == "check-availability":
+        result = refresh_listing_availability(args.limit, args.stale_after_hours)
+        print(json.dumps(result, sort_keys=True))
+        return 0
     return 1
 
 

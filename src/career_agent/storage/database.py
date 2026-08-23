@@ -2,16 +2,20 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
+import re
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Self
+from uuid import uuid4
 
 from sqlalchemy import (
     JSON,
     Boolean,
     Column,
     DateTime,
+    Integer,
     MetaData,
     String,
     Table,
@@ -19,6 +23,7 @@ from sqlalchemy import (
     UniqueConstraint,
     create_engine,
     delete,
+    exists,
     or_,
     select,
     update,
@@ -104,9 +109,34 @@ jobs_table = Table(
     Column("work_type", String),
     Column("payload_json", JSON, nullable=False),
     Column("local_relevance", String),
+    Column("is_active", Boolean, nullable=False, default=True),
+    Column("last_seen_at", DateTime(timezone=True)),
+    Column("inactive_at", DateTime(timezone=True)),
+    Column("canonical_key", String),
     Column("created_at", DateTime(timezone=True), nullable=False),
     Column("updated_at", DateTime(timezone=True), nullable=False),
     UniqueConstraint("source", "source_job_id"),
+)
+
+job_listings_table = Table(
+    "job_listings",
+    metadata,
+    Column("listing_id", String, primary_key=True),
+    Column("listing_key", String, nullable=False, unique=True),
+    Column("job_id", String, nullable=False),
+    Column("source", String, nullable=False),
+    Column("source_job_id", String, nullable=False),
+    Column("url", String, nullable=False, default=""),
+    Column("payload_json", JSON, nullable=False),
+    Column("availability_status", String, nullable=False, default="active"),
+    Column("first_seen_at", DateTime(timezone=True), nullable=False),
+    Column("last_seen_at", DateTime(timezone=True), nullable=False),
+    Column("last_checked_at", DateTime(timezone=True)),
+    Column("unavailable_since", DateTime(timezone=True)),
+    Column("check_failures", Integer, nullable=False, default=0),
+    Column("status_reason", String),
+    Column("visibility", String, nullable=False, default="public"),
+    Column("owner_user_id", String),
 )
 
 matches_table = Table(
@@ -136,6 +166,27 @@ applications_table = Table(
 
 def utc_now() -> datetime:
     return datetime.now(UTC)
+
+
+def _normalise_job_text(value: object) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", str(value or "").lower()).strip()
+
+
+def _job_canonical_key(job: dict) -> str:
+    parts = (
+        _normalise_job_text(job.get("company")),
+        _normalise_job_text(job.get("title")),
+        _normalise_job_text(job.get("location")),
+    )
+    return hashlib.sha256("|".join(parts).encode("utf-8")).hexdigest()
+
+
+def _description_similarity(left: object, right: object) -> float:
+    left_words = set(re.findall(r"[a-z0-9]+", str(left or "").lower()))
+    right_words = set(re.findall(r"[a-z0-9]+", str(right or "").lower()))
+    if not left_words or not right_words:
+        return 0.0
+    return len(left_words & right_words) / len(left_words | right_words)
 
 
 class JobStore:
@@ -179,6 +230,18 @@ class JobStore:
                     connection.exec_driver_sql("ALTER TABLE users ADD COLUMN auth_provider VARCHAR")
                 if "auth_subject" not in columns:
                     connection.exec_driver_sql("ALTER TABLE users ADD COLUMN auth_subject VARCHAR")
+                job_columns = {
+                    row[1]
+                    for row in connection.exec_driver_sql("PRAGMA table_info(jobs)").fetchall()
+                }
+                if "is_active" not in job_columns:
+                    connection.exec_driver_sql("ALTER TABLE jobs ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT 1")
+                if "last_seen_at" not in job_columns:
+                    connection.exec_driver_sql("ALTER TABLE jobs ADD COLUMN last_seen_at DATETIME")
+                if "inactive_at" not in job_columns:
+                    connection.exec_driver_sql("ALTER TABLE jobs ADD COLUMN inactive_at DATETIME")
+                if "canonical_key" not in job_columns:
+                    connection.exec_driver_sql("ALTER TABLE jobs ADD COLUMN canonical_key VARCHAR")
                 self._upgrade_user_owned_tables(connection)
                 connection.exec_driver_sql("PRAGMA foreign_keys = ON")
                 connection.exec_driver_sql("PRAGMA journal_mode = WAL")
@@ -546,32 +609,95 @@ class JobStore:
         return f"{source}_{job.get('company', 'unknown')}_{job.get('title', 'unknown')}"
 
     def upsert_job(self, job: dict) -> str:
-        job_id = self.job_id(job)
+        source = job.get("source", "unknown")
+        source_job_id = str(job.get("source_job_id", self.job_id(job)))
+        visibility = job.get("visibility", "public")
+        owner_user_id = job.get("owner_user_id") if visibility == "private" else None
+        if visibility not in {"public", "private"} or (visibility == "private" and not owner_user_id):
+            raise ValueError("Private jobs require an owner_user_id")
+        listing_key = f"{visibility}:{owner_user_id or ''}:{source}:{source_job_id}"
+        canonical_key = _job_canonical_key(job)
         now = utc_now()
-        values = {
-            "job_id": job_id,
-            "source": job.get("source", "unknown"),
-            "source_job_id": str(job.get("source_job_id", job_id)),
-            "title": job.get("title", ""),
-            "company": job.get("company", ""),
-            "location": job.get("location", ""),
-            "url": job.get("url", ""),
-            "description": job.get("description", ""),
-            "first_published": job.get("first_published"),
-            "work_type": job.get("work_type"),
-            "payload_json": job,
-            "updated_at": now,
-        }
         with self.engine.begin() as connection:
-            existing = connection.execute(
-                select(jobs_table.c.job_id).where(jobs_table.c.job_id == job_id)
+            listing = connection.execute(
+                select(job_listings_table.c.job_id).where(
+                    job_listings_table.c.listing_key == listing_key,
+                )
             ).first()
-            if existing:
+            job_id = listing[0] if listing else None
+            if not job_id and visibility == "public":
+                candidates = connection.execute(
+                    select(jobs_table).where(jobs_table.c.canonical_key == canonical_key)
+                ).mappings().all()
+                for candidate in candidates:
+                    if _description_similarity(job.get("description"), candidate["description"]) >= 0.75:
+                        job_id = candidate["job_id"]
+                        break
+            if not job_id:
+                job_id = self.job_id(job)
+                if visibility == "private":
+                    job_id = f"private_{owner_user_id}_{job_id}"
                 connection.execute(
-                    update(jobs_table).where(jobs_table.c.job_id == job_id).values(**values)
+                    jobs_table.insert().values(
+                        job_id=job_id,
+                        source=source,
+                        source_job_id=source_job_id,
+                        title=job.get("title", ""),
+                        company=job.get("company", ""),
+                        location=job.get("location", ""),
+                        url=job.get("url", ""),
+                        description=job.get("description", ""),
+                        first_published=job.get("first_published"),
+                        work_type=job.get("work_type"),
+                        payload_json=job,
+                        is_active=True,
+                        last_seen_at=now,
+                        canonical_key=canonical_key,
+                        created_at=now,
+                        updated_at=now,
+                    )
                 )
             else:
-                connection.execute(jobs_table.insert().values(created_at=now, **values))
+                connection.execute(
+                    update(jobs_table)
+                    .where(jobs_table.c.job_id == job_id)
+                    .values(
+                        is_active=True,
+                        inactive_at=None,
+                        last_seen_at=now,
+                        updated_at=now,
+                    )
+                )
+            listing_values = {
+                "job_id": job_id,
+                "listing_key": listing_key,
+                "source": source,
+                "source_job_id": source_job_id,
+                "url": job.get("url", ""),
+                "payload_json": job,
+                "availability_status": "active",
+                "last_seen_at": now,
+                "last_checked_at": now,
+                "unavailable_since": None,
+                "check_failures": 0,
+                "status_reason": None,
+                "visibility": visibility,
+                "owner_user_id": owner_user_id,
+            }
+            if listing:
+                connection.execute(
+                    update(job_listings_table)
+                    .where(job_listings_table.c.listing_key == listing_key)
+                    .values(**listing_values)
+                )
+            else:
+                connection.execute(
+                    job_listings_table.insert().values(
+                        listing_id=str(uuid4()),
+                        first_seen_at=now,
+                        **listing_values,
+                    )
+                )
         return job_id
 
     def import_legacy_jobs(self, directory: Path) -> int:
@@ -589,14 +715,19 @@ class JobStore:
     def get_job(self, job_id: str) -> dict | None:
         with self.engine.connect() as connection:
             row = connection.execute(
-                select(jobs_table).where(jobs_table.c.job_id == job_id)
+                select(jobs_table)
+                .where(jobs_table.c.job_id == job_id)
+                .where(self._visible_job_filter(job_id))
             ).mappings().first()
         return self._job_from_row(row) if row else None
 
-    def list_jobs(self, relevance: str | None = None) -> list[dict]:
+    def list_jobs(self, relevance: str | None = None, include_inactive: bool = False) -> list[dict]:
         query = select(jobs_table).order_by(jobs_table.c.updated_at.desc())
         if relevance:
             query = query.where(jobs_table.c.local_relevance == relevance)
+        if not include_inactive:
+            query = query.where(jobs_table.c.is_active.is_(True))
+        query = query.where(self._visible_job_filter(jobs_table.c.job_id))
         with self.engine.connect() as connection:
             rows = connection.execute(query).mappings().all()
         return [self._job_from_row(row) for row in rows]
@@ -608,6 +739,105 @@ class JobStore:
                 .where(jobs_table.c.job_id == job_id)
                 .values(local_relevance=relevance, updated_at=utc_now())
             )
+
+    def mark_listing_inactive(self, source: str, source_job_id: str, reason: str) -> None:
+        now = utc_now()
+        with self.engine.begin() as connection:
+            listing = connection.execute(
+                select(job_listings_table.c.job_id, job_listings_table.c.unavailable_since).where(
+                    job_listings_table.c.source == source,
+                    job_listings_table.c.source_job_id == source_job_id,
+                )
+            ).mappings().first()
+            if not listing:
+                return
+            connection.execute(
+                update(job_listings_table)
+                .where(
+                    job_listings_table.c.source == source,
+                    job_listings_table.c.source_job_id == source_job_id,
+                )
+                .values(
+                    availability_status="inactive",
+                    last_checked_at=now,
+                    unavailable_since=listing["unavailable_since"] or now,
+                    check_failures=job_listings_table.c.check_failures + 1,
+                    status_reason=reason,
+                )
+            )
+            active_listing = connection.execute(
+                select(job_listings_table.c.listing_id).where(
+                    job_listings_table.c.job_id == listing["job_id"],
+                    job_listings_table.c.availability_status == "active",
+                )
+            ).first()
+            if not active_listing:
+                connection.execute(
+                    update(jobs_table)
+                    .where(jobs_table.c.job_id == listing["job_id"])
+                    .values(is_active=False, inactive_at=now, updated_at=now)
+                )
+
+    def mark_listing_active(self, source: str, source_job_id: str) -> None:
+        now = utc_now()
+        with self.engine.begin() as connection:
+            listing = connection.execute(
+                select(job_listings_table.c.job_id).where(
+                    job_listings_table.c.source == source,
+                    job_listings_table.c.source_job_id == source_job_id,
+                )
+            ).first()
+            if not listing:
+                return
+            connection.execute(
+                update(job_listings_table)
+                .where(
+                    job_listings_table.c.source == source,
+                    job_listings_table.c.source_job_id == source_job_id,
+                )
+                .values(
+                    availability_status="active",
+                    last_checked_at=now,
+                    check_failures=0,
+                    unavailable_since=None,
+                    status_reason=None,
+                )
+            )
+            connection.execute(
+                update(jobs_table)
+                .where(jobs_table.c.job_id == listing[0])
+                .values(is_active=True, inactive_at=None, updated_at=now)
+            )
+
+    def list_listings_for_check(self, limit: int = 100, stale_after_hours: int = 24) -> list[dict]:
+        cutoff = utc_now() - timedelta(hours=stale_after_hours)
+        query = (
+            select(job_listings_table)
+            .where(
+                job_listings_table.c.url != "",
+                job_listings_table.c.visibility == "public",
+                job_listings_table.c.availability_status != "inactive",
+                or_(
+                    job_listings_table.c.last_checked_at.is_(None),
+                    job_listings_table.c.last_checked_at < cutoff,
+                ),
+            )
+            .order_by(job_listings_table.c.last_checked_at)
+            .limit(limit)
+        )
+        with self.engine.connect() as connection:
+            return [dict(row) for row in connection.execute(query).mappings().all()]
+
+    def _visible_job_filter(self, job_id_column):
+        return exists(
+            select(job_listings_table.c.listing_id).where(
+                job_listings_table.c.job_id == job_id_column,
+                or_(
+                    job_listings_table.c.visibility == "public",
+                    job_listings_table.c.owner_user_id == self.user_id,
+                ),
+            )
+        )
 
     def save_match(
         self,
@@ -724,11 +954,37 @@ class JobStore:
             rows = connection.execute(query).mappings().all()
         return [dict(row) for row in rows]
 
-    @staticmethod
-    def _job_from_row(row) -> dict:
+    def _job_from_row(self, row) -> dict:
         job = dict(row["payload_json"])
         job["job_id"] = row["job_id"]
         job["local_relevance"] = row["local_relevance"]
+        job["is_active"] = row["is_active"]
+        job["last_seen_at"] = row["last_seen_at"]
+        with self.engine.connect() as connection:
+            listings = connection.execute(
+                select(
+                    job_listings_table.c.source,
+                    job_listings_table.c.source_job_id,
+                    job_listings_table.c.url,
+                    job_listings_table.c.availability_status,
+                    job_listings_table.c.last_seen_at,
+                    job_listings_table.c.last_checked_at,
+                )
+                .where(job_listings_table.c.job_id == row["job_id"])
+                .order_by(job_listings_table.c.source)
+            ).mappings().all()
+        if not listings:
+            listings = [
+                {
+                    "source": row["source"],
+                    "source_job_id": row["source_job_id"],
+                    "url": row["url"],
+                    "availability_status": "active" if row["is_active"] else "inactive",
+                    "last_seen_at": row["last_seen_at"],
+                    "last_checked_at": None,
+                }
+            ]
+        job["sources"] = [dict(listing) for listing in listings]
         return job
 
     @staticmethod

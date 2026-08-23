@@ -79,12 +79,15 @@ Production clients must not receive PostgreSQL credentials. The API and workers 
 
 ### Shared job data
 
-- Canonical job identifier.
-- Source and source identifier.
-- Title, company, location, URL, description, timestamps.
-- Content hash and source metadata.
+- Canonical job identifier, title, company, location, description, and work type.
+- First-seen, last-seen, active/inactive state, and content hash.
+- One or more source listings attached to the canonical job.
+- Per-listing source identifier, URL, raw source metadata, availability state, and check history.
+- Listing visibility (`public` or `private`) and owner for authenticated local imports.
 
-Shared job records are deduplicated and may be reused across users.
+Shared public job records are deduplicated and may be reused across users. Cross-source deduplication is conservative: source requisition IDs and URLs are authoritative, while title/company/location matches require strong description similarity. Same-title roles are not merged merely because the company or location matches.
+
+Unavailable listings are retained for history and marked inactive. A canonical job is active when at least one of its listings is active. Inactive jobs are excluded from default browsing and matching but remain available through an explicit include-inactive query.
 
 ### User-scoped data
 
@@ -97,6 +100,8 @@ Shared job records are deduplicated and may be reused across users.
 - Applications, notes, and decisions.
 
 Every user-scoped query must enforce ownership in the repository layer and API authorization layer. Production PostgreSQL should add row-level security or equivalent defense-in-depth after the migration path is validated.
+
+Public ingestion is a shared corpus operation and must not depend on a logged-in user's profile. Authenticated or private source imports must carry ownership metadata and remain private unless the importer has explicit rights to share the listing.
 
 Original resumes belong in private encrypted object storage. Extracted text and structured profiles may be stored in PostgreSQL only with explicit retention policy and user deletion support.
 
@@ -115,7 +120,7 @@ Each job must have:
 - Idempotency key.
 - Progress metadata where useful.
 
-Workers must claim jobs atomically and use leases/heartbeats. The repository now includes a durable database-backed worker for low-traffic staging and production-shaped local testing; set `FOXPILOT_WORKER_MODE=external` and run `python -m career_agent.worker`. AWS production should replace the database polling transport with SQS when traffic or operational requirements justify it. FastAPI in-process background tasks are acceptable only for local development, not production.
+Workers must claim jobs atomically and use leases/heartbeats. The repository now includes a durable database-backed worker for low-traffic staging and production-shaped local testing; set `FOXPILOT_WORKER_MODE=external` and run `python -m career_agent.worker`. A separate scheduled availability check runs `foxpilot check-availability` against stale public listing URLs and marks confirmed 404/410 listings inactive. AWS production should replace the database polling transport with SQS when traffic or operational requirements justify it. FastAPI in-process background tasks are acceptable only for local development, not production.
 
 ## AI Boundary
 

@@ -25,9 +25,9 @@ class CareerService:
     def _store(self) -> JobStore:
         return JobStore(self.config.resolved_database_url, user_id=self.user_id)
 
-    def list_jobs(self, relevance: str | None = None) -> list[dict]:
+    def list_jobs(self, relevance: str | None = None, include_inactive: bool = False) -> list[dict]:
         with self._store() as store:
-            return store.list_jobs(relevance=relevance)
+            return store.list_jobs(relevance=relevance, include_inactive=include_inactive)
 
     def get_job(self, job_id: str) -> dict | None:
         with self._store() as store:

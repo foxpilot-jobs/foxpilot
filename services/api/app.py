@@ -517,8 +517,9 @@ def create_app() -> FastAPI:
     def list_jobs(
         career_service: CareerService = Depends(user_service),
         relevance: str | None = Query(default=None, pattern="^(TARGET|REVIEW|EXCLUDE)$"),
+        include_inactive: bool = Query(default=False),
     ) -> list[dict]:
-        return career_service.list_jobs(relevance=relevance)
+        return career_service.list_jobs(relevance=relevance, include_inactive=include_inactive)
 
     @app.get("/api/v1/jobs/{job_id}")
     def get_job(
