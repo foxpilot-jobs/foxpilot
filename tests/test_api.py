@@ -146,6 +146,25 @@ def test_native_auth_register_session_and_logout(tmp_path: Path, monkeypatch) ->
     assert client.get("/api/v1/auth/me").status_code == 200
 
 
+def test_native_auth_uses_cross_site_cookie_for_hosted_staging(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("FOXPILOT_AUTH_MODE", "native")
+    monkeypatch.setenv("FOXPILOT_ENV", "staging")
+    monkeypatch.setenv("FOXPILOT_PUBLIC_URL", "https://foxpilot.vercel.app")
+    config = AppConfig(data_dir=tmp_path)
+    app = create_app()
+    app.state.service.config = config
+
+    response = TestClient(app).post(
+        "/api/v1/auth/register",
+        json={"email": "hosted@example.com", "password": "correct horse battery staple"},
+    )
+
+    assert response.status_code == 201
+    cookie = response.headers["set-cookie"].lower()
+    assert "secure" in cookie
+    assert "samesite=none" in cookie
+
+
 def test_native_auth_rejects_wrong_password(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("FOXPILOT_AUTH_MODE", "native")
     config = AppConfig(data_dir=tmp_path)

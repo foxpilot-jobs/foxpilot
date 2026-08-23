@@ -96,15 +96,21 @@ def create_session(store: JobStore, user_id: str) -> str:
 
 
 def set_session_cookie(response, token: str, production: bool) -> None:
+    hosted = production or os.getenv("FOXPILOT_PUBLIC_URL", "").lower().startswith("https://")
     response.set_cookie(
         SESSION_COOKIE,
         token,
         max_age=SESSION_DAYS * 24 * 60 * 60,
         httponly=True,
-        secure=production,
-        samesite="lax",
+        secure=hosted,
+        samesite="none" if hosted else "lax",
         path="/",
     )
+
+
+def hosted_cookie(production: bool) -> bool:
+    """Return whether browser cookies cross the hosted web/API boundary."""
+    return production or os.getenv("FOXPILOT_PUBLIC_URL", "").lower().startswith("https://")
 
 
 def clear_session_cookie(response) -> None:
