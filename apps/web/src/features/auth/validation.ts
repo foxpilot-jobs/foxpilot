@@ -1,4 +1,4 @@
-export const MIN_PASSWORD_LENGTH = 12;
+export const MIN_PASSWORD_LENGTH = 8;
 
 export type CredentialErrors = {
   email?: string;
