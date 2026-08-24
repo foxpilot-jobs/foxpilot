@@ -1,10 +1,14 @@
 import { useEffect, useState, type SubmitEventHandler } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { login, register, requestPasswordReset, resetPassword, verifyEmail } from "../../api";
-import { Alert } from "../../shared/components/Alert";
-import { Button } from "../../shared/components/Button";
-import { TextField } from "../../shared/components/TextField";
+import { Button } from "../../shared/ui/Button";
+import { Input } from "../../shared/ui/Input";
+import { Spinner } from "../../shared/ui/Spinner";
 import { useAuth } from "./useAuth";
+import { AuthDivider } from "./components/AuthDivider";
+import { AuthLayout } from "./components/AuthLayout";
+import { OAuthButton } from "./components/OAuthButton";
+import { PasswordField } from "./components/PasswordField";
 import {
   MIN_PASSWORD_LENGTH,
   validateCredentials,
@@ -34,18 +38,16 @@ export function AuthPage() {
   const isReset = mode === "reset-password";
 
   useEffect(() => {
-    if (mode !== "verify-email" || !token) {
-      return;
-    }
+    if (mode !== "verify-email" || !token) return;
     setBusy(true);
     verifyEmail(token)
       .then((user) => {
         setUser(user);
         navigate("/app", { replace: true });
       })
-      .catch((reason: unknown) => {
-        setError(reason instanceof Error ? reason.message : "Unable to verify your email");
-      })
+      .catch((reason: unknown) =>
+        setError(reason instanceof Error ? reason.message : "Unable to verify your email"),
+      )
       .finally(() => setBusy(false));
   }, [mode, navigate, setUser, token]);
 
@@ -66,10 +68,7 @@ export function AuthPage() {
           })()
         : validateCredentials(email, password);
     setFieldErrors(validation);
-    if (Object.keys(validation).length > 0) {
-      return;
-    }
-
+    if (Object.keys(validation).length > 0) return;
     if (isForgot) {
       setBusy(true);
       try {
@@ -82,7 +81,6 @@ export function AuthPage() {
       }
       return;
     }
-
     setBusy(true);
     try {
       const user =
@@ -105,28 +103,95 @@ export function AuthPage() {
   };
 
   if (mode === "verify-email") {
+    if (!token)
+      return (
+        <AuthLayout
+          supportingText="This link is missing or no longer valid."
+          title="Invalid verification link"
+        >
+          <Link className="auth-secondary-link" to="/login">
+            Back to sign in
+          </Link>
+        </AuthLayout>
+      );
+    if (error)
+      return (
+        <AuthLayout
+          supportingText="We couldn't confirm this email address. The link may have expired or already been used."
+          title="Verification failed"
+          error={error}
+        >
+          <Link className="auth-secondary-link" to="/login">
+            Back to sign in
+          </Link>
+        </AuthLayout>
+      );
     return (
-      <AuthLayout title={busy ? "Verifying your email..." : "Email verification"} error={error} />
+      <AuthLayout
+        supportingText="We're confirming your email address."
+        title={busy ? "Verifying your email" : "Email verification"}
+      >
+        <div className="auth-verifying">
+          <Spinner size={20} />
+          <span role="status" aria-live="polite">
+            {busy ? "Verifying your email..." : "Preparing verification..."}
+          </span>
+        </div>
+      </AuthLayout>
     );
   }
+  if (isReset && !token)
+    return (
+      <AuthLayout
+        supportingText="This password reset link is missing or no longer valid."
+        title="Invalid reset link"
+      >
+        <Link className="auth-secondary-link" to="/login">
+          Back to sign in
+        </Link>
+      </AuthLayout>
+    );
 
   const title = isRegister
-    ? "Make your next move clearer."
+    ? "Create your FoxPilot account"
     : isForgot
-      ? "Reset your FoxPilot password."
+      ? "Reset your password"
       : isReset
-        ? "Choose a new password."
-        : "Welcome back, career navigator.";
-
+        ? "Create a new password"
+        : "Welcome back";
+  const supportingText = isRegister
+    ? "Build your profile and start discovering opportunities that fit your career."
+    : isForgot
+      ? "Enter your email and we'll send you a link to create a new password."
+      : isReset
+        ? "Choose a strong password for your FoxPilot account."
+        : "Continue finding opportunities that actually fit.";
+  const actionLabel = busy
+    ? isRegister
+      ? "Creating account..."
+      : isForgot
+        ? "Sending reset link..."
+        : isReset
+          ? "Resetting password..."
+          : "Signing in..."
+    : isRegister
+      ? "Create account"
+      : isForgot
+        ? "Send reset link"
+        : isReset
+          ? "Reset password"
+          : "Sign in";
   return (
-    <AuthLayout title={title} error={error} message={message}>
+    <AuthLayout title={title} error={error} message={message} supportingText={supportingText}>
       <form className="auth-form" noValidate onSubmit={submit}>
         {!isReset && (
-          <TextField
+          <Input
             autoComplete="email"
             aria-required="true"
             error={fieldErrors.email}
             label="Email"
+            placeholder="you@example.com"
+            requiredIndicator
             type="email"
             value={email}
             onChange={(event) => {
@@ -136,87 +201,45 @@ export function AuthPage() {
           />
         )}
         {!isForgot && (
-          <TextField
+          <PasswordField
             autoComplete={isRegister || isReset ? "new-password" : "current-password"}
-            aria-required="true"
             error={fieldErrors.password}
             help={`Use a memorable ${MIN_PASSWORD_LENGTH}+ character passphrase.`}
-            label="Password"
-            type="password"
-            value={password}
-            onChange={(event) => {
-              setPassword(event.target.value);
+            onChange={(value) => {
+              setPassword(value);
               setFieldErrors((current) => ({ ...current, password: undefined }));
             }}
+            value={password}
           />
         )}
-        <Button disabled={busy} type="submit">
-          {busy
-            ? "Working..."
-            : isRegister
-              ? "Create account"
-              : isForgot
-                ? "Send reset link"
-                : isReset
-                  ? "Reset password"
-                  : "Sign in"}
+        <Button disabled={busy} fullWidth loading={busy} size="lg" type="submit">
+          {actionLabel}
         </Button>
       </form>
       {(mode === "login" || mode === "register") && (
         <>
-          <div className="auth-divider">
-            <span>or continue with</span>
-          </div>
-          <a className="google-button" href="/api/v1/auth/google/start">
-            <span className="google-mark" aria-hidden="true">
-              G
-            </span>
-            {mode === "register" ? "Sign up with Google" : "Continue with Google"}
-          </a>
+          <AuthDivider />
+          <OAuthButton register={isRegister} />
         </>
       )}
       {!isForgot && !isReset && (
-        <button
-          className="text-button"
-          type="button"
-          onClick={() => navigate(isRegister ? "/login" : "/register")}
-        >
-          {isRegister ? "Already have an account? Sign in" : "New to FoxPilot? Create an account"}
-        </button>
+        <p className="auth-footnote">
+          {isRegister ? "Already have an account? " : "Don't have an account? "}
+          <Link to={isRegister ? "/login" : "/register"}>
+            {isRegister ? "Sign in" : "Create one"}
+          </Link>
+        </p>
       )}
       {mode === "login" && (
-        <button className="text-button" type="button" onClick={() => navigate("/forgot-password")}>
-          Forgot your password?
-        </button>
+        <Link className="auth-forgot-link" to="/forgot-password">
+          Forgot password?
+        </Link>
+      )}
+      {(isForgot || isReset) && (
+        <Link className="auth-secondary-link" to="/login">
+          Back to sign in
+        </Link>
       )}
     </AuthLayout>
-  );
-}
-
-function AuthLayout({
-  children,
-  error,
-  message,
-  title,
-}: {
-  children?: React.ReactNode;
-  error?: string | null;
-  message?: string | null;
-  title: string;
-}) {
-  return (
-    <main className="auth-shell">
-      <div className="auth-brand">
-        <img src="/brand/foxpilot-mark.png" alt="FoxPilot" />
-        <span className="eyebrow accent">FOXPILOT</span>
-      </div>
-      <h1>{title}</h1>
-      <p className="hero-copy">
-        Keep your matches, decisions, and application history private to you.
-      </p>
-      {error && <Alert>{error}</Alert>}
-      {message && <Alert tone="success">{message}</Alert>}
-      {children}
-    </main>
   );
 }
