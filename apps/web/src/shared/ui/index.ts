@@ -9,6 +9,7 @@ export * from "./EmptyState";
 export * from "./ErrorState";
 export * from "./Input";
 export * from "./LoadingState";
+export * from "./Modal";
 export * from "./Skeleton";
 export * from "./Spinner";
 export * from "./Tabs";

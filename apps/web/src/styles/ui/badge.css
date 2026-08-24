@@ -7,6 +7,7 @@
   font-size: 12px;
   font-weight: 600;
   line-height: 1;
+  transition: background-color var(--duration-fast) ease;
 }
 
 .ui-badge-neutral {
@@ -15,26 +16,26 @@
 }
 
 .ui-badge-brand {
-  color: #b9380c;
+  color: color-mix(in srgb, var(--color-brand) 70%, var(--color-text-primary));
   background: var(--color-brand-soft);
 }
 
 .ui-badge-success {
-  color: #087443;
-  background: #e7f8ef;
+  color: color-mix(in srgb, var(--color-success) 65%, var(--color-text-primary));
+  background: color-mix(in srgb, var(--color-success) 16%, var(--color-surface));
 }
 
 .ui-badge-warning {
-  color: #9c4a00;
-  background: #fff4e5;
+  color: color-mix(in srgb, var(--color-warning) 65%, var(--color-text-primary));
+  background: color-mix(in srgb, var(--color-warning) 16%, var(--color-surface));
 }
 
 .ui-badge-error {
-  color: #b42318;
-  background: #ffebe9;
+  color: color-mix(in srgb, var(--color-error) 65%, var(--color-text-primary));
+  background: color-mix(in srgb, var(--color-error) 16%, var(--color-surface));
 }
 
 .ui-badge-info {
-  color: #175cd3;
-  background: #eaf2ff;
+  color: color-mix(in srgb, var(--color-info) 65%, var(--color-text-primary));
+  background: color-mix(in srgb, var(--color-info) 16%, var(--color-surface));
 }

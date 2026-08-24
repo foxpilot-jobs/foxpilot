@@ -1,5 +1,5 @@
 .settings-page {
-  max-width: 920px;
+  max-width: 720px;
   margin: 0 auto;
   padding: var(--space-12) var(--space-8) var(--space-20);
 }
@@ -27,68 +27,92 @@
 
 .settings-sections {
   display: grid;
+  gap: var(--space-5);
+}
+
+.settings-account-card .ui-card-content {
+  padding: var(--space-5) var(--space-6);
+}
+
+.settings-account-row {
+  display: flex;
+  align-items: center;
   gap: var(--space-4);
 }
 
-.settings-sections .ui-card-title {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
+.settings-account-row .ui-avatar {
+  width: 44px;
+  height: 44px;
+  font-size: 16px;
 }
 
-.settings-sections .ui-card-title svg {
-  color: var(--color-brand);
-}
-
-.settings-account-row,
-.settings-action-link,
-.settings-link-list a {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-}
-
-.settings-account-row > div {
+.settings-account-identity {
   display: grid;
-  gap: var(--space-1);
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
 }
 
-.settings-account-row span {
+.settings-account-identity strong {
+  overflow: hidden;
+  color: var(--color-text-primary);
+  font-size: 15px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-account-identity span {
   color: var(--color-text-muted);
   font-size: 12px;
 }
 
-.settings-account-row strong {
-  color: var(--color-text-primary);
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.settings-theme-selector {
+.settings-theme-switch {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-2);
-  max-width: 420px;
+  gap: 2px;
+  max-width: 320px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 3px;
+  background: var(--color-surface);
+}
+
+.settings-theme-thumb {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc(50% - 4px);
+  border-radius: calc(var(--radius-md) - 2px);
+  background: var(--color-surface-elevated);
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--duration-normal) cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.settings-theme-switch[data-selected="dark"] .settings-theme-thumb {
+  transform: translateX(100%);
 }
 
 .settings-theme-option {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  min-height: 44px;
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-md);
+  min-height: 40px;
   color: var(--color-text-secondary);
-  background: var(--color-surface);
   cursor: pointer;
   font-size: 14px;
   font-weight: 600;
-  transition:
-    border-color var(--duration-fast) ease,
-    color var(--duration-fast) ease,
-    background-color var(--duration-fast) ease;
+  transition: color var(--duration-fast) ease;
+}
+
+.settings-theme-switch[data-selected="light"] .settings-theme-option:first-child,
+.settings-theme-switch[data-selected="dark"] .settings-theme-option:last-child {
+  color: var(--color-text-primary);
 }
 
 .settings-theme-option input {
@@ -99,14 +123,9 @@
 }
 
 .settings-theme-option:focus-within {
-  outline: 3px solid var(--color-focus-ring);
+  outline: 2px solid var(--color-focus-ring);
   outline-offset: 2px;
-}
-
-.settings-theme-option-selected {
-  border-color: var(--color-brand);
-  color: var(--color-brand);
-  background: var(--color-brand-soft);
+  border-radius: var(--radius-sm);
 }
 
 .settings-supporting {
@@ -120,39 +139,69 @@
   display: grid;
 }
 
-.settings-link-list a,
-.settings-action-link {
-  padding: var(--space-3) 0;
+.settings-link-list a {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-2);
+  margin: 0 calc(var(--space-2) * -1);
   color: var(--color-text-primary);
   text-decoration: none;
+  transition: background-color var(--duration-fast) ease;
 }
 
-.settings-link-list a + a {
-  border-top: 1px solid var(--color-border);
+.settings-link-list a:hover {
+  background: var(--color-brand-soft);
 }
 
-.settings-link-list a:hover,
-.settings-action-link:hover {
+.settings-link-list a:hover .settings-link-icon {
   color: var(--color-brand);
 }
 
-.settings-link-list a > span:first-child {
-  display: grid;
-  gap: var(--space-1);
+.settings-link-list a + a {
+  margin-top: var(--space-1);
 }
 
-.settings-link-list small {
+.settings-link-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  transition: color var(--duration-fast) ease;
+}
+
+.settings-link-copy {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+}
+
+.settings-link-copy strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.settings-link-copy small {
   color: var(--color-text-muted);
   font-size: 12px;
   line-height: 18px;
 }
 
-.settings-action-link > span:first-child {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: 14px;
-  font-weight: 600;
+.settings-link-list > a > svg:last-child {
+  flex: 0 0 auto;
+  color: var(--color-text-subtle);
+  transition: transform var(--duration-fast) ease;
+}
+
+.settings-link-list a:hover > svg:last-child {
+  color: var(--color-brand);
+  transform: translateX(2px);
 }
 
 .settings-error {
@@ -164,12 +213,7 @@
     padding: var(--space-8) var(--space-4) var(--space-20);
   }
 
-  .settings-account-row {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .settings-theme-selector {
+  .settings-theme-switch {
     max-width: none;
   }
 }

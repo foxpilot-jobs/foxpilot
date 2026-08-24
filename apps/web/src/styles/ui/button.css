@@ -22,7 +22,18 @@
   transition:
     background-color var(--duration-fast) ease,
     border-color var(--duration-fast) ease,
-    color var(--duration-fast) ease;
+    color var(--duration-fast) ease,
+    transform var(--duration-fast) ease,
+    box-shadow var(--duration-fast) ease;
+}
+
+.ui-button:active:not(:disabled) {
+  transform: translateY(1px) scale(0.99);
+}
+
+.ui-button:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
 }
 
 .ui-button-sm {
