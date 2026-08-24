@@ -2,7 +2,9 @@ import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { AuthPage } from "../features/auth/AuthPage";
 import { useAuth } from "../features/auth/useAuth";
 import { DashboardPage } from "../features/dashboard/pages/DashboardPage";
+import { ArchitecturePlaceholderPage } from "../features/navigation/pages/ArchitecturePlaceholderPage";
 import { ProfileSetupPage } from "../features/profile/pages/ProfileSetupPage";
+import { AppLayout } from "../shared/layouts/AppLayout";
 
 export function AppRouter() {
   return (
@@ -15,8 +17,55 @@ export function AppRouter() {
         <Route path="/verify-email" element={<AuthPage />} />
       </Route>
       <Route element={<ProtectedRoute />}>
-        <Route path="/app" element={<DashboardPage />} />
-        <Route path="/app/profile" element={<ProfileSetupPage />} />
+        <Route element={<AppLayout />} path="/app">
+          <Route index element={<DashboardPage />} />
+          <Route
+            path="matches"
+            element={
+              <ArchitecturePlaceholderPage
+                description="Your personalized job discovery workspace will live here."
+                title="Matches"
+              />
+            }
+          />
+          <Route
+            path="jobs/:jobId"
+            element={
+              <ArchitecturePlaceholderPage
+                description="Detailed role evaluation will live here."
+                title="Job evaluation"
+              />
+            }
+          />
+          <Route
+            path="applications"
+            element={
+              <ArchitecturePlaceholderPage
+                description="Track your application pipeline in one focused workspace."
+                title="Applications"
+              />
+            }
+          />
+          <Route path="profile" element={<ProfileSetupPage />} />
+          <Route
+            path="profile/insights"
+            element={
+              <ArchitecturePlaceholderPage
+                description="Profile strengths, gaps, and recommendations will live here."
+                title="Profile insights"
+              />
+            }
+          />
+          <Route
+            path="settings"
+            element={
+              <ArchitecturePlaceholderPage
+                description="Account and appearance preferences will live here."
+                title="Settings"
+              />
+            }
+          />
+        </Route>
       </Route>
       <Route path="*" element={<Navigate replace to="/app" />} />
     </Routes>

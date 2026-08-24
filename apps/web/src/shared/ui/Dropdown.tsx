@@ -46,3 +46,11 @@ export function DropdownItem({ children, onClick }: { children: ReactNode; onCli
     </button>
   );
 }
+
+export function DropdownLink({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <a className="ui-dropdown-item" href={href} role="menuitem">
+      {children}
+    </a>
+  );
+}
