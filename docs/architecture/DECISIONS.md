@@ -40,6 +40,14 @@ Job ingestion uses isolated adapters with a shared normalized job contract. Publ
 
 Public and licensed ingestion builds a shared canonical job corpus. A canonical job may have multiple source listings, which are retained for attribution and fallback links. Cross-source merging is conservative and does not merge same-title roles without strong description evidence. User profiles, match results, applications, and notes remain user-scoped. Listing availability is checked separately and inactive listings are retained but hidden by default. Authenticated local imports are private listings unless explicitly marked public by an authorized ingestion process.
 
+## Frontend testing (deferred, framework chosen)
+
+`apps/web` currently has no automated test framework — CI only runs Prettier, ESLint, Stylelint, and a type-checked production build (`npm run check`). Several UI behaviors (theme persistence, navigation state, modal confirmation flows) have shipped without regression coverage.
+
+The chosen stack for when frontend tests are added is **Vitest + React Testing Library**, with `@testing-library/jest-dom` and `@testing-library/user-event`, running in a `jsdom` environment. Rationale: Vitest reuses the existing Vite config and transform pipeline directly (no parallel Babel/webpack setup to maintain), it is the de facto standard pairing for Vite + React + TypeScript projects, and React Testing Library's user-facing query model matches how this app's components are already structured (accessible roles/labels rather than implementation-detail selectors).
+
+Scope for the first pass, once implemented, should prioritize what has already changed without coverage: `ThemeProvider` persistence, the `AppShell` sidebar collapse/mobile-drawer toggle, and the `Modal` confirmation flow (sign-out). This is a deferred, explicitly-scoped follow-up — not implemented as part of this decision.
+
 ## India Production Architecture
 
 Limited beta staging uses Railway Hobby in Singapore for speed and low operational overhead, with an explicit small-user/no-SLA boundary. Production targets AWS `ap-south-1` (Mumbai) with managed PostgreSQL, encrypted object storage, a durable queue, separate API and worker services, and authenticated API-only access for web and CLI clients. Local SQLite/Ollama remains supported for privacy and development, but production clients must not connect directly to PostgreSQL. See `SYSTEM_DESIGN.md` for the complete boundary and rollout contract.
