@@ -37,6 +37,27 @@ def test_api_health_and_jobs(tmp_path: Path) -> None:
     assert response.json()[0]["title"] == "Data Engineer"
 
 
+def test_hosted_cors_preflight_accepts_configured_origin_with_trailing_slash(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("CAREER_AGENT_ALLOWED_ORIGINS", "https://foxpilot.vercel.app/")
+    config = AppConfig(data_dir=tmp_path)
+    app = create_app()
+    app.state.service.config = config
+    client = TestClient(app)
+
+    response = client.options(
+        "/api/v1/auth/login",
+        headers={
+            "Origin": "https://foxpilot.vercel.app",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "https://foxpilot.vercel.app"
+    assert response.headers["access-control-allow-credentials"] == "true"
+
+
 def test_api_application_update(tmp_path: Path) -> None:
     config = AppConfig(data_dir=tmp_path)
     with JobStore(config.database_path) as store:

@@ -107,7 +107,10 @@ Enable the current native session flow with:
 ```env
 FOXPILOT_ENV=production
 FOXPILOT_AUTH_MODE=native
+CAREER_AGENT_ALLOWED_ORIGINS=https://foxpilot.vercel.app,https://foxpilot.in,https://www.foxpilot.in
 ```
+
+`CAREER_AGENT_ALLOWED_ORIGINS` must contain the exact browser origin(s), comma-separated, without paths. Do not use `*` with credentialed cookies. Preview Vercel deployments need their exact preview origin added temporarily if they are used for testing.
 
 For local browser testing, keep `FOXPILOT_ENV=local` so cookies do not require HTTPS. Set `FOXPILOT_AUTH_MODE=local` to return to the private single-user dashboard.
 

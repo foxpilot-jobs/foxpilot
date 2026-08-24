@@ -137,7 +137,7 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     allowed_origins = [
-        origin.strip()
+        origin.strip().rstrip("/")
         for origin in os.getenv(
             "CAREER_AGENT_ALLOWED_ORIGINS",
             "http://localhost:5173,http://127.0.0.1:5173",
@@ -149,7 +149,7 @@ def create_app() -> FastAPI:
         allow_origins=allowed_origins,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "DELETE"],
-        allow_headers=["Content-Type"],
+        allow_headers=["Content-Type", "Authorization"],
     )
     app.state.service = CareerService(load_config())
     app.state.rate_limiter = InMemoryRateLimiter()
