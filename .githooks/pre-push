@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+
+printf '\nRunning FoxPilot web quality checks before push...\n'
+npm --prefix "$repo_root/apps/web" run check
+
+printf '\nPre-push checks passed. Coverage is shown above.\n'

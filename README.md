@@ -148,6 +148,14 @@ npm run dev
 
 The web stack requires Node 22.18 or newer; Node 24.19 is the validated runtime. The repository includes `.nvmrc` with the recommended major version.
 
+To enable the repository-managed pre-push quality gate, run this once after cloning:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+The hook runs `apps/web` formatting, ESLint, Stylelint, Vitest with coverage, TypeScript checking, and the production build. Coverage is printed in the push output. GitHub Actions runs the same gate for pull requests and pushes to `main`.
+
 For the exact process layout, see [Run Modes](docs/operations/RUN_MODES.md). For deployment details, see [Deployment](docs/operations/DEPLOYMENT.md) and the [local ingestion runbook](docs/operations/LOCAL_INGESTION.md).
 
 After starting Docker and host Ollama, run the integrated scan wrapper:

@@ -42,11 +42,11 @@ Public and licensed ingestion builds a shared canonical job corpus. A canonical 
 
 ## Frontend testing (deferred, framework chosen)
 
-`apps/web` currently has no automated test framework — CI only runs Prettier, ESLint, Stylelint, and a type-checked production build (`npm run check`). Several UI behaviors (theme persistence, navigation state, modal confirmation flows) have shipped without regression coverage.
+`apps/web` previously had no automated test framework. CI now runs Prettier, ESLint, Stylelint, Vitest, and a type-checked production build (`npm run check`).
 
 The chosen stack for when frontend tests are added is **Vitest + React Testing Library**, with `@testing-library/jest-dom` and `@testing-library/user-event`, running in a `jsdom` environment. Rationale: Vitest reuses the existing Vite config and transform pipeline directly (no parallel Babel/webpack setup to maintain), it is the de facto standard pairing for Vite + React + TypeScript projects, and React Testing Library's user-facing query model matches how this app's components are already structured (accessible roles/labels rather than implementation-detail selectors).
 
-Scope for the first pass, once implemented, should prioritize what has already changed without coverage: `ThemeProvider` persistence, the `AppShell` sidebar collapse/mobile-drawer toggle, and the `Modal` confirmation flow (sign-out). This is a deferred, explicitly-scoped follow-up — not implemented as part of this decision.
+The initial coverage prioritizes the changed behaviors: `ThemeProvider` persistence, the `AppShell` sidebar collapse/mobile-drawer toggle, and the `Modal` confirmation flow. Future behavior changes should extend this suite.
 
 ## India Production Architecture
 
