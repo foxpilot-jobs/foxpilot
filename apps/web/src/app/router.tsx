@@ -2,6 +2,7 @@ import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { AuthPage } from "../features/auth/AuthPage";
 import { useAuth } from "../features/auth/useAuth";
 import { DashboardPage } from "../features/dashboard/pages/DashboardPage";
+import { JobDetailPage } from "../features/dashboard/pages/JobDetailPage";
 import { MatchesPage } from "../features/dashboard/pages/MatchesPage";
 import { ArchitecturePlaceholderPage } from "../features/navigation/pages/ArchitecturePlaceholderPage";
 import { ProfileSetupPage } from "../features/profile/pages/ProfileSetupPage";
@@ -21,15 +22,7 @@ export function AppRouter() {
         <Route element={<AppLayout />} path="/app">
           <Route index element={<DashboardPage />} />
           <Route path="matches" element={<MatchesPage />} />
-          <Route
-            path="jobs/:jobId"
-            element={
-              <ArchitecturePlaceholderPage
-                description="Detailed role evaluation will live here."
-                title="Job evaluation"
-              />
-            }
-          />
+          <Route path="jobs/:jobId" element={<JobDetailPage />} />
           <Route
             path="applications"
             element={
