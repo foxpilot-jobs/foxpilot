@@ -19,6 +19,7 @@
   font-size: 14px;
   font-weight: 600;
   line-height: 1;
+  text-decoration: none;
   transition:
     background-color var(--duration-fast) ease,
     border-color var(--duration-fast) ease,
