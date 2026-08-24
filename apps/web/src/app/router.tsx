@@ -5,9 +5,9 @@ import { DashboardPage } from "../features/dashboard/pages/DashboardPage";
 import { JobDetailPage } from "../features/dashboard/pages/JobDetailPage";
 import { ApplicationsPage } from "../features/dashboard/pages/ApplicationsPage";
 import { MatchesPage } from "../features/dashboard/pages/MatchesPage";
-import { ArchitecturePlaceholderPage } from "../features/navigation/pages/ArchitecturePlaceholderPage";
 import { ProfileSetupPage } from "../features/profile/pages/ProfileSetupPage";
 import { ProfileInsightsPage } from "../features/profile/pages/ProfileInsightsPage";
+import { SettingsPage } from "../features/settings/pages/SettingsPage";
 import { AppLayout } from "../shared/layouts/AppLayout";
 
 export function AppRouter() {
@@ -28,15 +28,7 @@ export function AppRouter() {
           <Route path="applications" element={<ApplicationsPage />} />
           <Route path="profile" element={<ProfileSetupPage />} />
           <Route path="profile/insights" element={<ProfileInsightsPage />} />
-          <Route
-            path="settings"
-            element={
-              <ArchitecturePlaceholderPage
-                description="Account and appearance preferences will live here."
-                title="Settings"
-              />
-            }
-          />
+          <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate replace to="/app" />} />
