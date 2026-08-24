@@ -6,7 +6,7 @@ import { AuthProvider } from "./features/auth/AuthProvider";
 import { ErrorBoundary } from "./shared/components/ErrorBoundary";
 import "@fontsource-variable/inter";
 import "@fontsource-variable/manrope";
-import "./styles.css";
+import "./styles/index.css";
 import { ThemeProvider } from "./shared/ui/ThemeProvider";
 
 createRoot(document.getElementById("root")!).render(

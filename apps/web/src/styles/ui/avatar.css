@@ -1,0 +1,16 @@
+.ui-avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  color: #fff;
+  background: var(--color-brand);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ui-avatar-fallback {
+  flex: 0 0 auto;
+}

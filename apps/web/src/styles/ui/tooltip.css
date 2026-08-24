@@ -1,0 +1,27 @@
+.ui-tooltip {
+  position: relative;
+  display: inline-flex;
+}
+
+.ui-tooltip-content {
+  position: absolute;
+  z-index: var(--z-dropdown);
+  bottom: calc(100% + var(--space-2));
+  left: 50%;
+  width: max-content;
+  max-width: 220px;
+  transform: translateX(-50%);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  color: #fff;
+  background: var(--secondary-button-bg, #162235);
+  font-size: 12px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--duration-fast) ease;
+}
+
+.ui-tooltip:hover .ui-tooltip-content,
+.ui-tooltip:focus-within .ui-tooltip-content {
+  opacity: 1;
+}

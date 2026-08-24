@@ -1,0 +1,130 @@
+/* Shared FoxPilot UI foundation. Product pages can adopt these primitives incrementally. */
+.ui-button,
+.ui-icon-button,
+.ui-dropdown-trigger,
+.ui-dropdown-item {
+  font-family: var(--font-body);
+}
+
+.ui-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 40px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  padding: 0 var(--space-4);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  transition:
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease,
+    color var(--duration-fast) ease;
+}
+
+.ui-button-sm {
+  min-height: 32px;
+  padding: 0 var(--space-3);
+  font-size: 13px;
+}
+
+.ui-button-md {
+  min-height: 40px;
+}
+
+.ui-button-lg {
+  min-height: 48px;
+  padding: 0 var(--space-5);
+  font-size: 16px;
+}
+
+.ui-button-full {
+  width: 100%;
+}
+
+.ui-button-icon-only {
+  width: 40px;
+  padding: 0;
+}
+
+.ui-button-sm.ui-button-icon-only {
+  width: 32px;
+}
+
+.ui-button-lg.ui-button-icon-only {
+  width: 48px;
+}
+
+.ui-button-primary {
+  color: #fff;
+  background: var(--color-brand);
+}
+
+.ui-button-primary:hover {
+  background: var(--color-brand-hover);
+}
+
+.ui-button-secondary {
+  color: #fff;
+  background: var(--secondary-button-bg, #162235);
+}
+
+.ui-button-secondary:hover {
+  background: #22334d;
+}
+
+.ui-button-outline {
+  color: var(--color-text-primary);
+  border-color: var(--color-border-strong);
+  background: transparent;
+}
+
+.ui-button-outline:hover {
+  border-color: var(--color-brand);
+  color: var(--color-brand);
+  background: var(--color-brand-soft);
+}
+
+.ui-button-ghost {
+  color: var(--color-text-secondary);
+  background: transparent;
+}
+
+.ui-button-ghost:hover {
+  color: var(--color-text-primary);
+  background: var(--color-brand-soft);
+}
+
+.ui-button-danger {
+  color: #fff;
+  background: var(--color-error);
+}
+
+.ui-button-danger:hover {
+  background: #d92d20;
+}
+
+.ui-button-link {
+  min-height: auto;
+  padding: 0;
+  color: var(--color-brand);
+  background: transparent;
+}
+
+.ui-button-link:hover {
+  color: var(--color-brand-hover);
+  text-decoration: underline;
+}
+
+.ui-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.ui-button-spinner,
+.ui-spinner {
+  animation: ui-spin 800ms linear infinite;
+}
