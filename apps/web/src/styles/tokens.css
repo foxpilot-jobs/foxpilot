@@ -1,0 +1,44 @@
+:root {
+  --fox-ink: var(--color-text-primary);
+  --fox-moss: var(--color-brand);
+  --fox-copper: var(--color-error);
+  --fox-paper: var(--color-bg);
+  --fox-sand: var(--color-brand-soft);
+  --fox-line: var(--color-border-strong);
+  --font-heading: "Manrope Variable", manrope, sans-serif;
+  --font-body: "Inter Variable", inter, ui-sans-serif, system-ui, sans-serif;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+  --space-30: 120px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-pill: 999px;
+  --shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.04);
+  --shadow-sm: 0 1px 3px rgba(16, 24, 40, 0.08);
+  --shadow-md: 0 4px 12px rgba(16, 24, 40, 0.1);
+  --shadow-lg: 0 12px 32px rgba(16, 24, 40, 0.14);
+  --z-dropdown: 20;
+  --z-sticky: 30;
+  --z-overlay: 40;
+  --z-modal: 50;
+  --duration-fast: 120ms;
+  --duration-normal: 180ms;
+  --duration-slow: 240ms;
+
+  color: var(--color-text-primary);
+  background: var(--color-bg);
+  font-family: var(--font-body);
+  font-synthesis: none;
+}
