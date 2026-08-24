@@ -3,6 +3,7 @@ import { AuthPage } from "../features/auth/AuthPage";
 import { useAuth } from "../features/auth/useAuth";
 import { DashboardPage } from "../features/dashboard/pages/DashboardPage";
 import { JobDetailPage } from "../features/dashboard/pages/JobDetailPage";
+import { ApplicationsPage } from "../features/dashboard/pages/ApplicationsPage";
 import { MatchesPage } from "../features/dashboard/pages/MatchesPage";
 import { ArchitecturePlaceholderPage } from "../features/navigation/pages/ArchitecturePlaceholderPage";
 import { ProfileSetupPage } from "../features/profile/pages/ProfileSetupPage";
@@ -23,15 +24,7 @@ export function AppRouter() {
           <Route index element={<DashboardPage />} />
           <Route path="matches" element={<MatchesPage />} />
           <Route path="jobs/:jobId" element={<JobDetailPage />} />
-          <Route
-            path="applications"
-            element={
-              <ArchitecturePlaceholderPage
-                description="Track your application pipeline in one focused workspace."
-                title="Applications"
-              />
-            }
-          />
+          <Route path="applications" element={<ApplicationsPage />} />
           <Route path="profile" element={<ProfileSetupPage />} />
           <Route
             path="profile/insights"
