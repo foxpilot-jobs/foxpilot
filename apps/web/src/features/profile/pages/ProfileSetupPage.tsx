@@ -1,17 +1,24 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import {
   getBackgroundJob,
   getProfile,
-  runScan,
   runMatching,
+  runScan,
   uploadResume,
   type BackgroundJob,
   type Profile,
 } from "../../../api";
-import { Alert } from "../../../shared/components/Alert";
-import { Button } from "../../../shared/components/Button";
-import { LoadingState } from "../../../shared/components/LoadingState";
+import { Alert } from "../../../shared/ui/Alert";
+import { ErrorState } from "../../../shared/ui/ErrorState";
+import { Spinner } from "../../../shared/ui/Spinner";
+import { Toast } from "../../../shared/ui/Toast";
+import { ProfileActions } from "../components/ProfileActions";
+import { ProfileHeader } from "../components/ProfileHeader";
+import { ProfileInsightsLink } from "../components/ProfileInsightsLink";
+import { ProfileOverview } from "../components/ProfileOverview";
+import { ProfileReadiness } from "../components/ProfileReadiness";
+import { ProfileSkeleton } from "../components/ProfileSkeleton";
+import { ResumeCard } from "../components/ResumeCard";
 
 const JOB_POLL_DELAYS_MS = [3000, 6000, 12000, 24000, 30000, 30000, 30000, 30000, 30000];
 
@@ -19,18 +26,31 @@ export function ProfileSetupPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [activeJob, setActiveJob] = useState<BackgroundJob | null>(null);
+  const [selectedFileName, setSelectedFileName] = useState<string | undefined>();
+  const [retryToken, setRetryToken] = useState(0);
 
   useEffect(() => {
-    getProfile()
-      .then(setProfile)
-      .catch((reason: unknown) =>
-        setError(reason instanceof Error ? reason.message : "Unable to load profile"),
-      )
-      .finally(() => setLoading(false));
-  }, []);
+    let active = true;
+    setLoading(true);
+    setLoadError(false);
+    void getProfile()
+      .then((loadedProfile) => {
+        if (active) setProfile(loadedProfile);
+      })
+      .catch(() => {
+        if (active) setLoadError(true);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [retryToken]);
 
   useEffect(() => {
     const jobId = activeJob?.job_id;
@@ -71,20 +91,19 @@ export function ProfileSetupPage() {
           return;
         }
         if (job.status === "failed") {
-          setError(job.error ?? "The background job failed");
+          setActionError("We couldn't process this background job. You can try again.");
           return;
         }
         const delay = JOB_POLL_DELAYS_MS[pollCount] ?? JOB_POLL_DELAYS_MS.at(-1)!;
         pollCount += 1;
         if (Date.now() - startedAt + delay > 5 * 60 * 1000) {
           setActiveJob(null);
-          setError("Processing is taking longer than expected. Please try again shortly.");
+          setActionError("Processing is taking longer than expected. Please try again shortly.");
           return;
         }
         timer = window.setTimeout(() => void poll(), delay);
-      } catch (reason: unknown) {
-        if (!stopped)
-          setError(reason instanceof Error ? reason.message : "Unable to check job status");
+      } catch {
+        if (!stopped) setActionError("We couldn't check the background job. Please try again.");
       }
     };
     void poll();
@@ -96,14 +115,15 @@ export function ProfileSetupPage() {
 
   async function handleUpload(file: File | undefined) {
     if (!file) return;
+    setSelectedFileName(file.name);
     setBusy(true);
-    setError(null);
+    setActionError(null);
     setMessage(null);
     try {
       setActiveJob(await uploadResume(file));
       setMessage("Resume received. FoxPilot is extracting your profile in the background.");
-    } catch (reason: unknown) {
-      setError(reason instanceof Error ? reason.message : "Unable to process resume");
+    } catch {
+      setActionError("We couldn't upload your resume. Please check that it is a PDF under 10 MB.");
     } finally {
       setBusy(false);
     }
@@ -111,15 +131,15 @@ export function ProfileSetupPage() {
 
   async function handleMatching() {
     setBusy(true);
-    setError(null);
+    setActionError(null);
     setMessage(null);
     try {
       setActiveJob(await runMatching());
       setMessage(
         "Matching started. FoxPilot is comparing your profile with the current shortlist.",
       );
-    } catch (reason: unknown) {
-      setError(reason instanceof Error ? reason.message : "Unable to run matching");
+    } catch {
+      setActionError("We couldn't start matching. Please try again.");
     } finally {
       setBusy(false);
     }
@@ -127,131 +147,119 @@ export function ProfileSetupPage() {
 
   async function handleScan() {
     setBusy(true);
-    setError(null);
+    setActionError(null);
     setMessage(null);
     try {
       setActiveJob(await runScan());
       setMessage("Scan started. FoxPilot is searching for roles derived from your profile.");
-    } catch (reason: unknown) {
-      setError(reason instanceof Error ? reason.message : "Unable to scan for jobs");
+    } catch {
+      setActionError("We couldn't start the job scan. Please try again.");
     } finally {
       setBusy(false);
     }
   }
 
-  if (loading) return <LoadingState label="Loading your profile..." />;
+  if (loading) return <ProfileSkeleton />;
+  if (loadError)
+    return (
+      <main className="profile-state">
+        <ErrorState
+          action={
+            <button
+              className="ui-button ui-button-primary ui-button-md"
+              type="button"
+              onClick={() => setRetryToken((token) => token + 1)}
+            >
+              Try again
+            </button>
+          }
+          description="We couldn't load your profile. Please try again."
+          title="Unable to load profile"
+        />
+      </main>
+    );
 
   const fields = profile?.profile ?? {};
-  const skills = [
-    ...toStringList(fields.skills),
-    ...toStringList(fields.programming_languages),
-    ...toStringList(fields.data_and_ai_tools),
-  ];
-  const roles = toStringList(fields.target_roles);
+  const hasProfileData = Boolean(profile && Object.keys(fields).length > 0);
   const processing = busy || activeJob?.status === "queued" || activeJob?.status === "running";
-
   return (
-    <main className="profile-shell">
-      <div className="profile-header">
-        <p className="eyebrow accent">YOUR PROFILE</p>
-        <h1>Give FoxPilot the context to find your strongest next move.</h1>
-        <p className="hero-copy">
-          Upload a PDF resume. FoxPilot extracts a private working profile, then compares it against
-          the jobs you choose to review.
-        </p>
-      </div>
-      {error && <Alert>{error}</Alert>}
-      {message && <Alert tone="success">{message}</Alert>}
-      <section className="profile-upload-card">
-        <label className="upload-dropzone">
-          <span className="upload-title">
-            {processing
-              ? "FoxPilot is working..."
-              : profile
-                ? "Replace your resume"
-                : "Upload your resume"}
-          </span>
-          <span className="upload-help">
-            PDF only, up to 10 MB. Your resume stays associated with your account.
-          </span>
-          <input
-            accept="application/pdf,.pdf"
-            disabled={processing}
-            type="file"
-            onChange={(event) => void handleUpload(event.target.files?.[0])}
+    <main className="profile-page">
+      <ProfileHeader hasProfileData={hasProfileData} profile={profile} />
+      {message && (
+        <div className="profile-message">
+          <Toast title="Profile update" variant="success" onDismiss={() => setMessage(null)}>
+            {message}
+          </Toast>
+        </div>
+      )}
+      {actionError && (
+        <div className="profile-action-error">
+          <Alert variant="error">{actionError}</Alert>
+        </div>
+      )}
+      <ProfileReadiness hasProfileData={hasProfileData} profile={profile} />
+      <div className="profile-page-layout">
+        <div className="profile-page-primary">
+          <ResumeCard
+            busy={processing}
+            onFile={handleUpload}
+            profile={profile}
+            selectedFileName={selectedFileName}
           />
-        </label>
-        <AsyncStatus job={activeJob} />
-        {profile && (
-          <div className="profile-summary">
-            <div className="card-topline">
-              <strong>{profile.resume_filename}</strong>
-              <span className="count-pill">Profile ready</span>
-            </div>
-            <p>{String(fields.summary ?? "Structured profile extracted from your resume.")}</p>
-            {roles.length > 0 && <ProfileList label="Target roles" values={roles} />}
-            {skills.length > 0 && (
-              <ProfileList label="Skills and tools" values={[...new Set(skills)]} />
-            )}
-            {activeJob?.kind === "matching" && activeJob.status === "completed" && (
-              <Link className="match-link" to="/app">
-                View your matches
-              </Link>
-            )}
-            <Button disabled={processing} onClick={() => void handleScan()}>
-              Scan profile-specific jobs
-            </Button>
-            <Button disabled={processing} onClick={() => void handleMatching()}>
-              Run matching
-            </Button>
-          </div>
-        )}
-      </section>
+          {profile && <ProfileOverview profile={profile} />}
+        </div>
+        <aside className="profile-page-secondary">
+          {activeJob && <ProfileJobStatus job={activeJob} />}
+          {profile && (
+            <ProfileActions
+              disabled={processing}
+              onMatching={() => void handleMatching()}
+              onScan={() => void handleScan()}
+            />
+          )}
+          <ProfileInsightsLink />
+        </aside>
+      </div>
     </main>
   );
 }
 
-function AsyncStatus({ job }: { job: BackgroundJob | null }) {
-  if (!job || job.status === "completed") return null;
-  if (job.status === "failed") {
+function ProfileJobStatus({ job }: { job: BackgroundJob }) {
+  if (job.status === "completed")
     return (
-      <div className="async-status async-status-error">Processing failed. You can try again.</div>
+      <div className="profile-job-status profile-job-complete" role="status">
+        <strong>Profile workflow complete</strong>
+        <span>FoxPilot has finished the latest {formatJobKind(job.kind)}.</span>
+      </div>
     );
-  }
-  const progress = job.result as { processed?: number; total?: number } | null;
-  const progressLabel =
-    job.kind === "matching" && progress?.total
-      ? `Comparing roles against your profile... ${progress.processed ?? 0}/${progress.total}`
-      : job.kind === "profile_generation"
-        ? "Reading your experience and skills..."
-        : job.kind === "scan"
-          ? "Searching sources for profile-specific roles..."
-          : "Comparing roles against your profile...";
+  if (job.status === "failed")
+    return (
+      <div className="profile-job-status profile-job-failed" role="alert">
+        <strong>We couldn't process your resume</strong>
+        <span>You can try the action again when ready.</span>
+      </div>
+    );
   return (
-    <div className="async-status">
-      <span className="loading-spinner" aria-hidden="true" />
-      {progressLabel}
-    </div>
-  );
-}
-
-function toStringList(value: unknown): string[] {
-  return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === "string")
-    : [];
-}
-
-function ProfileList({ label, values }: { label: string; values: string[] }) {
-  return (
-    <div className="profile-list">
-      <strong>{label}</strong>
-      <div className="tag-list">
-        {values.map((value) => (
-          <span className="tag" key={value}>
-            {value}
-          </span>
-        ))}
+    <div className="profile-job-status" role="status" aria-live="polite">
+      <Spinner size={18} />
+      <div>
+        <strong>{job.status === "queued" ? "Queued" : "Running"}</strong>
+        <span>
+          {job.kind === "profile_generation"
+            ? "FoxPilot is extracting your experience, skills, and career profile."
+            : job.kind === "scan"
+              ? "FoxPilot is searching for profile-specific roles."
+              : "FoxPilot is comparing roles against your profile."}
+        </span>
       </div>
     </div>
   );
+}
+
+function formatJobKind(kind: BackgroundJob["kind"]) {
+  return kind === "profile_generation"
+    ? "resume analysis"
+    : kind === "scan"
+      ? "job scan"
+      : "matching run";
 }
