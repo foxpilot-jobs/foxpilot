@@ -15,6 +15,27 @@
   background: var(--color-surface-elevated);
   cursor: pointer;
   font-size: 14px;
+  transition:
+    border-color var(--duration-fast) ease,
+    background-color var(--duration-fast) ease,
+    box-shadow var(--duration-fast) ease;
+}
+
+.ui-dropdown-trigger:hover {
+  border-color: var(--color-border-strong);
+}
+
+.ui-dropdown-trigger[aria-expanded="true"] {
+  border-color: var(--color-brand);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+.ui-dropdown-trigger svg:last-child {
+  transition: transform var(--duration-fast) ease;
+}
+
+.ui-dropdown-trigger[aria-expanded="true"] svg:last-child {
+  transform: rotate(180deg);
 }
 
 .ui-dropdown-menu {
@@ -22,12 +43,14 @@
   z-index: var(--z-dropdown);
   top: calc(100% + var(--space-2));
   right: 0;
-  min-width: 180px;
+  min-width: 200px;
+  transform-origin: top right;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   padding: var(--space-1);
   background: var(--color-surface-elevated);
   box-shadow: var(--shadow-md);
+  animation: ui-dropdown-in var(--duration-fast) ease both;
 }
 
 .ui-dropdown-item {
@@ -43,10 +66,26 @@
   cursor: pointer;
   text-align: left;
   font-size: 14px;
+  text-decoration: none;
+  transition:
+    color var(--duration-fast) ease,
+    background-color var(--duration-fast) ease;
 }
 
 .ui-dropdown-item:hover,
 .ui-dropdown-item:focus-visible {
   color: var(--color-text-primary);
   background: var(--color-brand-soft);
+}
+
+@keyframes ui-dropdown-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }

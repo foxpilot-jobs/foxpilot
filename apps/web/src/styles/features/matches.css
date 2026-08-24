@@ -186,15 +186,48 @@
 
 .matches-score {
   display: inline-flex;
-  align-items: baseline;
-  gap: var(--space-2);
+  align-items: center;
+  gap: var(--space-3);
   color: var(--color-text-primary);
+}
+
+.matches-score-figure {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 52px;
 }
 
 .matches-score strong {
   font-family: var(--font-heading);
   font-size: 24px;
   font-weight: 700;
+  line-height: 1;
+}
+
+.matches-score-bar {
+  --score-pct: 0%;
+
+  display: block;
+  width: 100%;
+  height: 4px;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--color-border);
+}
+
+.matches-score-bar-fill {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-brand);
+  animation: matches-score-fill var(--duration-slow) cubic-bezier(0.22, 1, 0.36, 1) 80ms both;
+}
+
+@keyframes matches-score-fill {
+  to {
+    width: var(--score-pct);
+  }
 }
 
 .matches-card-title h2 {

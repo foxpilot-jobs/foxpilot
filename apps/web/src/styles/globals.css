@@ -9,9 +9,24 @@ body {
     radial-gradient(circle at 90% 0%, rgba(21, 94, 239, 0.09), transparent 28rem), var(--fox-paper);
 }
 
+body.ui-scroll-locked {
+  overflow: hidden;
+}
+
 button,
 a {
   font: inherit;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
 }
 
 @media (prefers-reduced-motion: reduce) {

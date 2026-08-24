@@ -20,6 +20,9 @@
   font-size: 14px;
   font-weight: 600;
   white-space: nowrap;
+  transition:
+    color var(--duration-fast) ease,
+    border-color var(--duration-normal) ease;
 }
 
 .ui-tab:hover {

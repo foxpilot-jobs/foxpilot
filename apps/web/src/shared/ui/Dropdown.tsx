@@ -1,4 +1,3 @@
-import { ChevronDown } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 export function Dropdown({ label, children }: { label: ReactNode; children: ReactNode }) {
@@ -28,7 +27,6 @@ export function Dropdown({ label, children }: { label: ReactNode; children: Reac
         onClick={() => setOpen((current) => !current)}
       >
         {label}
-        <ChevronDown size={16} aria-hidden="true" />
       </button>
       {open && (
         <div className="ui-dropdown-menu" role="menu">
