@@ -1,5 +1,5 @@
-import { ChevronDown } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Link } from "react-router-dom";
 
 export function Dropdown({ label, children }: { label: ReactNode; children: ReactNode }) {
   const [open, setOpen] = useState(false);
@@ -28,7 +28,6 @@ export function Dropdown({ label, children }: { label: ReactNode; children: Reac
         onClick={() => setOpen((current) => !current)}
       >
         {label}
-        <ChevronDown size={16} aria-hidden="true" />
       </button>
       {open && (
         <div className="ui-dropdown-menu" role="menu">
@@ -49,8 +48,8 @@ export function DropdownItem({ children, onClick }: { children: ReactNode; onCli
 
 export function DropdownLink({ href, children }: { href: string; children: ReactNode }) {
   return (
-    <a className="ui-dropdown-item" href={href} role="menuitem">
+    <Link className="ui-dropdown-item" role="menuitem" to={href}>
       {children}
-    </a>
+    </Link>
   );
 }

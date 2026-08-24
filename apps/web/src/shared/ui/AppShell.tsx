@@ -1,7 +1,14 @@
-import { Menu, X } from "lucide-react";
-import { useState, type ReactNode } from "react";
-import { useEffect } from "react";
+import { Menu, PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useLocation } from "react-router-dom";
+
+const COLLAPSE_KEY = "foxpilot:sidebar-collapsed";
+const MOBILE_QUERY = "(max-width: 768px)";
+
+function readStoredCollapsed() {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(COLLAPSE_KEY) === "1";
+}
 
 export function AppShell({
   children,
@@ -15,20 +22,77 @@ export function AppShell({
   topbar?: ReactNode;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(readStoredCollapsed);
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== "undefined" && window.matchMedia(MOBILE_QUERY).matches,
+  );
   const location = useLocation();
+
   useEffect(() => {
     setMobileOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    const query = window.matchMedia(MOBILE_QUERY);
+    const update = () => setIsMobile(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem(COLLAPSE_KEY, collapsed ? "1" : "0");
+  }, [collapsed]);
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    document.body.classList.add("ui-scroll-locked");
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.classList.remove("ui-scroll-locked");
+    };
+  }, [mobileOpen]);
+
+  const toggleNav = () => {
+    if (isMobile) setMobileOpen((open) => !open);
+    else setCollapsed((current) => !current);
+  };
+
+  const navToggleLabel = isMobile
+    ? mobileOpen
+      ? "Close navigation"
+      : "Open navigation"
+    : collapsed
+      ? "Expand navigation"
+      : "Collapse navigation";
+
   return (
-    <div className="ui-app-shell">
+    <div
+      className={["ui-app-shell", collapsed ? "ui-shell-collapsed" : ""].filter(Boolean).join(" ")}
+    >
       <header className="ui-app-topbar">
         <button
-          aria-label={mobileOpen ? "Close navigation" : "Open navigation"}
-          className="ui-icon-button ui-mobile-menu-button"
+          aria-expanded={isMobile ? mobileOpen : !collapsed}
+          aria-label={navToggleLabel}
+          className="ui-icon-button ui-nav-toggle"
           type="button"
-          onClick={() => setMobileOpen((open) => !open)}
+          onClick={toggleNav}
         >
-          {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+          {isMobile ? (
+            mobileOpen ? (
+              <X size={20} />
+            ) : (
+              <Menu size={20} />
+            )
+          ) : collapsed ? (
+            <PanelLeftOpen size={20} />
+          ) : (
+            <PanelLeftClose size={20} />
+          )}
         </button>
         {topbar}
       </header>
@@ -43,7 +107,11 @@ export function AppShell({
           onClick={() => setMobileOpen(false)}
         />
       )}
-      <main className="ui-app-content">{children}</main>
+      <main className="ui-app-content">
+        <div className="ui-page-transition" key={location.pathname}>
+          {children}
+        </div>
+      </main>
       {mobileNav}
     </div>
   );

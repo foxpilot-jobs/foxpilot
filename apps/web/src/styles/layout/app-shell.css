@@ -17,7 +17,11 @@
   align-items: center;
   min-height: 64px;
   border-bottom: 1px solid var(--color-border);
-  padding: 0 var(--space-8);
+
+  /* Left inset matches the sidebar's effective inset (space-4 + the brand/
+     nav-link's own space-2) so the toggle icon lines up with the logo and
+     nav icons below it instead of sitting further right. */
+  padding: 0 var(--space-8) 0 var(--space-6);
   background: color-mix(in srgb, var(--color-surface-elevated) 92%, transparent);
   backdrop-filter: blur(10px);
 }
@@ -31,14 +35,19 @@
 
 .ui-app-sidebar {
   position: fixed;
-  z-index: var(--z-sticky);
+  z-index: var(--z-nav);
   top: 64px;
   bottom: 0;
   left: 0;
-  width: 240px;
+  width: var(--sidebar-w, 240px);
   border-right: 1px solid var(--color-border);
   padding: var(--space-6) var(--space-4);
   background: var(--color-surface);
+  transition: width var(--duration-normal) ease;
+
+  /* No overflow clipping here on purpose: the collapsed rail hides labels via
+     display:none (not clipping), and the hover flyout menu is positioned to
+     the right of this box — clipping would cut it off. */
 }
 
 .ui-sidebar-content {
@@ -64,6 +73,7 @@
   place-items: center;
   width: 32px;
   height: 32px;
+  flex: 0 0 auto;
   overflow: hidden;
   border-radius: var(--radius-md);
   background: var(--color-brand-soft);
@@ -84,17 +94,31 @@
 .ui-nav-group-label {
   margin: 0 0 var(--space-2);
   padding: 0 var(--space-2);
+  overflow: hidden;
   color: var(--color-text-subtle);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.ui-nav-item {
+  position: relative;
+}
+
+.ui-nav-item-row {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-1);
 }
 
 .ui-nav-link {
   display: flex;
+  flex: 1;
   align-items: center;
   gap: var(--space-3);
+  min-width: 0;
   border-radius: var(--radius-md);
   padding: var(--space-3) var(--space-2);
   color: var(--color-text-secondary);
@@ -106,18 +130,132 @@
     background-color var(--duration-fast) ease;
 }
 
+.ui-nav-link svg {
+  flex: 0 0 auto;
+}
+
 .ui-nav-link:hover,
 .ui-nav-link-active {
   color: var(--color-brand);
   background: var(--color-brand-soft);
 }
 
-.ui-app-content {
-  min-height: calc(100vh - 64px);
-  margin-left: 240px;
+.ui-nav-label {
+  overflow: hidden;
+  white-space: nowrap;
+  opacity: 1;
+  transition: opacity var(--duration-fast) ease;
 }
 
-.ui-mobile-menu-button,
+.ui-nav-caret {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 32px;
+  border: 0;
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  background: transparent;
+  cursor: pointer;
+  transition:
+    color var(--duration-fast) ease,
+    background-color var(--duration-fast) ease;
+}
+
+.ui-nav-caret:hover {
+  color: var(--color-text-primary);
+  background: var(--color-brand-soft);
+}
+
+.ui-nav-caret svg {
+  transition: transform var(--duration-fast) ease;
+}
+
+.ui-nav-caret[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+
+.ui-nav-subitems {
+  display: grid;
+  gap: var(--space-1);
+  margin: var(--space-1) 0 var(--space-2);
+  padding-left: var(--space-8);
+  animation: ui-nav-subitems-in var(--duration-fast) ease both;
+}
+
+.ui-nav-sublink {
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-2);
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition:
+    color var(--duration-fast) ease,
+    background-color var(--duration-fast) ease;
+}
+
+.ui-nav-sublink:hover,
+.ui-nav-sublink.ui-nav-link-active {
+  color: var(--color-brand);
+  background: var(--color-brand-soft);
+}
+
+.ui-nav-flyout {
+  position: absolute;
+  z-index: var(--z-dropdown);
+  top: 0;
+  left: calc(100% + var(--space-2));
+  display: none;
+  min-width: 160px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+  color: var(--color-text-primary);
+  background: var(--color-surface-elevated);
+  box-shadow: var(--shadow-md);
+  opacity: 0;
+  transform: translateX(-4px);
+  transition:
+    opacity var(--duration-fast) ease,
+    transform var(--duration-fast) ease;
+}
+
+.ui-nav-flyout-label {
+  display: block;
+  padding: var(--space-1) var(--space-2);
+  color: var(--color-text-primary);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ui-nav-flyout-link {
+  display: block;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.ui-nav-flyout-link:hover {
+  color: var(--color-brand);
+  background: var(--color-brand-soft);
+}
+
+.ui-app-content {
+  min-height: calc(100vh - 64px);
+  margin-left: var(--sidebar-w, 240px);
+  transition: margin-left var(--duration-normal) ease;
+}
+
+.ui-page-transition {
+  animation: ui-page-enter var(--duration-slow) ease both;
+}
+
 .ui-mobile-overlay,
 .ui-mobile-nav {
   display: none;
@@ -125,6 +263,7 @@
 
 .ui-icon-button {
   display: inline-grid;
+  flex: 0 0 auto;
   place-items: center;
   width: 40px;
   height: 40px;
@@ -133,11 +272,69 @@
   color: var(--color-text-secondary);
   background: transparent;
   cursor: pointer;
+  transition:
+    color var(--duration-fast) ease,
+    background-color var(--duration-fast) ease;
 }
 
 .ui-icon-button:hover {
   color: var(--color-text-primary);
   background: var(--color-brand-soft);
+}
+
+.ui-nav-toggle {
+  margin-right: var(--space-2);
+}
+
+/* Collapsed rail only ever applies at desktop/tablet widths: below the
+   769px breakpoint the sidebar becomes a full drawer overlay and always
+   shows labels, regardless of the persisted collapse preference. */
+@media (min-width: 769px) {
+  .ui-shell-collapsed {
+    --sidebar-w: 76px;
+  }
+
+  .ui-shell-collapsed .ui-nav-label,
+  .ui-shell-collapsed .ui-nav-group-label,
+  .ui-shell-collapsed .ui-nav-caret,
+  .ui-shell-collapsed .ui-nav-subitems {
+    display: none;
+  }
+
+  .ui-shell-collapsed .ui-nav-link {
+    justify-content: center;
+  }
+
+  .ui-shell-collapsed .ui-nav-item:hover .ui-nav-flyout,
+  .ui-shell-collapsed .ui-nav-item:focus-within .ui-nav-flyout {
+    display: block;
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes ui-nav-subitems-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ui-page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .ui-context-title {
@@ -258,7 +455,7 @@
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1024px) and (min-width: 769px) {
   .ui-app-sidebar {
     width: 216px;
   }
@@ -267,6 +464,16 @@
     margin-left: 216px;
   }
 
+  .ui-shell-collapsed .ui-app-sidebar {
+    width: 76px;
+  }
+
+  .ui-shell-collapsed .ui-app-content {
+    margin-left: 76px;
+  }
+}
+
+@media (max-width: 1024px) {
   .ui-page-container {
     width: min(100% - 48px, 1248px);
   }
@@ -277,14 +484,13 @@
     padding: 0 var(--space-6);
   }
 
-  .ui-mobile-menu-button {
-    display: inline-grid;
-  }
-
+  /* Below this breakpoint the sidebar becomes a full drawer overlay: the
+     desktop collapse preference is ignored so there's always room for labels. */
   .ui-app-sidebar {
+    --sidebar-w: min(280px, 85vw);
+
     z-index: var(--z-modal);
     top: 0;
-    width: min(280px, 85vw);
     transform: translateX(-100%);
     transition: transform var(--duration-normal) ease;
   }
@@ -300,6 +506,7 @@
     display: block;
     border: 0;
     background: rgba(7, 17, 31, 0.48);
+    animation: ui-overlay-in var(--duration-normal) ease both;
   }
 
   .ui-mobile-nav {
@@ -325,6 +532,7 @@
     font-size: 11px;
     font-weight: 600;
     text-decoration: none;
+    transition: color var(--duration-fast) ease;
   }
 
   .ui-mobile-nav-link-active {
@@ -371,5 +579,15 @@
 
   .ui-app-content {
     padding-bottom: 76px;
+  }
+}
+
+@keyframes ui-overlay-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
   }
 }
