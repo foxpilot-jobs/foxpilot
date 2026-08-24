@@ -7,6 +7,7 @@ import { ApplicationsPage } from "../features/dashboard/pages/ApplicationsPage";
 import { MatchesPage } from "../features/dashboard/pages/MatchesPage";
 import { ArchitecturePlaceholderPage } from "../features/navigation/pages/ArchitecturePlaceholderPage";
 import { ProfileSetupPage } from "../features/profile/pages/ProfileSetupPage";
+import { ProfileInsightsPage } from "../features/profile/pages/ProfileInsightsPage";
 import { AppLayout } from "../shared/layouts/AppLayout";
 
 export function AppRouter() {
@@ -26,15 +27,7 @@ export function AppRouter() {
           <Route path="jobs/:jobId" element={<JobDetailPage />} />
           <Route path="applications" element={<ApplicationsPage />} />
           <Route path="profile" element={<ProfileSetupPage />} />
-          <Route
-            path="profile/insights"
-            element={
-              <ArchitecturePlaceholderPage
-                description="Profile strengths, gaps, and recommendations will live here."
-                title="Profile insights"
-              />
-            }
-          />
+          <Route path="profile/insights" element={<ProfileInsightsPage />} />
           <Route
             path="settings"
             element={
