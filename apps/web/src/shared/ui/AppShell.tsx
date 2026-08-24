@@ -1,16 +1,24 @@
 import { Menu, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
+import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
 
 export function AppShell({
   children,
+  mobileNav,
   sidebar,
   topbar,
 }: {
   children: ReactNode;
+  mobileNav?: ReactNode;
   sidebar?: ReactNode;
   topbar?: ReactNode;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const location = useLocation();
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location.pathname]);
   return (
     <div className="ui-app-shell">
       <header className="ui-app-topbar">
@@ -36,6 +44,7 @@ export function AppShell({
         />
       )}
       <main className="ui-app-content">{children}</main>
+      {mobileNav}
     </div>
   );
 }
