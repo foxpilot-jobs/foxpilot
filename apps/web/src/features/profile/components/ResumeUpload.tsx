@@ -42,7 +42,7 @@ export function ResumeUpload({
             : "Upload your resume"}
       </span>
       <span className="profile-upload-help">
-        PDF only, up to 10 MB. Your resume stays associated with your account.
+        Drag and drop a file here, or click to browse. PDF only, up to 10 MB.
       </span>
       {selectedFileName && !disabled && (
         <span className="profile-upload-selected">Selected: {selectedFileName}</span>
