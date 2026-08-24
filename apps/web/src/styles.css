@@ -167,6 +167,21 @@ a {
   margin-bottom: 24px;
 }
 
+.auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.auth-brand img {
+  width: 58px;
+  height: 58px;
+  border-radius: 18px;
+  object-fit: cover;
+  mix-blend-mode: multiply;
+}
+
 .auth-form {
   display: grid;
   gap: 16px;
@@ -352,12 +367,17 @@ a {
   place-items: center;
   width: 42px;
   height: 42px;
+  overflow: hidden;
+  border: 1px solid #ddd6ca;
   border-radius: 13px;
-  color: var(--fox-paper);
-  background: var(--fox-ink);
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
+  background: #fff;
+}
+
+.brand-mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  mix-blend-mode: multiply;
 }
 
 .eyebrow {

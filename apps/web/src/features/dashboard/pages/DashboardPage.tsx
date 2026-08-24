@@ -119,7 +119,9 @@ export function DashboardPage() {
   return (
     <main className="shell">
       <nav className="topbar">
-        <div className="brand-mark">FP</div>
+        <div className="brand-mark">
+          <img src="/brand/foxpilot-mark.png" alt="FoxPilot" />
+        </div>
         <div>
           <p className="eyebrow">FOXPILOT</p>
           <p className="muted">A sharper shortlist for your next move</p>

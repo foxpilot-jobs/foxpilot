@@ -206,7 +206,10 @@ function AuthLayout({
 }) {
   return (
     <main className="auth-shell">
-      <p className="eyebrow accent">FOXPILOT</p>
+      <div className="auth-brand">
+        <img src="/brand/foxpilot-mark.png" alt="FoxPilot" />
+        <span className="eyebrow accent">FOXPILOT</span>
+      </div>
       <h1>{title}</h1>
       <p className="hero-copy">
         Keep your matches, decisions, and application history private to you.

@@ -42,7 +42,10 @@ function ProtectedRoute() {
 function LoadingScreen() {
   return (
     <main className="auth-shell">
-      <p className="eyebrow">FOXPILOT</p>
+      <div className="auth-brand">
+        <img src="/brand/foxpilot-mark.png" alt="FoxPilot" />
+        <span className="eyebrow">FOXPILOT</span>
+      </div>
       <h1>Preparing your workspace...</h1>
     </main>
   );
