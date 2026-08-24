@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import {
-  getProfile,
   getApplications,
   getJobs,
   getMatches,
+  getProfile,
   updateApplication,
   type Application,
   type Job,
@@ -13,14 +12,19 @@ import {
 } from "../../../api";
 import { Alert } from "../../../shared/components/Alert";
 import { Button } from "../../../shared/components/Button";
-import { LoadingState } from "../../../shared/components/LoadingState";
+import { SkeletonCard } from "../../../shared/ui/Skeleton";
 import { useAuth } from "../../auth/useAuth";
+import { DashboardActions } from "../components/DashboardActions";
+import { DashboardHeader } from "../components/DashboardHeader";
+import { DashboardMetrics } from "../components/DashboardMetrics";
 import { FilterToolbar } from "../components/FilterToolbar";
 import { JobCard } from "../components/JobCard";
-import { MetricsSummary } from "../components/MetricsSummary";
+import { ProfilePrompt } from "../components/ProfilePrompt";
+import { RecentApplications } from "../components/RecentApplications";
+import { TopMatches } from "../components/TopMatches";
 
 export function DashboardPage() {
-  const { signOut, user } = useAuth();
+  const { user } = useAuth();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -32,28 +36,36 @@ export function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [updatingJob, setUpdatingJob] = useState<string | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
 
   useEffect(() => {
-    if (!user) {
-      return;
-    }
+    if (!user) return;
     setLoading(true);
-    Promise.all([getJobs(includeInactive), getMatches(), getApplications(), getProfile()])
-      .then(([loadedJobs, loadedMatches, loadedApplications, loadedProfile]) => {
-        setJobs(loadedJobs);
-        setMatches(loadedMatches);
+    setError(null);
+    void Promise.allSettled([
+      getJobs(includeInactive),
+      getMatches(),
+      getApplications(),
+      getProfile(),
+    ]).then(([jobsResult, matchesResult, applicationsResult, profileResult]) => {
+      const failures: string[] = [];
+      if (jobsResult.status === "fulfilled") setJobs(jobsResult.value);
+      else failures.push("jobs");
+      if (matchesResult.status === "fulfilled") setMatches(matchesResult.value);
+      else failures.push("matches");
+      if (applicationsResult.status === "fulfilled") {
         setApplications(
           Object.fromEntries(
-            loadedApplications.map((application) => [application.job_id, application]),
+            applicationsResult.value.map((application) => [application.job_id, application]),
           ),
         );
-        setProfile(loadedProfile);
-      })
-      .catch((reason: unknown) => {
-        setError(reason instanceof Error ? reason.message : "Unable to load your shortlist");
-      })
-      .finally(() => setLoading(false));
-  }, [includeInactive, user]);
+      } else failures.push("applications");
+      if (profileResult.status === "fulfilled") setProfile(profileResult.value);
+      else failures.push("profile");
+      if (failures.length > 0) setError("Some workspace data could not be loaded.");
+      setLoading(false);
+    });
+  }, [includeInactive, reloadToken, user]);
 
   const matchByJob = useMemo(
     () => new Map(matches.map((item) => [item.job_id, item.match])),
@@ -67,7 +79,7 @@ export function DashboardPage() {
         const jobId = job.job_id ?? "";
         const match = matchByJob.get(jobId);
         if (profile && view === "matches" && !match) return false;
-        const application = applications[job.job_id ?? ""];
+        const application = applications[jobId];
         const matchesStatus = statusFilter === "all" || application?.status === statusFilter;
         const matchesQuery =
           !normalizedQuery ||
@@ -76,25 +88,14 @@ export function DashboardPage() {
             .includes(normalizedQuery);
         return matchesStatus && matchesQuery;
       })
-      .sort((left, right) => {
-        const leftScore = matchByJob.get(left.job_id ?? "")?.match_score ?? -1;
-        const rightScore = matchByJob.get(right.job_id ?? "")?.match_score ?? -1;
-        return rightScore - leftScore;
-      });
+      .sort(
+        (left, right) =>
+          (matchByJob.get(right.job_id ?? "")?.match_score ?? -1) -
+          (matchByJob.get(left.job_id ?? "")?.match_score ?? -1),
+      );
   }, [applications, jobs, matchByJob, profile, query, statusFilter, view]);
 
-  const matchedJobs = useMemo(
-    () => jobs.filter((job) => matchByJob.has(job.job_id ?? "")),
-    [jobs, matchByJob],
-  );
-  const matchedJobIds = useMemo(
-    () => new Set(matchedJobs.map((job) => job.job_id ?? "")),
-    [matchedJobs],
-  );
-
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
 
   async function handleStatus(jobId: string, status: Application["status"]) {
     setUpdatingJob(jobId);
@@ -109,156 +110,129 @@ export function DashboardPage() {
     }
   }
 
-  const savedCount = Object.values(applications).filter(
-    (item) => item.status === "saved" && matchedJobIds.has(item.job_id),
-  ).length;
-  const appliedCount = Object.values(applications).filter(
-    (item) => item.status === "applied" && matchedJobIds.has(item.job_id),
-  ).length;
-
   return (
-    <main className="shell">
-      <nav className="topbar">
-        <div className="brand-mark">
-          <img src="/brand/foxpilot-mark.png" alt="FoxPilot" />
-        </div>
-        <div>
-          <p className="eyebrow">FOXPILOT</p>
-          <p className="muted">A sharper shortlist for your next move</p>
-        </div>
-        <div className="account-actions">
-          <span className="account-email">{user.email}</span>
-          <Button
-            variant="quiet"
-            type="button"
-            onClick={() =>
-              void signOut().catch((reason: unknown) =>
-                setError(reason instanceof Error ? reason.message : "Unable to sign out"),
-              )
-            }
-          >
-            Sign out
-          </Button>
-          <Link className="profile-link" to="/app/profile">
-            Profile
-          </Link>
-        </div>
-      </nav>
-
-      <section className="hero">
-        <div>
-          <p className="eyebrow accent">TODAY&apos;S SIGNAL</p>
-          <h1>Spend less time searching. Spend more time choosing.</h1>
-          <p className="hero-copy">
-            Your local agent found the opportunities most aligned with your profile. Review the
-            evidence, track your decisions, and keep momentum.
-          </p>
-        </div>
-        <div className="signal-card">
-          <span className="signal-number">{matchedJobs.length}</span>
-          <span className="muted">matched roles ready</span>
-        </div>
-      </section>
-
+    <main className="dashboard-overview">
+      <DashboardHeader email={user.email} />
       {error && (
-        <Alert>{`${error}. Check that the API is running and authenticated correctly.`}</Alert>
+        <div className="dashboard-error">
+          <Alert>{error}</Alert>
+          <Button
+            type="button"
+            variant="quiet"
+            onClick={() => setReloadToken((token) => token + 1)}
+          >
+            Try again
+          </Button>
+        </div>
       )}
-
-      {!loading && profile === null && (
-        <section className="profile-banner">
-          <div>
-            <p className="eyebrow accent">START HERE</p>
-            <h2>Upload your resume to unlock match scores.</h2>
-            <p>
-              FoxPilot will use your experience, skills, and target roles to explain what fits and
-              where the gaps are.
-            </p>
-          </div>
-          <Link className="primary-button" to="/app/profile">
-            Set up profile
-          </Link>
-        </section>
-      )}
-
       {loading ? (
-        <LoadingState label="Loading your shortlist..." />
+        <DashboardSkeleton />
       ) : (
         <>
-          <MetricsSummary applied={appliedCount} matches={matchedJobs.length} saved={savedCount} />
-
-          <div className="dashboard-views" role="tablist" aria-label="Job views">
-            {profile && (
+          <DashboardMetrics
+            applications={Object.keys(applications).length}
+            matches={matches}
+            profile={profile}
+          />
+          <div className="dashboard-overview-grid">
+            <TopMatches matches={matches} />
+            <RecentApplications
+              applications={Object.values(applications)}
+              jobs={jobs}
+              updatingJob={updatingJob}
+              onStatusChange={(jobId, status) => void handleStatus(jobId, status)}
+            />
+          </div>
+          <DashboardActions
+            applicationCount={Object.keys(applications).length}
+            hasMatches={matches.length > 0}
+            hasProfile={profile !== null}
+          />
+          <ProfilePrompt hasProfile={profile !== null} resumeFilename={profile?.resume_filename} />
+          <section className="dashboard-job-explorer" aria-labelledby="job-explorer-heading">
+            <div className="dashboard-section-heading">
+              <div>
+                <p className="ui-eyebrow">All opportunities</p>
+                <h2 id="job-explorer-heading">Keep exploring</h2>
+              </div>
+              <span className="dashboard-count">{filteredJobs.length} showing</span>
+            </div>
+            <div className="dashboard-views" role="tablist" aria-label="Job views">
+              {profile && (
+                <button
+                  className={view === "matches" ? "view-tab active" : "view-tab"}
+                  role="tab"
+                  type="button"
+                  aria-selected={view === "matches"}
+                  onClick={() => setView("matches")}
+                >
+                  Personalized matches
+                </button>
+              )}
               <button
-                className={view === "matches" ? "view-tab active" : "view-tab"}
+                className={view === "all" || !profile ? "view-tab active" : "view-tab"}
                 role="tab"
                 type="button"
-                aria-selected={view === "matches"}
-                onClick={() => setView("matches")}
+                aria-selected={view === "all" || !profile}
+                onClick={() => setView("all")}
               >
-                Personalized matches
+                All active jobs
               </button>
-            )}
-            <button
-              className={view === "all" || !profile ? "view-tab active" : "view-tab"}
-              role="tab"
-              type="button"
-              aria-selected={view === "all" || !profile}
-              onClick={() => setView("all")}
-            >
-              All active jobs
-            </button>
-          </div>
-
-          <section className="section-heading">
-            <div>
-              <p className="eyebrow">
-                {view === "all" || !profile ? "JOB CORPUS" : "PERSONALIZED"}
-              </p>
-              <h2>{view === "all" || !profile ? "All active roles" : "Worth a closer look"}</h2>
             </div>
-            <span className="count-pill">{filteredJobs.length} showing</span>
-          </section>
-
-          <FilterToolbar
-            query={query}
-            statusFilter={statusFilter}
-            onQueryChange={setQuery}
-            onStatusChange={setStatusFilter}
-          />
-          <label className="closed-jobs-toggle">
-            <input
-              checked={includeInactive}
-              type="checkbox"
-              onChange={(event) => setIncludeInactive(event.target.checked)}
+            <FilterToolbar
+              query={query}
+              statusFilter={statusFilter}
+              onQueryChange={setQuery}
+              onStatusChange={setStatusFilter}
             />
-            Include closed roles
-          </label>
-
-          <section className="job-grid">
-            {filteredJobs.map((job) => {
-              const jobId = job.job_id ?? "";
-              const match = matchByJob.get(jobId);
-              const application = applications[jobId];
-              return (
-                <JobCard
-                  application={application}
-                  job={job}
-                  key={jobId || `${job.company}-${job.title}`}
-                  match={match}
-                  updating={updatingJob === jobId}
-                  onStatusChange={(status) => void handleStatus(jobId, status)}
-                />
-              );
-            })}
+            <label className="closed-jobs-toggle">
+              <input
+                checked={includeInactive}
+                type="checkbox"
+                onChange={(event) => setIncludeInactive(event.target.checked)}
+              />
+              Include closed roles
+            </label>
+            <section className="job-grid">
+              {filteredJobs.map((job) => {
+                const jobId = job.job_id ?? "";
+                return (
+                  <JobCard
+                    application={applications[jobId]}
+                    job={job}
+                    key={jobId || `${job.company}-${job.title}`}
+                    match={matchByJob.get(jobId)}
+                    updating={updatingJob === jobId}
+                    onStatusChange={(status) => void handleStatus(jobId, status)}
+                  />
+                );
+              })}
+            </section>
+            {filteredJobs.length === 0 && (
+              <div className="empty-state">
+                <strong>No roles match this view.</strong>
+                <span>Try clearing the search or choosing All.</span>
+              </div>
+            )}
           </section>
-          {filteredJobs.length === 0 && (
-            <div className="empty-state">
-              <strong>No roles match this view.</strong>
-              <span>Try clearing the search or choosing All.</span>
-            </div>
-          )}
         </>
       )}
     </main>
+  );
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="dashboard-skeleton" aria-label="Loading overview" role="status">
+      <div className="dashboard-metrics">
+        {[1, 2, 3, 4].map((item) => (
+          <SkeletonCard key={item} />
+        ))}
+      </div>
+      <div className="dashboard-overview-grid">
+        <SkeletonCard />
+        <SkeletonCard />
+      </div>
+    </div>
   );
 }
