@@ -19,3 +19,4 @@ These rules apply to every agent working in this repository:
 - Keep frontend work under `apps/web` and API adapter work under `services/api`; do not put browser logic in Python scrapers or provider modules.
 - The API and CLI must share Python application services. Do not duplicate matching, profile, storage, or source logic in the frontend.
 - Frontend changes must preserve responsive desktop/mobile behavior, accessibility, typed API contracts, and the local-first privacy model.
+- `apps/web` has no test framework yet. The approved choice for when it is added is Vitest + React Testing Library (see `docs/architecture/DECISIONS.md`). Do not introduce a different frontend test framework, and do not add the approved one silently — confirm scope with the repository owner first, since it is a new dependency and a new CI job.
