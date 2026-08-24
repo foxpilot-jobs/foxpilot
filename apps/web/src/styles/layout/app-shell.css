@@ -17,7 +17,11 @@
   align-items: center;
   min-height: 64px;
   border-bottom: 1px solid var(--color-border);
-  padding: 0 var(--space-8);
+
+  /* Left inset matches the sidebar's effective inset (space-4 + the brand/
+     nav-link's own space-2) so the toggle icon lines up with the logo and
+     nav icons below it instead of sitting further right. */
+  padding: 0 var(--space-8) 0 var(--space-6);
   background: color-mix(in srgb, var(--color-surface-elevated) 92%, transparent);
   backdrop-filter: blur(10px);
 }
@@ -31,16 +35,19 @@
 
 .ui-app-sidebar {
   position: fixed;
-  z-index: var(--z-sticky);
+  z-index: var(--z-nav);
   top: 64px;
   bottom: 0;
   left: 0;
   width: var(--sidebar-w, 240px);
-  overflow: hidden auto;
   border-right: 1px solid var(--color-border);
   padding: var(--space-6) var(--space-4);
   background: var(--color-surface);
   transition: width var(--duration-normal) ease;
+
+  /* No overflow clipping here on purpose: the collapsed rail hides labels via
+     display:none (not clipping), and the hover flyout menu is positioned to
+     the right of this box — clipping would cut it off. */
 }
 
 .ui-sidebar-content {
