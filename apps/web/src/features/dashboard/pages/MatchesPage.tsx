@@ -54,7 +54,7 @@ export function MatchesPage() {
         setLoading(false);
       },
     );
-  }, [reloadToken, user]);
+  }, [reloadToken, user?.user_id]);
 
   const visibleMatches = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -164,15 +164,16 @@ export function MatchesPage() {
 }
 
 function NoMatches({ profile }: { profile: Profile | null }) {
+  const hasProfileData = Boolean(profile && profile.resume_filename);
   return (
     <EmptyState
       action={
         <Link className="ui-button ui-button-primary ui-button-md" to="/app/profile">
-          {profile ? "Run matching" : "Complete profile"}
+          {hasProfileData ? "Run matching" : "Complete profile"}
         </Link>
       }
       description={
-        profile
+        hasProfileData
           ? "Run a scan and matching job from your profile to generate personalized opportunities."
           : "Upload your resume to give FoxPilot the context it needs to find roles that fit."
       }

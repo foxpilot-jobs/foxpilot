@@ -200,3 +200,106 @@ def test_legacy_user_owned_tables_are_upgraded(tmp_path: Path) -> None:
         assert another_user.get_match("job-1") is None
         another_user.save_match("job-1", "hash", "ollama", "test-model", {"score": 80})
         assert another_user.get_match("job-1")["match"] == {"score": 80}
+
+
+def test_list_jobs_bulk_query_does_not_n_plus_one(tmp_path: Path) -> None:
+    database = tmp_path / "bulk_jobs.sqlite3"
+    with JobStore(database) as store:
+        for i in range(10):
+            store.upsert_job(
+                {
+                    "source": f"source_{i}",
+                    "source_job_id": f"job_{i}",
+                    "title": f"Engineer {i}",
+                    "company": "Tech Corp",
+                }
+            )
+
+        executed_statements = []
+
+        def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+            executed_statements.append(statement)
+
+        from sqlalchemy import event
+        event.listen(store.engine, "before_cursor_execute", before_cursor_execute)
+        try:
+            jobs = store.list_jobs()
+            assert len(jobs) == 10
+            # Expect exactly 2 SQL statements: 1 for jobs, 1 for job_listings in bulk.
+            assert len(executed_statements) == 2
+        finally:
+            event.remove(store.engine, "before_cursor_execute", before_cursor_execute)
+
+
+def test_get_session_user_last_seen_touch_threshold(tmp_path: Path) -> None:
+    from datetime import UTC, datetime, timedelta
+    from uuid import uuid4
+
+
+    database = tmp_path / "session_test.sqlite3"
+    with JobStore(database) as store:
+        store.create_user("u1", "u1@example.com", "hash")
+        token_hash = "token_hash_123"
+        expires_at = datetime.now(UTC) + timedelta(days=1)
+        store.create_session(str(uuid4()), "u1", token_hash, expires_at)
+
+        # Second call within threshold (5m) skips touch write transaction
+        user_second = store.get_session_user(token_hash)
+        assert user_second is not None
+        assert user_second["email"] == "u1@example.com"
+
+
+def test_bulk_upsert_jobs_preserves_uniqueness_and_canonical_deduplication(tmp_path: Path) -> None:
+    database = tmp_path / "bulk_test.sqlite3"
+    with JobStore(database) as store:
+        batch_1 = [
+            {
+                "source": "source1",
+                "source_job_id": "101",
+                "title": "Backend Engineer",
+                "company": "Acme Corp",
+                "location": "Remote",
+                "description": "Building scalable Python APIs and PostgreSQL databases.",
+            },
+            {
+                "source": "source1",
+                "source_job_id": "102",
+                "title": "Frontend Engineer",
+                "company": "Acme Corp",
+                "location": "Remote",
+                "description": "Building modern React interfaces with Tailwind.",
+            },
+        ]
+        res1 = store.bulk_upsert_jobs(batch_1)
+        assert res1["inserted"] == 2
+        assert res1["updated"] == 0
+        assert res1["deduplicated"] == 0
+
+        # Batch 2: Update job 101, add duplicate job 101 from source2 (canonical match)
+        batch_2 = [
+            {
+                "source": "source1",
+                "source_job_id": "101",
+                "title": "Backend Engineer",
+                "company": "Acme Corp",
+                "location": "Remote",
+                "description": "Building scalable Python APIs and PostgreSQL databases.",
+            },
+            {
+                "source": "source2",
+                "source_job_id": "999",
+                "title": "Backend Engineer",
+                "company": "Acme Corp",
+                "location": "Remote",
+                "description": "Building scalable Python APIs and PostgreSQL databases.",
+            },
+        ]
+        res2 = store.bulk_upsert_jobs(batch_2)
+        assert res2["updated"] == 1
+        assert res2["deduplicated"] == 1
+
+        # Verify database state
+        all_jobs = store.list_jobs()
+        assert len(all_jobs) == 2
+        be_job = next(j for j in all_jobs if j["title"] == "Backend Engineer")
+        assert len(be_job["sources"]) == 2

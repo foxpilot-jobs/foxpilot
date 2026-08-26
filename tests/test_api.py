@@ -346,3 +346,87 @@ def test_google_callback_links_user_and_creates_session(tmp_path: Path, monkeypa
     assert callback.status_code == 303
     assert callback.headers["location"].endswith("/app")
     assert client.get("/api/v1/auth/me").json()["email"] == "google@example.com"
+
+
+def test_endpoint_latency_benchmarks(tmp_path: Path) -> None:
+    import time
+    config = AppConfig(data_dir=tmp_path)
+    with JobStore(config.database_path) as store:
+        for i in range(20):
+            store.upsert_job({"source": "bench", "source_job_id": str(i), "title": f"Role {i}"})
+
+    app = create_app()
+    app.state.service.config = config
+    client = TestClient(app)
+
+    endpoints = [
+        "/api/v1/auth/me",
+        "/api/v1/jobs",
+        "/api/v1/matches",
+        "/api/v1/applications",
+        "/api/v1/profile",
+    ]
+
+    timings = {}
+    for path in endpoints:
+        start = time.perf_counter()
+        response = client.get(path)
+        elapsed_ms = (time.perf_counter() - start) * 1000
+        timings[path] = round(elapsed_ms, 2)
+        assert response.status_code in {200, 404}
+
+    print("\n[BENCHMARK ENDPOINT LATENCIES]:", timings)
+    for path, elapsed_ms in timings.items():
+        assert elapsed_ms < 200, f"{path} took {elapsed_ms:.2f}ms which exceeds 200ms threshold"
+
+
+def test_get_profile_returns_200_for_new_authenticated_user_without_resume(tmp_path: Path) -> None:
+    config = AppConfig(data_dir=tmp_path)
+    app = create_app()
+    app.state.service.config = config
+    client = TestClient(app)
+
+    response = client.get("/api/v1/profile")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["resume_filename"] == ""
+    assert data["profile"] == {}
+    assert data["created_at"] is None
+    assert data["updated_at"] is None
+
+
+def test_auth_me_single_query_and_session_behavior(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("FOXPILOT_AUTH_MODE", "native")
+    config = AppConfig(data_dir=tmp_path)
+    app = create_app()
+    app.state.service.config = config
+    client = TestClient(app)
+
+    # Unauthenticated request returns 401
+    assert client.get("/api/v1/auth/me").status_code == 401
+
+    # Register user
+    reg = client.post(
+        "/api/v1/auth/register",
+        json={"email": "singlequery@example.com", "password": "secure passphrase 1234"},
+    )
+    assert reg.status_code == 201
+
+    executed_statements = []
+
+    def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+        executed_statements.append(statement)
+
+    from sqlalchemy import event
+    with JobStore(config.database_path) as store:
+        event.listen(store.engine, "before_cursor_execute", before_cursor_execute)
+        try:
+            response = client.get("/api/v1/auth/me")
+            assert response.status_code == 200
+            data = response.json()
+            assert data["email"] == "singlequery@example.com"
+            assert data["user_id"] == reg.json()["user_id"]
+            # Verify exactly 1 query executed for /auth/me
+            assert len(executed_statements) == 1
+        finally:
+            event.remove(store.engine, "before_cursor_execute", before_cursor_execute)

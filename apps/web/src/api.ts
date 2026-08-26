@@ -56,8 +56,8 @@ export type AuthUser = {
 export type Profile = {
   resume_filename: string;
   profile: Record<string, unknown>;
-  created_at: string;
-  updated_at: string;
+  created_at: string | null;
+  updated_at: string | null;
 };
 
 export type BackgroundJob = {
@@ -144,11 +144,8 @@ export async function uploadResume(file: File): Promise<BackgroundJob> {
   return response.json() as Promise<BackgroundJob>;
 }
 
-export async function getProfile(): Promise<Profile | null> {
+export async function getProfile(): Promise<Profile> {
   const response = await fetch(`${API_BASE}/api/v1/profile`, { credentials: "include" });
-  if (response.status === 404) {
-    return null;
-  }
   if (!response.ok) {
     throw new Error(`Unable to load profile: ${response.status}`);
   }
