@@ -220,7 +220,11 @@
   color: var(--color-text-primary);
 }
 
-.job-detail-secondary select {
+.job-detail-secondary .status-select {
+  width: 100%;
+}
+
+.job-detail-secondary .status-select-trigger {
   width: 100%;
 }
 

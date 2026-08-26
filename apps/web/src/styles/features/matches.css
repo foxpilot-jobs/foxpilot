@@ -143,7 +143,7 @@
 .matches-skills > div,
 .matches-gap-item > div {
   display: flex;
-  align-items: center;
+  align-items: baseline;
 }
 
 .matches-card-header {
@@ -320,8 +320,8 @@
 }
 
 .matches-gap-item > div {
-  justify-content: space-between;
-  gap: var(--space-3);
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 
 .matches-card-footer {
@@ -356,7 +356,7 @@
   color: var(--color-brand);
 }
 
-.matches-card-footer select {
+.matches-card-footer .status-select-trigger {
   width: 132px;
 }
 
@@ -450,7 +450,11 @@
     flex-direction: column;
   }
 
-  .matches-card-footer select {
+  .matches-card-footer .status-select {
+    width: 100%;
+  }
+
+  .matches-card-footer .status-select-trigger {
     width: 100%;
   }
 }

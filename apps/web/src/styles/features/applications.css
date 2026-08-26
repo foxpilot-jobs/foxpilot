@@ -149,6 +149,7 @@
 .applications-column-list {
   display: grid;
   gap: var(--space-3);
+  min-width: 0;
   padding-top: var(--space-3);
 }
 
@@ -163,6 +164,8 @@
 .applications-card {
   display: grid;
   gap: var(--space-4);
+  min-width: 0;
+  overflow: hidden;
   padding: var(--space-4);
   box-shadow: var(--shadow-xs);
 }
@@ -210,9 +213,11 @@
 
 .applications-match-score {
   flex: 0 0 auto;
+  min-width: 0;
   color: var(--color-text-muted);
   font-size: 11px;
   white-space: nowrap;
+  text-align: right;
 }
 
 .applications-match-score strong {
@@ -237,7 +242,7 @@
   gap: var(--space-2);
 }
 
-.applications-card-actions select {
+.applications-card-actions .status-select-trigger {
   width: 116px;
 }
 
@@ -336,7 +341,11 @@
     flex-direction: column;
   }
 
-  .applications-card-actions select {
+  .applications-card-actions .status-select {
+    width: 100%;
+  }
+
+  .applications-card-actions .status-select-trigger {
     width: 100%;
   }
 
