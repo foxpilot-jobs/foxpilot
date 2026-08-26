@@ -401,10 +401,11 @@ def _load_source_config() -> dict[str, Any]:
 
 
 def _save_jobs(jobs: list[SourceJob], user_id: str) -> int:
+    if not jobs:
+        return 0
     with JobStore(load_config().resolved_database_url, user_id=user_id) as store:
-        for job in jobs:
-            store.upsert_job(job.as_dict())
-    return len(jobs)
+        stats = store.bulk_upsert_jobs([job.as_dict() for job in jobs])
+        return stats.get("inserted", 0) + stats.get("updated", 0)
 
 
 def fetch_configured_sources(profile: dict | None = None, user_id: str = "local-user") -> int:
