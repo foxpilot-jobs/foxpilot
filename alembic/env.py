@@ -1,11 +1,14 @@
 import os
 from logging.config import fileConfig
 
+from dotenv import load_dotenv
 from sqlalchemy import engine_from_config, pool
 
 from alembic import context
 from career_agent.config import normalize_database_url
 from career_agent.storage.database import metadata
+
+load_dotenv()
 
 config = context.config
 if config.config_file_name is not None:

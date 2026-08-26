@@ -13,17 +13,11 @@ def run_step(
 ) -> None:
 
     print()
-    print(
-        "=" * 70
-    )
+    print("=" * 70)
 
-    print(
-        f"STEP: {name}"
-    )
+    print(f"STEP: {name}")
 
-    print(
-        "=" * 70
-    )
+    print("=" * 70)
 
     result = subprocess.run(
         command,
@@ -31,37 +25,26 @@ def run_step(
     )
 
     if result.returncode != 0:
-
         print()
-        print(
-            f"ERROR: {name} failed."
-        )
+        print(f"ERROR: {name} failed.")
 
-        sys.exit(
-            result.returncode
-        )
+        sys.exit(result.returncode)
 
 
 def has_filtered_jobs() -> bool:
     with JobStore(load_config().resolved_database_url) as store:
-        return bool(store.list_jobs(relevance="TARGET"))
+        return store.list_jobs(relevance="TARGET", limit=1)["total"] > 0
 
 
 def _run_pipeline():
 
     python = sys.executable
 
-    print(
-        "=" * 70
-    )
+    print("=" * 70)
 
-    print(
-        "FOXPILOT"
-    )
+    print("FOXPILOT")
 
-    print(
-        "=" * 70
-    )
+    print("=" * 70)
 
     config = load_config()
     if not has_current_local_profile(config):
@@ -100,7 +83,9 @@ def _run_pipeline():
     if not has_filtered_jobs():
         print()
         print("No target jobs were found. Skipping AI matching.")
-        print("If Greenhouse returned redirects, log in with the new browser profile and scan again.")
+        print(
+            "If Greenhouse returned redirects, log in with the new browser profile and scan again."
+        )
         return 0
 
     # --------------------------------------------------
@@ -116,9 +101,7 @@ def _run_pipeline():
     )
 
     print()
-    print(
-        "=" * 70
-    )
+    print("=" * 70)
 
 
 def main() -> int:

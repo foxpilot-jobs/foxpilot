@@ -37,7 +37,7 @@ from career_agent.email import configured as email_configured
 from career_agent.email import send_email
 from career_agent.llm import LLMError
 from career_agent.profile import extract_resume_text_from_bytes
-from career_agent.services import CareerService
+from career_agent.services import CareerService, IngestionService
 from career_agent.storage import JobStore, dispose_all_engines, initialize_database
 
 from .auth import (
@@ -65,7 +65,11 @@ GOOGLE_STATE_MAX_AGE = 600
 def _google_configured() -> bool:
     client_id = os.getenv("GOOGLE_CLIENT_ID", "").strip()
     client_secret = os.getenv("GOOGLE_CLIENT_SECRET", "").strip()
-    return bool(client_id and client_secret) and not client_id.startswith("your-") and not client_secret.startswith("your-")
+    return (
+        bool(client_id and client_secret)
+        and not client_id.startswith("your-")
+        and not client_secret.startswith("your-")
+    )
 
 
 class ApplicationUpdate(BaseModel):
@@ -127,7 +131,9 @@ def create_app() -> FastAPI:
     async def lifespan(application: FastAPI):
         initialize_database(application.state.service.config.resolved_database_url)
         if os.getenv("FOXPILOT_WORKER_MODE", "inline").lower() != "external":
-            with JobStore(application.state.service.config.resolved_database_url) as store:
+            with JobStore(
+                application.state.service.config.resolved_database_url
+            ) as store:
                 store.recover_interrupted_background_jobs()
         yield
         dispose_all_engines()
@@ -155,6 +161,7 @@ def create_app() -> FastAPI:
         allow_headers=["Content-Type", "Authorization"],
     )
     app.state.service = CareerService(load_config())
+    app.state.ingestion_service = IngestionService(load_config())
     app.state.rate_limiter = InMemoryRateLimiter()
 
     @app.middleware("http")
@@ -163,7 +170,9 @@ def create_app() -> FastAPI:
         native_mode = os.getenv("FOXPILOT_AUTH_MODE", "").lower() == "native"
         origin = request.headers.get("origin")
         if unsafe_method and native_mode and origin and origin not in allowed_origins:
-            return JSONResponse(status_code=403, content={"detail": "Request origin is not allowed"})
+            return JSONResponse(
+                status_code=403, content={"detail": "Request origin is not allowed"}
+            )
         return await call_next(request)
 
     @app.middleware("http")
@@ -206,7 +215,8 @@ def create_app() -> FastAPI:
                 f"\n============================================================\n"
                 f"[HIGH-RES TIMELINE BREAKDOWN] {request.method} {path} -> Status {response.status_code}\n"
                 f"  - Total Request Time: {total_ms:.2f} ms\n"
-                + "\n".join(timeline_lines) + "\n"
+                + "\n".join(timeline_lines)
+                + "\n"
                 "============================================================\n"
             )
             logger.info(report_text)
@@ -218,11 +228,15 @@ def create_app() -> FastAPI:
     def service() -> CareerService:
         return app.state.service
 
-    def user_service(current_user: AuthContext = Depends(require_api_access)) -> CareerService:
+    def user_service(
+        current_user: AuthContext = Depends(require_api_access),
+    ) -> CareerService:
         return CareerService(app.state.service.config, user_id=current_user.user_id)
 
     def enforce_rate_limit(request: Request, bucket: str, limit: int) -> None:
-        client = request.headers.get("x-real-ip") or (request.client.host if request.client else "unknown")
+        client = request.headers.get("x-real-ip") or (
+            request.client.host if request.client else "unknown"
+        )
         if not app.state.rate_limiter.allow(f"{bucket}:{client}", limit):
             raise HTTPException(
                 status_code=429,
@@ -244,13 +258,17 @@ def create_app() -> FastAPI:
     @app.get("/api/v1/health/ready")
     def readiness(career_service: CareerService = Depends(service)) -> dict[str, str]:
         try:
-            career_service.list_jobs()
+            career_service.list_jobs(limit=1)
         except Exception as error:
-            raise HTTPException(status_code=503, detail="Database is not ready") from error
+            raise HTTPException(
+                status_code=503, detail="Database is not ready"
+            ) from error
         return {"status": "ready"}
 
     @app.post("/api/v1/auth/register", response_model=AuthUser, status_code=201)
-    def register(credentials: AuthCredentials, request: Request, response: Response) -> AuthUser:
+    def register(
+        credentials: AuthCredentials, request: Request, response: Response
+    ) -> AuthUser:
         enforce_rate_limit(request, "register", 5)
         email = normalize_email(credentials.email)
         if "@" not in email or email.startswith("@") or email.endswith("@"):
@@ -258,10 +276,14 @@ def create_app() -> FastAPI:
         if is_breached_password(credentials.password):
             raise HTTPException(status_code=422, detail="Choose a less common password")
         if get_user_by_email(request, email):
-            raise HTTPException(status_code=409, detail="An account already exists for this email")
+            raise HTTPException(
+                status_code=409, detail="An account already exists for this email"
+            )
         production = os.getenv("FOXPILOT_ENV", "local") == "production"
         if production and not email_configured():
-            raise HTTPException(status_code=503, detail="Email delivery is not configured")
+            raise HTTPException(
+                status_code=503, detail="Email delivery is not configured"
+            )
 
         user_id = f"user_{os.urandom(12).hex()}"
         store = JobStore(app.state.service.config.resolved_database_url)
@@ -274,7 +296,9 @@ def create_app() -> FastAPI:
                     detail="An account already exists for this email",
                 ) from error
             if email_configured():
-                verification_token = create_auth_token(store, user_id, "email_verification")
+                verification_token = create_auth_token(
+                    store, user_id, "email_verification"
+                )
                 public_url = os.getenv("FOXPILOT_PUBLIC_URL", "http://localhost:8080")
                 try:
                     send_email(
@@ -301,24 +325,35 @@ def create_app() -> FastAPI:
         )
 
     @app.post("/api/v1/auth/login", response_model=AuthUser)
-    def login(credentials: AuthCredentials, request: Request, response: Response) -> AuthUser:
+    def login(
+        credentials: AuthCredentials, request: Request, response: Response
+    ) -> AuthUser:
         enforce_rate_limit(request, "login", 10)
         user = get_user_by_email(request, credentials.email)
-        if not user or not verify_password(credentials.password, user.get("password_hash")):
-            raise HTTPException(status_code=401, detail="Email or password is incorrect")
+        if not user or not verify_password(
+            credentials.password, user.get("password_hash")
+        ):
+            raise HTTPException(
+                status_code=401, detail="Email or password is incorrect"
+            )
         store = JobStore(app.state.service.config.resolved_database_url)
         try:
             token = create_session(store, user["user_id"])
         finally:
             store.close()
-        set_session_cookie(response, token, os.getenv("FOXPILOT_ENV", "local") == "production")
+        set_session_cookie(
+            response, token, os.getenv("FOXPILOT_ENV", "local") == "production"
+        )
         return _auth_user_response(user)
 
     @app.get("/api/v1/auth/google/start")
     def google_start(response: Response) -> RedirectResponse:
         client_id = os.getenv("GOOGLE_CLIENT_ID", "").strip()
         if not _google_configured():
-            raise HTTPException(status_code=503, detail="Google sign-in is not configured with a real OAuth web client")
+            raise HTTPException(
+                status_code=503,
+                detail="Google sign-in is not configured with a real OAuth web client",
+            )
         state = os.urandom(32).hex()
         nonce = secrets.token_urlsafe(32)
         params = {
@@ -340,7 +375,9 @@ def create_app() -> FastAPI:
             f"{state}.{nonce}",
             max_age=GOOGLE_STATE_MAX_AGE,
             httponly=True,
-            secure=hosted_cookie(os.getenv("FOXPILOT_ENV", "local").lower() == "production"),
+            secure=hosted_cookie(
+                os.getenv("FOXPILOT_ENV", "local").lower() == "production"
+            ),
             samesite="none"
             if hosted_cookie(os.getenv("FOXPILOT_ENV", "local").lower() == "production")
             else "lax",
@@ -349,10 +386,18 @@ def create_app() -> FastAPI:
         return redirect
 
     @app.get("/api/v1/auth/google/callback")
-    def google_callback(request: Request, code: str | None = None, state: str | None = None) -> RedirectResponse:
+    def google_callback(
+        request: Request, code: str | None = None, state: str | None = None
+    ) -> RedirectResponse:
         expected_cookie = request.cookies.get(GOOGLE_STATE_COOKIE, "")
         expected_state, _, expected_nonce = expected_cookie.partition(".")
-        if not code or not state or not expected_state or not expected_nonce or not hmac.compare_digest(state, expected_state):
+        if (
+            not code
+            or not state
+            or not expected_state
+            or not expected_nonce
+            or not hmac.compare_digest(state, expected_state)
+        ):
             return _google_failure("invalid_state")
         client_id = os.getenv("GOOGLE_CLIENT_ID")
         client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
@@ -407,7 +452,11 @@ def create_app() -> FastAPI:
             status_code=303,
         )
         redirect.delete_cookie(GOOGLE_STATE_COOKIE, path="/")
-        set_session_cookie(redirect, session_token, os.getenv("FOXPILOT_ENV", "local").lower() == "production")
+        set_session_cookie(
+            redirect,
+            session_token,
+            os.getenv("FOXPILOT_ENV", "local").lower() == "production",
+        )
         return redirect
 
     @app.post("/api/v1/auth/logout", status_code=204)
@@ -431,12 +480,16 @@ def create_app() -> FastAPI:
         )
 
     @app.post("/api/v1/auth/verify-email", response_model=AuthUser)
-    def verify_email(payload: AuthToken, request: Request, response: Response) -> AuthUser:
+    def verify_email(
+        payload: AuthToken, request: Request, response: Response
+    ) -> AuthUser:
         store = JobStore(app.state.service.config.resolved_database_url)
         try:
             token = consume_auth_token(store, payload.token, "email_verification")
             if not token:
-                raise HTTPException(status_code=400, detail="Verification link is invalid or expired")
+                raise HTTPException(
+                    status_code=400, detail="Verification link is invalid or expired"
+                )
             store.mark_email_verified(token["user_id"])
             user = store.get_user(token["user_id"])
             session_token = create_session(store, token["user_id"])
@@ -444,7 +497,9 @@ def create_app() -> FastAPI:
             store.close()
         if not user:
             raise HTTPException(status_code=400, detail="User account is unavailable")
-        set_session_cookie(response, session_token, os.getenv("FOXPILOT_ENV", "local") == "production")
+        set_session_cookie(
+            response, session_token, os.getenv("FOXPILOT_ENV", "local") == "production"
+        )
         return _auth_user_response(user)
 
     @app.post("/api/v1/auth/request-password-reset", status_code=202)
@@ -455,7 +510,9 @@ def create_app() -> FastAPI:
         if user and email_configured():
             store = JobStore(app.state.service.config.resolved_database_url)
             try:
-                reset_token = create_auth_token(store, user["user_id"], "password_reset")
+                reset_token = create_auth_token(
+                    store, user["user_id"], "password_reset"
+                )
                 public_url = os.getenv("FOXPILOT_PUBLIC_URL", "http://localhost:8080")
                 send_email(
                     email,
@@ -466,12 +523,16 @@ def create_app() -> FastAPI:
                 store.close()
 
     @app.post("/api/v1/auth/reset-password", response_model=AuthUser)
-    def reset_password(payload: PasswordReset, request: Request, response: Response) -> AuthUser:
+    def reset_password(
+        payload: PasswordReset, request: Request, response: Response
+    ) -> AuthUser:
         store = JobStore(app.state.service.config.resolved_database_url)
         try:
             token = consume_auth_token(store, payload.token, "password_reset")
             if not token:
-                raise HTTPException(status_code=400, detail="Reset link is invalid or expired")
+                raise HTTPException(
+                    status_code=400, detail="Reset link is invalid or expired"
+                )
             store.update_password(token["user_id"], hash_password(payload.password))
             store.revoke_user_sessions(token["user_id"])
             user = store.get_user(token["user_id"])
@@ -480,7 +541,9 @@ def create_app() -> FastAPI:
             store.close()
         if not user:
             raise HTTPException(status_code=400, detail="User account is unavailable")
-        set_session_cookie(response, session_token, os.getenv("FOXPILOT_ENV", "local") == "production")
+        set_session_cookie(
+            response, session_token, os.getenv("FOXPILOT_ENV", "local") == "production"
+        )
         return _auth_user_response(user)
 
     @app.post("/api/v1/profile/resume", status_code=202)
@@ -493,10 +556,14 @@ def create_app() -> FastAPI:
         enforce_rate_limit(request, "resume-upload", 5)
         filename = Path(file.filename or "resume.pdf").name
         if not filename.lower().endswith(".pdf"):
-            raise HTTPException(status_code=422, detail="Resume uploads must be PDF files")
+            raise HTTPException(
+                status_code=422, detail="Resume uploads must be PDF files"
+            )
         content = await file.read(MAX_RESUME_BYTES + 1)
         if len(content) > MAX_RESUME_BYTES:
-            raise HTTPException(status_code=413, detail="Resume file must be 10 MB or smaller")
+            raise HTTPException(
+                status_code=413, detail="Resume file must be 10 MB or smaller"
+            )
         try:
             resume_text = extract_resume_text_from_bytes(content, filename)
             if not resume_text.strip():
@@ -511,14 +578,21 @@ def create_app() -> FastAPI:
                 status_code=502,
                 detail=f"Unable to create a profile from the configured LLM provider: {error}",
             ) from error
-        return {"job_id": job_id, "kind": "profile_generation", "status": "queued", "resume_filename": filename}
+        return {
+            "job_id": job_id,
+            "kind": "profile_generation",
+            "status": "queued",
+            "resume_filename": filename,
+        }
 
     @app.get("/api/v1/profile")
     def get_profile(career_service: CareerService = Depends(user_service)) -> dict:
         return career_service.get_profile()
 
     @app.get("/api/v1/profile/jobs/{job_id}")
-    def get_profile_job(job_id: str, career_service: CareerService = Depends(user_service)) -> dict:
+    def get_profile_job(
+        job_id: str, career_service: CareerService = Depends(user_service)
+    ) -> dict:
         job = career_service.get_background_job(job_id)
         if job is None:
             raise HTTPException(status_code=404, detail="Background job not found")
@@ -554,8 +628,38 @@ def create_app() -> FastAPI:
         except ValueError as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
 
+    # -- Shared ingestion (profile-independent corpus population) --
+
+    @app.post("/api/v1/ingestion/runs", status_code=202)
+    def start_ingestion_run(
+        background_tasks: BackgroundTasks,
+        request: Request,
+        current_user: AuthContext = Depends(require_api_access),
+    ) -> dict:
+        enforce_rate_limit(request, "ingestion-run", 3)
+        ingestion = app.state.ingestion_service
+        run_id = ingestion.queue_run(
+            trigger="api",
+            trigger_user_id=current_user.user_id,
+        )
+        if run_in_process():
+            background_tasks.add_task(ingestion.run_ingestion, run_id)
+        return {"run_id": run_id, "status": "queued"}
+
+    @app.get("/api/v1/ingestion/runs/{run_id}")
+    def get_ingestion_run(
+        run_id: str,
+        _current_user: AuthContext = Depends(require_api_access),
+    ) -> dict:
+        run = app.state.ingestion_service.get_run(run_id)
+        if run is None:
+            raise HTTPException(status_code=404, detail="Ingestion run not found")
+        return run
+
     @app.get("/api/v1/me")
-    def current_identity(current_user: AuthContext = Depends(require_api_access)) -> dict:
+    def current_identity(
+        current_user: AuthContext = Depends(require_api_access),
+    ) -> dict:
         return {
             "user_id": current_user.user_id,
             "email": current_user.email,
@@ -564,10 +668,29 @@ def create_app() -> FastAPI:
     @app.get("/api/v1/jobs")
     def list_jobs(
         career_service: CareerService = Depends(user_service),
-        relevance: str | None = Query(default=None, pattern="^(TARGET|REVIEW|EXCLUDE)$"),
+        relevance: str | None = Query(
+            default=None, pattern="^(TARGET|REVIEW|EXCLUDE)$"
+        ),
         include_inactive: bool = Query(default=False),
-    ) -> list[dict]:
-        return career_service.list_jobs(relevance=relevance, include_inactive=include_inactive)
+        limit: int = Query(default=50, ge=1, le=200),
+        cursor: str | None = Query(default=None),
+        query: str | None = Query(default=None, alias="query"),
+        source: str | None = Query(default=None),
+        location: str | None = Query(default=None),
+        work_type: str | None = Query(default=None),
+        sort: str = Query(default="updated_at", pattern="^(updated_at|title|company)$"),
+    ) -> dict:
+        return career_service.list_jobs(
+            relevance=relevance,
+            include_inactive=include_inactive,
+            limit=limit,
+            cursor=cursor,
+            query_text=query,
+            source=source,
+            location=location,
+            work_type=work_type,
+            sort=sort,
+        )
 
     @app.get("/api/v1/jobs/{job_id}")
     def get_job(
@@ -582,14 +705,44 @@ def create_app() -> FastAPI:
     @app.get("/api/v1/matches")
     def list_matches(
         career_service: CareerService = Depends(user_service),
-    ) -> list[dict]:
-        return career_service.list_matches()
+        limit: int = Query(default=50, ge=1, le=200),
+        cursor: str | None = Query(default=None),
+        query: str | None = Query(default=None, alias="query"),
+        recommendation: str | None = Query(
+            default=None, pattern="^(APPLY|CONSIDER|SKIP)$"
+        ),
+        sort: str = Query(
+            default="score", pattern="^(score|updated_at|title|company)$"
+        ),
+    ) -> dict:
+        return career_service.list_matches(
+            limit=limit,
+            cursor=cursor,
+            query_text=query,
+            recommendation=recommendation,
+            sort=sort,
+        )
 
     @app.get("/api/v1/applications")
     def list_applications(
         career_service: CareerService = Depends(user_service),
-    ) -> list[dict]:
-        return career_service.list_applications()
+        limit: int = Query(default=50, ge=1, le=200),
+        cursor: str | None = Query(default=None),
+        query: str | None = Query(default=None, alias="query"),
+        status: str | None = Query(
+            default=None,
+            alias="application_status",
+            pattern="^(saved|applied|interviewing|rejected|offered)$",
+        ),
+        sort: str = Query(default="updated_at", pattern="^(updated_at|status)$"),
+    ) -> dict:
+        return career_service.list_applications(
+            limit=limit,
+            cursor=cursor,
+            query_text=query,
+            status_filter=status,
+            sort=sort,
+        )
 
     @app.get("/api/v1/jobs/{job_id}/application")
     def get_application(

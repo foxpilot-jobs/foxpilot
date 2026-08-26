@@ -1,8 +1,18 @@
-"""Run all configured job sources while isolating source failures."""
+"""Run all configured job sources while isolating source failures.
+
+When called without a profile (``--no-profile``), the script runs a shared
+ingestion that fetches all available public jobs without profile-driven query
+filtering.  This is the intended mode for populating the reusable job corpus.
+
+When called with a profile (the default for backward compatibility), searches
+are still derived from the profile and passed to browser-based Greenhouse
+ingestion.
+"""
 
 from __future__ import annotations
 
 import json
+import sys
 
 from career_agent.config import load_config
 from career_agent.search import profile_searches
@@ -10,14 +20,18 @@ from career_agent.sources import fetch_configured_sources
 from fetch_greenhouse import fetch_jobs
 
 
-def main(profile: dict, user_id: str = "local-user") -> int:
+def main(profile: dict | None = None, user_id: str = "local-user") -> int:
     total = 0
-    try:
-        jobs = fetch_jobs(profile_searches(profile), user_id=user_id)
-        total += len(jobs)
-        print(f"[SOURCE] Greenhouse: fetched {len(jobs)}")
-    except Exception as error:  # noqa: BLE001 - one source must not stop the scan
-        print(f"[SOURCE] Greenhouse: failed, continuing: {error}")
+
+    # Browser-based Greenhouse ingestion requires profile-derived searches.
+    # Skip it during profile-free shared ingestion.
+    if profile is not None:
+        try:
+            jobs = fetch_jobs(profile_searches(profile), user_id=user_id)
+            total += len(jobs)
+            print(f"[SOURCE] Greenhouse (browser): fetched {len(jobs)}")
+        except Exception as error:  # noqa: BLE001 - one source must not stop the scan
+            print(f"[SOURCE] Greenhouse (browser): failed, continuing: {error}")
 
     total += fetch_configured_sources(profile=profile, user_id=user_id)
     print(f"Total new jobs discovered: {total}")
@@ -26,6 +40,10 @@ def main(profile: dict, user_id: str = "local-user") -> int:
 
 if __name__ == "__main__":
     config = load_config()
+
+    if "--no-profile" in sys.argv:
+        raise SystemExit(main(profile=None, user_id="system"))
+
     if not config.profile_path.exists():
         raise SystemExit("Create a career profile before scanning for jobs.")
     raise SystemExit(main(json.loads(config.profile_path.read_text(encoding="utf-8"))))

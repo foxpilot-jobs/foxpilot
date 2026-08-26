@@ -38,15 +38,18 @@ export function ApplicationsPage() {
     if (!user) return;
     setLoading(true);
     setLoadError(false);
-    void Promise.allSettled([getApplications(), getMatches(), getJobs(true)]).then(
-      ([applicationsResult, matchesResult, jobsResult]) => {
-        if (applicationsResult.status === "fulfilled") setApplications(applicationsResult.value);
-        else setLoadError(true);
-        if (matchesResult.status === "fulfilled") setMatches(matchesResult.value);
-        if (jobsResult.status === "fulfilled") setJobs(jobsResult.value);
-        setLoading(false);
-      },
-    );
+    void Promise.allSettled([
+      getApplications({ limit: 200 }),
+      getMatches({ limit: 200 }),
+      getJobs({ includeInactive: true, limit: 200 }),
+    ]).then(([applicationsResult, matchesResult, jobsResult]) => {
+      if (applicationsResult.status === "fulfilled")
+        setApplications(applicationsResult.value.items);
+      else setLoadError(true);
+      if (matchesResult.status === "fulfilled") setMatches(matchesResult.value.items);
+      if (jobsResult.status === "fulfilled") setJobs(jobsResult.value.items);
+      setLoading(false);
+    });
   }, [retryToken, user?.user_id]);
 
   const visibleApplications = useMemo(() => {

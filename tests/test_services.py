@@ -110,7 +110,7 @@ def test_scan_uses_saved_profile_and_persists_result(tmp_path: Path, monkeypatch
 
     calls = []
     monkeypatch.setattr(
-        "career_agent.services.career.fetch_configured_sources",
+        "career_agent.services.ingestion.fetch_configured_sources",
         lambda profile, user_id: calls.append((profile, user_id)) or 4,
     )
     service = CareerService(config, user_id="user-a")
@@ -118,8 +118,11 @@ def test_scan_uses_saved_profile_and_persists_result(tmp_path: Path, monkeypatch
     job_id = service.queue_scan()
     service.run_scan_job(job_id)
 
-    assert calls == [({"current_or_recent_roles": ["Data Engineer"]}, "user-a")]
-    assert service.get_background_job(job_id)["result"] == {"new_jobs": 4}
+    # Ingestion runs without profile (shared corpus) but records the result
+    assert calls == [(None, "system")]
+    result = service.get_background_job(job_id)["result"]
+    assert result["new_jobs"] == 4
+    assert "ingestion_run_id" in result
 
 
 def test_profile_aware_relevance_rejects_generic_roles_without_profile_fit() -> None:

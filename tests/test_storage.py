@@ -18,7 +18,7 @@ def test_job_store_round_trip(tmp_path: Path) -> None:
 
         store.set_relevance(job_id, "TARGET")
         store.save_match(job_id, "hash", "ollama", "test-model", {"match_score": 90})
-        assert store.list_jobs(relevance="TARGET")[0]["job_id"] == job_id
+        assert store.list_jobs(relevance="TARGET")["items"][0]["job_id"] == job_id
         assert store.get_match(job_id)["match"]["match_score"] == 90
 
 
@@ -52,7 +52,9 @@ def test_jobs_from_multiple_sources_share_a_canonical_record(tmp_path: Path) -> 
         assert {source["source"] for source in sources} == {"company", "greenhouse"}
 
 
-def test_inactive_listing_hides_canonical_job_only_when_last_source_closes(tmp_path: Path) -> None:
+def test_inactive_listing_hides_canonical_job_only_when_last_source_closes(
+    tmp_path: Path,
+) -> None:
     with JobStore(tmp_path / "career.sqlite3") as store:
         job_id = store.upsert_job(
             {
@@ -75,10 +77,10 @@ def test_inactive_listing_hides_canonical_job_only_when_last_source_closes(tmp_p
             }
         )
         store.mark_listing_inactive("test", "1", "HTTP 404")
-        assert [job["job_id"] for job in store.list_jobs()] == [job_id]
+        assert [job["job_id"] for job in store.list_jobs()["items"]] == [job_id]
         store.mark_listing_inactive("mirror", "1", "HTTP 410")
-        assert store.list_jobs() == []
-        assert store.list_jobs(include_inactive=True)[0]["is_active"] is False
+        assert store.list_jobs()["items"] == []
+        assert store.list_jobs(include_inactive=True)["items"][0]["is_active"] is False
 
 
 def test_private_listing_is_visible_only_to_owner(tmp_path: Path) -> None:
@@ -95,10 +97,10 @@ def test_private_listing_is_visible_only_to_owner(tmp_path: Path) -> None:
                 "owner_user_id": "user-a",
             }
         )
-        assert [job["job_id"] for job in owner.list_jobs()] == [job_id]
+        assert [job["job_id"] for job in owner.list_jobs()["items"]] == [job_id]
 
     with JobStore(database, user_id="user-b") as another_user:
-        assert another_user.list_jobs() == []
+        assert another_user.list_jobs()["items"] == []
         assert another_user.get_job(job_id) is None
 
 
@@ -134,8 +136,8 @@ def test_user_owned_state_is_isolated(tmp_path: Path) -> None:
     with JobStore(database, user_id="user-b") as user_b:
         assert user_b.get_match(job_id) is None
         assert user_b.get_application(job_id) is None
-        assert user_b.list_matches() == []
-        assert user_b.list_applications() == []
+        assert user_b.list_matches()["items"] == []
+        assert user_b.list_applications()["items"] == []
 
     with JobStore(database, user_id="user-a") as user_a:
         assert user_a.get_match(job_id)["match"] == {"score": 90}
@@ -217,16 +219,19 @@ def test_list_jobs_bulk_query_does_not_n_plus_one(tmp_path: Path) -> None:
 
         executed_statements = []
 
-        def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+        def before_cursor_execute(
+            conn, cursor, statement, parameters, context, executemany
+        ):
             executed_statements.append(statement)
 
         from sqlalchemy import event
+
         event.listen(store.engine, "before_cursor_execute", before_cursor_execute)
         try:
-            jobs = store.list_jobs()
-            assert len(jobs) == 10
-            # Expect exactly 2 SQL statements: 1 for jobs, 1 for job_listings in bulk.
-            assert len(executed_statements) == 2
+            result = store.list_jobs()
+            assert len(result["items"]) == 10
+            # Expect exactly 3 SQL statements: 1 for count, 1 for jobs, 1 for job_listings.
+            assert len(executed_statements) == 3
         finally:
             event.remove(store.engine, "before_cursor_execute", before_cursor_execute)
 
@@ -234,7 +239,6 @@ def test_list_jobs_bulk_query_does_not_n_plus_one(tmp_path: Path) -> None:
 def test_get_session_user_last_seen_touch_threshold(tmp_path: Path) -> None:
     from datetime import UTC, datetime, timedelta
     from uuid import uuid4
-
 
     database = tmp_path / "session_test.sqlite3"
     with JobStore(database) as store:
@@ -249,7 +253,9 @@ def test_get_session_user_last_seen_touch_threshold(tmp_path: Path) -> None:
         assert user_second["email"] == "u1@example.com"
 
 
-def test_bulk_upsert_jobs_preserves_uniqueness_and_canonical_deduplication(tmp_path: Path) -> None:
+def test_bulk_upsert_jobs_preserves_uniqueness_and_canonical_deduplication(
+    tmp_path: Path,
+) -> None:
     database = tmp_path / "bulk_test.sqlite3"
     with JobStore(database) as store:
         batch_1 = [
@@ -299,7 +305,7 @@ def test_bulk_upsert_jobs_preserves_uniqueness_and_canonical_deduplication(tmp_p
         assert res2["deduplicated"] == 1
 
         # Verify database state
-        all_jobs = store.list_jobs()
+        all_jobs = store.list_jobs()["items"]
         assert len(all_jobs) == 2
         be_job = next(j for j in all_jobs if j["title"] == "Backend Engineer")
         assert len(be_job["sources"]) == 2

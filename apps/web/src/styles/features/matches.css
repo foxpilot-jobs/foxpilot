@@ -143,7 +143,7 @@
 .matches-skills > div,
 .matches-gap-item > div {
   display: flex;
-  align-items: center;
+  align-items: baseline;
 }
 
 .matches-card-header {
@@ -289,8 +289,7 @@
   gap: var(--space-2);
 }
 
-.matches-skills strong,
-.matches-gap-content strong {
+.matches-skills strong {
   color: var(--color-text-primary);
   font-size: 12px;
   font-weight: 700;
@@ -308,20 +307,84 @@
 
 .matches-gap-content {
   display: grid;
-  gap: var(--space-3);
-  margin-top: var(--space-3);
+  gap: var(--space-5);
+  margin-top: var(--space-4);
   color: var(--color-text-secondary);
   font-size: 13px;
   line-height: 20px;
 }
 
-.matches-gap-content p {
-  margin: var(--space-1) 0 0;
+.matches-gap-section {
+  display: grid;
+  gap: var(--space-3);
 }
 
-.matches-gap-item > div {
-  justify-content: space-between;
+.matches-gap-section > strong {
+  color: var(--color-text-primary);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.matches-gap-skills,
+.matches-gap-concerns {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0 0 0 var(--space-5);
+  color: var(--color-text-secondary);
+}
+
+.matches-gap-skills li,
+.matches-gap-concerns li {
+  padding: var(--space-1) 0;
+}
+
+.matches-gap-list {
+  display: grid;
   gap: var(--space-3);
+}
+
+.matches-gap-item {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  background: var(--color-surface);
+}
+
+.matches-gap-item-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.matches-gap-item-label {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+.matches-gap-item-explanation {
+  margin: var(--space-2) 0 0;
+  padding-left: calc(15px + var(--space-2));
+  color: var(--color-text-secondary);
+}
+
+.matches-gap-icon-blocking {
+  flex: 0 0 auto;
+  color: var(--color-error);
+}
+
+.matches-gap-icon-addressable {
+  flex: 0 0 auto;
+  color: var(--color-warning);
+}
+
+.matches-gap-icon-unknown {
+  flex: 0 0 auto;
+  color: var(--color-text-muted);
 }
 
 .matches-card-footer {
@@ -356,7 +419,7 @@
   color: var(--color-brand);
 }
 
-.matches-card-footer select {
+.matches-card-footer .status-select-trigger {
   width: 132px;
 }
 
@@ -450,7 +513,11 @@
     flex-direction: column;
   }
 
-  .matches-card-footer select {
+  .matches-card-footer .status-select {
+    width: 100%;
+  }
+
+  .matches-card-footer .status-select-trigger {
     width: 100%;
   }
 }

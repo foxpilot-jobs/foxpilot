@@ -34,10 +34,16 @@ def test_api_health_and_jobs(tmp_path: Path) -> None:
     assert client.get("/api/v1/health/ready").json() == {"status": "ready"}
     response = client.get("/api/v1/jobs")
     assert response.status_code == 200
-    assert response.json()[0]["title"] == "Data Engineer"
+    body = response.json()
+    assert "items" in body
+    assert "next_cursor" in body
+    assert "total" in body
+    assert body["items"][0]["title"] == "Data Engineer"
 
 
-def test_hosted_cors_preflight_accepts_configured_origin_with_trailing_slash(tmp_path: Path, monkeypatch) -> None:
+def test_hosted_cors_preflight_accepts_configured_origin_with_trailing_slash(
+    tmp_path: Path, monkeypatch
+) -> None:
     monkeypatch.setenv("CAREER_AGENT_ALLOWED_ORIGINS", "https://foxpilot.vercel.app/")
     config = AppConfig(data_dir=tmp_path)
     app = create_app()
@@ -54,7 +60,9 @@ def test_hosted_cors_preflight_accepts_configured_origin_with_trailing_slash(tmp
     )
 
     assert response.status_code == 200
-    assert response.headers["access-control-allow-origin"] == "https://foxpilot.vercel.app"
+    assert (
+        response.headers["access-control-allow-origin"] == "https://foxpilot.vercel.app"
+    )
     assert response.headers["access-control-allow-credentials"] == "true"
 
 
@@ -77,7 +85,7 @@ def test_api_application_update(tmp_path: Path) -> None:
 
     applications = client.get("/api/v1/applications")
     assert applications.status_code == 200
-    assert applications.json()[0]["status"] == "applied"
+    assert applications.json()["items"][0]["status"] == "applied"
 
 
 def test_api_token_protects_data_endpoints(tmp_path: Path, monkeypatch) -> None:
@@ -167,7 +175,9 @@ def test_native_auth_register_session_and_logout(tmp_path: Path, monkeypatch) ->
     assert client.get("/api/v1/auth/me").status_code == 200
 
 
-def test_native_auth_uses_cross_site_cookie_for_hosted_staging(tmp_path: Path, monkeypatch) -> None:
+def test_native_auth_uses_cross_site_cookie_for_hosted_staging(
+    tmp_path: Path, monkeypatch
+) -> None:
     monkeypatch.setenv("FOXPILOT_AUTH_MODE", "native")
     monkeypatch.setenv("FOXPILOT_ENV", "staging")
     monkeypatch.setenv("FOXPILOT_PUBLIC_URL", "https://foxpilot.vercel.app")
@@ -177,7 +187,10 @@ def test_native_auth_uses_cross_site_cookie_for_hosted_staging(tmp_path: Path, m
 
     response = TestClient(app).post(
         "/api/v1/auth/register",
-        json={"email": "hosted@example.com", "password": "correct horse battery staple"},
+        json={
+            "email": "hosted@example.com",
+            "password": "correct horse battery staple",
+        },
     )
 
     assert response.status_code == 201
@@ -225,7 +238,10 @@ def test_registration_is_rate_limited(tmp_path: Path) -> None:
     responses = [
         client.post(
             "/api/v1/auth/register",
-            json={"email": f"user-{index}@example.com", "password": "unique passphrase 123"},
+            json={
+                "email": f"user-{index}@example.com",
+                "password": "unique passphrase 123",
+            },
         )
         for index in range(6)
     ]
@@ -307,7 +323,9 @@ def test_google_start_requires_configuration(tmp_path: Path, monkeypatch) -> Non
     assert "not configured" in response.json()["detail"]
 
 
-def test_google_callback_links_user_and_creates_session(tmp_path: Path, monkeypatch) -> None:
+def test_google_callback_links_user_and_creates_session(
+    tmp_path: Path, monkeypatch
+) -> None:
     monkeypatch.setenv("FOXPILOT_AUTH_MODE", "native")
     monkeypatch.setenv("GOOGLE_CLIENT_ID", "client-id")
     monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "client-secret")
@@ -327,7 +345,9 @@ def test_google_callback_links_user_and_creates_session(tmp_path: Path, monkeypa
         def json(self):
             return {"id_token": "signed-token"}
 
-    monkeypatch.setattr("services.api.app.httpx.post", lambda *_args, **_kwargs: TokenResponse())
+    monkeypatch.setattr(
+        "services.api.app.httpx.post", lambda *_args, **_kwargs: TokenResponse()
+    )
     monkeypatch.setattr(
         "services.api.app.id_token.verify_oauth2_token",
         lambda *_args, **_kwargs: {
@@ -350,10 +370,13 @@ def test_google_callback_links_user_and_creates_session(tmp_path: Path, monkeypa
 
 def test_endpoint_latency_benchmarks(tmp_path: Path) -> None:
     import time
+
     config = AppConfig(data_dir=tmp_path)
     with JobStore(config.database_path) as store:
         for i in range(20):
-            store.upsert_job({"source": "bench", "source_job_id": str(i), "title": f"Role {i}"})
+            store.upsert_job(
+                {"source": "bench", "source_job_id": str(i), "title": f"Role {i}"}
+            )
 
     app = create_app()
     app.state.service.config = config
@@ -377,10 +400,14 @@ def test_endpoint_latency_benchmarks(tmp_path: Path) -> None:
 
     print("\n[BENCHMARK ENDPOINT LATENCIES]:", timings)
     for path, elapsed_ms in timings.items():
-        assert elapsed_ms < 200, f"{path} took {elapsed_ms:.2f}ms which exceeds 200ms threshold"
+        assert elapsed_ms < 200, (
+            f"{path} took {elapsed_ms:.2f}ms which exceeds 200ms threshold"
+        )
 
 
-def test_get_profile_returns_200_for_new_authenticated_user_without_resume(tmp_path: Path) -> None:
+def test_get_profile_returns_200_for_new_authenticated_user_without_resume(
+    tmp_path: Path,
+) -> None:
     config = AppConfig(data_dir=tmp_path)
     app = create_app()
     app.state.service.config = config
@@ -414,10 +441,13 @@ def test_auth_me_single_query_and_session_behavior(tmp_path: Path, monkeypatch) 
 
     executed_statements = []
 
-    def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+    def before_cursor_execute(
+        conn, cursor, statement, parameters, context, executemany
+    ):
         executed_statements.append(statement)
 
     from sqlalchemy import event
+
     with JobStore(config.database_path) as store:
         event.listen(store.engine, "before_cursor_execute", before_cursor_execute)
         try:

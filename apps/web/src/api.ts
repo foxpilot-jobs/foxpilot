@@ -63,12 +63,23 @@ export type Profile = {
 export type BackgroundJob = {
   job_id: string;
   kind: "profile_generation" | "scan" | "matching";
-  status: "queued" | "running" | "completed" | "failed";
+  status: "queued" | "running" | "completed" | "failed" | "dead_letter";
   result: Record<string, unknown> | null;
   error: string | null;
+  error_class?: "retryable" | "permanent" | null;
+  attempt?: number;
+  max_attempts?: number;
+  progress?: Record<string, unknown> | null;
+  started_at?: string | null;
   created_at: string;
   updated_at: string;
   resume_filename?: string;
+};
+
+export type PaginatedResponse<T> = {
+  items: T[];
+  next_cursor: string | null;
+  total: number;
 };
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "";
@@ -194,17 +205,69 @@ async function request<T>(path: string): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export function getJobs(includeInactive = false): Promise<Job[]> {
-  const query = includeInactive ? "?include_inactive=true" : "";
-  return request<Job[]>(`/api/v1/jobs${query}`);
+export function getJobs(
+  params: {
+    includeInactive?: boolean;
+    limit?: number;
+    cursor?: string;
+    query?: string;
+    source?: string;
+    location?: string;
+    work_type?: string;
+    sort?: string;
+    relevance?: string;
+  } = {},
+): Promise<PaginatedResponse<Job>> {
+  const searchParams = new URLSearchParams();
+  if (params.includeInactive) searchParams.set("include_inactive", "true");
+  if (params.limit) searchParams.set("limit", String(params.limit));
+  if (params.cursor) searchParams.set("cursor", params.cursor);
+  if (params.query) searchParams.set("query", params.query);
+  if (params.source) searchParams.set("source", params.source);
+  if (params.location) searchParams.set("location", params.location);
+  if (params.work_type) searchParams.set("work_type", params.work_type);
+  if (params.sort) searchParams.set("sort", params.sort);
+  if (params.relevance) searchParams.set("relevance", params.relevance);
+  const qs = searchParams.toString();
+  return request<PaginatedResponse<Job>>(`/api/v1/jobs${qs ? `?${qs}` : ""}`);
 }
 
-export function getMatches(): Promise<Match[]> {
-  return request<Match[]>("/api/v1/matches");
+export function getMatches(
+  params: {
+    limit?: number;
+    cursor?: string;
+    query?: string;
+    recommendation?: string;
+    sort?: string;
+  } = {},
+): Promise<PaginatedResponse<Match>> {
+  const searchParams = new URLSearchParams();
+  if (params.limit) searchParams.set("limit", String(params.limit));
+  if (params.cursor) searchParams.set("cursor", params.cursor);
+  if (params.query) searchParams.set("query", params.query);
+  if (params.recommendation) searchParams.set("recommendation", params.recommendation);
+  if (params.sort) searchParams.set("sort", params.sort);
+  const qs = searchParams.toString();
+  return request<PaginatedResponse<Match>>(`/api/v1/matches${qs ? `?${qs}` : ""}`);
 }
 
-export function getApplications(): Promise<Application[]> {
-  return request<Application[]>("/api/v1/applications");
+export function getApplications(
+  params: {
+    limit?: number;
+    cursor?: string;
+    query?: string;
+    application_status?: string;
+    sort?: string;
+  } = {},
+): Promise<PaginatedResponse<Application>> {
+  const searchParams = new URLSearchParams();
+  if (params.limit) searchParams.set("limit", String(params.limit));
+  if (params.cursor) searchParams.set("cursor", params.cursor);
+  if (params.query) searchParams.set("query", params.query);
+  if (params.application_status) searchParams.set("application_status", params.application_status);
+  if (params.sort) searchParams.set("sort", params.sort);
+  const qs = searchParams.toString();
+  return request<PaginatedResponse<Application>>(`/api/v1/applications${qs ? `?${qs}` : ""}`);
 }
 
 export async function updateApplication(

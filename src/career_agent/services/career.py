@@ -13,8 +13,9 @@ from ..config import AppConfig
 from ..llm import LLMError, create_provider
 from ..matching import match_job
 from ..profile import create_profile_from_text
-from ..sources import fetch_configured_sources
 from ..storage import JobStore
+from ..worker_errors import classify_error
+from .ingestion import IngestionService
 
 
 class CareerService:
@@ -25,25 +26,25 @@ class CareerService:
     def _store(self) -> JobStore:
         return JobStore(self.config.resolved_database_url, user_id=self.user_id)
 
-    def list_jobs(self, relevance: str | None = None, include_inactive: bool = False) -> list[dict]:
+    def list_jobs(self, **kwargs) -> dict:
         with self._store() as store:
-            return store.list_jobs(relevance=relevance, include_inactive=include_inactive)
+            return store.list_jobs(**kwargs)
 
     def get_job(self, job_id: str) -> dict | None:
         with self._store() as store:
             return store.get_job(job_id)
 
-    def list_matches(self) -> list[dict]:
+    def list_matches(self, **kwargs) -> dict:
         with self._store() as store:
-            return store.list_matches()
+            return store.list_matches(**kwargs)
 
     def get_application(self, job_id: str) -> dict | None:
         with self._store() as store:
             return store.get_application(job_id)
 
-    def list_applications(self) -> list[dict]:
+    def list_applications(self, **kwargs) -> dict:
         with self._store() as store:
-            return store.list_applications()
+            return store.list_applications(**kwargs)
 
     def update_application(self, job_id: str, status: str, notes: str = "") -> dict:
         with self._store() as store:
@@ -83,9 +84,15 @@ class CareerService:
         resume_hash = hashlib.sha256(resume_text.encode("utf-8")).hexdigest()
         with self._store() as store:
             existing = store.get_profile()
-            if existing and existing["resume_text"] == resume_text and existing["profile_json"]:
+            if (
+                existing
+                and existing["resume_text"] == resume_text
+                and existing["profile_json"]
+            ):
                 store.create_background_job(job_id, "profile_generation")
-                store.update_background_job(job_id, "completed", {"profile": existing["profile_json"]})
+                store.update_background_job(
+                    job_id, "completed", {"profile": existing["profile_json"]}
+                )
                 return job_id
             store.save_profile(resume_text, resume_filename, {})
             store.create_background_job(
@@ -111,7 +118,9 @@ class CareerService:
                 store.update_background_job(job_id, "running")
             job_payload = job.get("result_json") or {}
             resume_text = job_payload.get("resume_text", profile_row["resume_text"])
-            resume_filename = job_payload.get("resume_filename", profile_row["resume_filename"])
+            resume_filename = job_payload.get(
+                "resume_filename", profile_row["resume_filename"]
+            )
             profile = create_profile_from_text(self.config, resume_text, persist=False)
             with self._store() as store:
                 current = store.get_profile()
@@ -119,14 +128,23 @@ class CareerService:
                     store.update_background_job(
                         job_id,
                         "completed",
-                        {"stale": True, "message": "A newer resume upload superseded this job."},
+                        {
+                            "stale": True,
+                            "message": "A newer resume upload superseded this job.",
+                        },
                     )
                     return
                 store.save_profile(resume_text, resume_filename, profile)
                 store.update_background_job(job_id, "completed", {"profile": profile})
         except Exception as error:  # noqa: BLE001 - persist failure for polling clients
+            ec = classify_error(error)
             with self._store() as store:
-                store.update_background_job(job_id, "failed", error=str(error))
+                if ec == "retryable":
+                    store.fail_background_job_retryable(job_id, str(error))
+                else:
+                    store.update_background_job(
+                        job_id, "failed", error=str(error), error_class="permanent"
+                    )
 
     def queue_matching(self) -> str:
         with self._store() as store:
@@ -141,6 +159,14 @@ class CareerService:
         return job_id
 
     def queue_scan(self) -> str:
+        """Queue a job scan.
+
+        The scan runs shared profile-independent ingestion to populate the
+        public corpus, then records the result as a user-visible background
+        job.  A profile is still required so that the user has something to
+        match against once the corpus is populated, but the ingestion itself
+        no longer filters by profile.
+        """
         with self._store() as store:
             profile = store.get_profile()
             if not profile or not profile["profile_json"]:
@@ -153,19 +179,44 @@ class CareerService:
         return job_id
 
     def run_scan_job(self, job_id: str) -> None:
+        """Execute a scan: run shared ingestion then update the background job."""
         try:
             with self._store() as store:
                 job = store.get_background_job(job_id)
-                profile_row = store.get_profile()
-                if not job or not profile_row:
+                if not job:
                     return
                 store.update_background_job(job_id, "running")
-            total = fetch_configured_sources(profile_row["profile_json"], user_id=self.user_id)
+
+            ingestion = IngestionService(self.config)
+            run_id = ingestion.queue_run(
+                trigger="user_scan",
+                trigger_user_id=self.user_id,
+            )
+            ingestion.run_ingestion(run_id)
+            run = ingestion.get_run(run_id)
+
+            # Propagate ingestion failure to the scan background job.
+            if run and run.get("status") == "failed":
+                raise RuntimeError(run.get("error") or "Ingestion run failed")
+
+            result = run.get("result") if run else {}
+            total = result.get("jobs_upserted", 0) if isinstance(result, dict) else 0
+
             with self._store() as store:
-                store.update_background_job(job_id, "completed", {"new_jobs": total})
+                store.update_background_job(
+                    job_id,
+                    "completed",
+                    {"new_jobs": total, "ingestion_run_id": run_id},
+                )
         except Exception as error:  # noqa: BLE001 - persist failure for polling clients
+            ec = classify_error(error)
             with self._store() as store:
-                store.update_background_job(job_id, "failed", error=str(error))
+                if ec == "retryable":
+                    store.fail_background_job_retryable(job_id, str(error))
+                else:
+                    store.update_background_job(
+                        job_id, "failed", error=str(error), error_class="permanent"
+                    )
 
     def get_background_job(self, job_id: str) -> dict | None:
         with self._store() as store:
@@ -174,13 +225,20 @@ class CareerService:
             return None
         result = job["result_json"]
         if job["kind"] == "profile_generation" and isinstance(result, dict):
-            result = {key: value for key, value in result.items() if key != "resume_text"}
+            result = {
+                key: value for key, value in result.items() if key != "resume_text"
+            }
         return {
             "job_id": job["job_id"],
             "kind": job["kind"],
             "status": job["status"],
             "result": result,
             "error": job["error"],
+            "error_class": job.get("error_class"),
+            "attempt": job.get("attempt", 0),
+            "max_attempts": job.get("max_attempts", 3),
+            "progress": job.get("progress_json"),
+            "started_at": job.get("started_at"),
             "created_at": job["created_at"],
             "updated_at": job["updated_at"],
         }
@@ -198,21 +256,30 @@ class CareerService:
             with self._store() as store:
                 store.update_background_job(job_id, "completed", result)
         except Exception as error:  # noqa: BLE001 - persist failure for polling clients
+            ec = classify_error(error)
             with self._store() as store:
-                store.update_background_job(job_id, "failed", error=str(error))
+                if ec == "retryable":
+                    store.fail_background_job_retryable(job_id, str(error))
+                else:
+                    store.update_background_job(
+                        job_id, "failed", error=str(error), error_class="permanent"
+                    )
 
     def _update_matching_progress(self, job_id: str, value: dict[str, int]) -> None:
         with self._store() as store:
-            store.update_background_job(job_id, "running", value)
+            store.update_background_job(job_id, "running", progress=value)
 
-    def run_matching(self, progress: Callable[[dict[str, int]], None] | None = None) -> dict[str, int]:
+    def run_matching(
+        self, progress: Callable[[dict[str, int]], None] | None = None
+    ) -> dict[str, int]:
         with self._store() as store:
             profile_row = store.get_profile()
             if not profile_row:
                 raise ValueError("Upload a resume before running matching")
+            all_jobs = store.list_jobs(limit=10000)["items"]
             jobs = [
                 job
-                for job in store.list_jobs()
+                for job in all_jobs
                 if classify_job(job, profile_row["profile_json"]) == "TARGET"
             ]
             provider = create_provider(self.config)
@@ -222,10 +289,13 @@ class CareerService:
             processed = 0
             for job in jobs:
                 content = {
-                    key: job.get(key) for key in ("title", "company", "location", "url", "description")
+                    key: job.get(key)
+                    for key in ("title", "company", "location", "url", "description")
                 }
                 job_hash = hashlib.sha256(
-                    json.dumps(content, sort_keys=True, ensure_ascii=False).encode("utf-8")
+                    json.dumps(content, sort_keys=True, ensure_ascii=False).encode(
+                        "utf-8"
+                    )
                 ).hexdigest()
                 cached = store.get_match(job["job_id"])
                 if cached and cached.get("job_hash") == job_hash:
@@ -235,7 +305,9 @@ class CareerService:
                         progress({"processed": processed, "total": len(jobs)})
                     continue
                 try:
-                    result = match_job(self.config, profile_row["profile_json"], job, provider=provider)
+                    result = match_job(
+                        self.config, profile_row["profile_json"], job, provider=provider
+                    )
                     store.save_match(
                         job["job_id"],
                         job_hash,
@@ -249,4 +321,9 @@ class CareerService:
                 processed += 1
                 if progress:
                     progress({"processed": processed, "total": len(jobs)})
-            return {"total": len(jobs), "analyzed": analyzed, "skipped": skipped, "failed": failed}
+            return {
+                "total": len(jobs),
+                "analyzed": analyzed,
+                "skipped": skipped,
+                "failed": failed,
+            }

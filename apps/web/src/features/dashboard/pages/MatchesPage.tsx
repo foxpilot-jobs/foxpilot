@@ -36,24 +36,26 @@ export function MatchesPage() {
     if (!user) return;
     setLoading(true);
     setError(null);
-    void Promise.allSettled([getMatches(), getApplications(), getProfile()]).then(
-      ([matchesResult, applicationsResult, profileResult]) => {
-        const failures: string[] = [];
-        if (matchesResult.status === "fulfilled") setMatches(matchesResult.value);
-        else failures.push("matches");
-        if (applicationsResult.status === "fulfilled") {
-          setApplications(
-            Object.fromEntries(
-              applicationsResult.value.map((application) => [application.job_id, application]),
-            ),
-          );
-        } else failures.push("applications");
-        if (profileResult.status === "fulfilled") setProfile(profileResult.value);
-        else failures.push("profile");
-        if (failures.length > 0) setError("Couldn't load all of your matching data.");
-        setLoading(false);
-      },
-    );
+    void Promise.allSettled([
+      getMatches({ limit: 200 }),
+      getApplications({ limit: 200 }),
+      getProfile(),
+    ]).then(([matchesResult, applicationsResult, profileResult]) => {
+      const failures: string[] = [];
+      if (matchesResult.status === "fulfilled") setMatches(matchesResult.value.items);
+      else failures.push("matches");
+      if (applicationsResult.status === "fulfilled") {
+        setApplications(
+          Object.fromEntries(
+            applicationsResult.value.items.map((application) => [application.job_id, application]),
+          ),
+        );
+      } else failures.push("applications");
+      if (profileResult.status === "fulfilled") setProfile(profileResult.value);
+      else failures.push("profile");
+      if (failures.length > 0) setError("Couldn't load all of your matching data.");
+      setLoading(false);
+    });
   }, [reloadToken, user?.user_id]);
 
   const visibleMatches = useMemo(() => {

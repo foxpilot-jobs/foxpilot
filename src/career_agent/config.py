@@ -22,6 +22,19 @@ def normalize_database_url(url: str | None) -> str | None:
     return url
 
 
+def is_hosted_runtime() -> bool:
+    """Return True in hosted environments that must use managed PostgreSQL."""
+    return any(
+        os.getenv(name)
+        for name in (
+            "RAILWAY_ENVIRONMENT",
+            "RAILWAY_ENVIRONMENT_NAME",
+            "RAILWAY_PROJECT_ID",
+            "VERCEL",
+        )
+    )
+
+
 @dataclass
 class AppConfig:
     data_dir: Path = DEFAULT_DATA_DIR
@@ -50,7 +63,14 @@ class AppConfig:
 
     @property
     def resolved_database_url(self) -> str:
-        return self.database_url or f"sqlite:///{self.database_path}"
+        if self.database_url:
+            return self.database_url
+        if is_hosted_runtime():
+            raise RuntimeError(
+                "DATABASE_URL is required in hosted deployments. "
+                "Railway/API must use managed PostgreSQL; SQLite is only for local CLI/tests."
+            )
+        return f"sqlite:///{self.database_path}"
 
 
 def _path_from_value(value: Any) -> Path | None:

@@ -40,7 +40,7 @@ def main() -> int:
     with JobStore(config.resolved_database_url) as store:
         jobs = [
             job
-            for job in store.list_jobs()
+            for job in store.list_jobs(limit=10000)["items"]
             if classify_job(job, profile) == "TARGET"
         ]
         for job in jobs:
@@ -51,7 +51,9 @@ def main() -> int:
                 skipped += 1
                 continue
 
-            print(f"Analyzing: {job.get('title', 'Unknown')} - {job.get('company', 'Unknown')}")
+            print(
+                f"Analyzing: {job.get('title', 'Unknown')} - {job.get('company', 'Unknown')}"
+            )
             try:
                 result = match_job(config, profile, job, provider=provider)
             except (LLMError, ValueError) as error:
