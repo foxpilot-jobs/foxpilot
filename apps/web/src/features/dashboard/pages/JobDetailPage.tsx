@@ -49,15 +49,12 @@ export function JobDetailPage() {
       getApplications({ limit: 200 }),
     ]).then(([matchesResult, jobsResult, applicationsResult]) => {
       if (!active) return;
-      const matchItems =
-        matchesResult.status === "fulfilled" ? matchesResult.value.items : [];
-      const jobItems =
-        jobsResult.status === "fulfilled" ? jobsResult.value.items : [];
+      const matchItems = matchesResult.status === "fulfilled" ? matchesResult.value.items : [];
+      const jobItems = jobsResult.status === "fulfilled" ? jobsResult.value.items : [];
       const applicationItems =
         applicationsResult.status === "fulfilled" ? applicationsResult.value.items : [];
       const foundMatch = matchItems.find((item) => item.job_id === jobId);
-      const foundJob =
-        foundMatch?.job ?? jobItems.find((item) => item.job_id === jobId);
+      const foundJob = foundMatch?.job ?? jobItems.find((item) => item.job_id === jobId);
       setJob(foundJob ?? null);
       setMatch(foundMatch?.match ?? null);
       setApplication(applicationItems.find((item) => item.job_id === jobId));
@@ -423,8 +420,26 @@ function isHtmlContent(text: string) {
 }
 
 const ALLOWED_TAGS = new Set([
-  "p", "br", "ul", "ol", "li", "strong", "em", "b", "i", "u",
-  "h1", "h2", "h3", "h4", "h5", "h6", "a", "span", "div", "blockquote",
+  "p",
+  "br",
+  "ul",
+  "ol",
+  "li",
+  "strong",
+  "em",
+  "b",
+  "i",
+  "u",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "a",
+  "span",
+  "div",
+  "blockquote",
 ]);
 
 function sanitizeHtml(html: string): string {

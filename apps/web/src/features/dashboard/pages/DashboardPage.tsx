@@ -56,10 +56,7 @@ export function DashboardPage() {
       if (applicationsResult.status === "fulfilled") {
         setApplications(
           Object.fromEntries(
-            applicationsResult.value.items.map((application) => [
-              application.job_id,
-              application,
-            ]),
+            applicationsResult.value.items.map((application) => [application.job_id, application]),
           ),
         );
       } else failures.push("applications");

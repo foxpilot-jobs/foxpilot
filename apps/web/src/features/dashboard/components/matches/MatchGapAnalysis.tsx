@@ -28,9 +28,7 @@ export function MatchGapAnalysis({ match }: { match: Match["match"] }) {
                 <div className="matches-gap-item" key={gap.gap || index}>
                   <div className="matches-gap-item-header">
                     <GapIcon severity={gap.severity} />
-                    <span className="matches-gap-item-label">
-                      {gap.gap || gap.explanation}
-                    </span>
+                    <span className="matches-gap-item-label">{gap.gap || gap.explanation}</span>
                     <Badge
                       variant={
                         gap.severity === "blocking"

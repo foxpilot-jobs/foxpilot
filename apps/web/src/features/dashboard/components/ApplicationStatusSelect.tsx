@@ -83,9 +83,7 @@ export function ApplicationStatusSelect({
                 onClick={() => select(option.value)}
               >
                 <span>{option.label}</span>
-                {option.value === (status ?? "") && (
-                  <Check size={14} aria-hidden="true" />
-                )}
+                {option.value === (status ?? "") && <Check size={14} aria-hidden="true" />}
               </button>
             </li>
           ))}
