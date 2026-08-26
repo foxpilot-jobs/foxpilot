@@ -71,7 +71,6 @@ def _attach_instrumentation(engine: Engine) -> None:
         try:
             orig_rollback = getattr(dbapi_connection, "rollback", None)
             if orig_rollback:
-
                 def traced_rollback(*args, **kwargs):
                     ctx_inner = _REQUEST_TIMINGS.get()
                     t0 = time.perf_counter()
@@ -96,7 +95,6 @@ def _attach_instrumentation(engine: Engine) -> None:
         try:
             orig_commit = getattr(dbapi_connection, "commit", None)
             if orig_commit:
-
                 def traced_commit(*args, **kwargs):
                     ctx_inner = _REQUEST_TIMINGS.get()
                     t0 = time.perf_counter()

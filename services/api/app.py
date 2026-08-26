@@ -189,7 +189,6 @@ def create_app() -> FastAPI:
             return await call_next(request)
 
         from career_agent.storage.database import _REQUEST_TIMINGS
-
         ctx = {
             "auth_ms": 0.0,
             "queries": [],
