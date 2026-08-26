@@ -33,6 +33,22 @@ Public jobs are shared. Authenticated or private imports must be marked private 
    FOXPILOT_SOURCES_CONFIG=/absolute/path/to/data/sources.json
    ```
 
+   When running from your laptop, use the PostgreSQL service's public/external connection URL from Railway's **Connect** tab. A host such as `postgres.railway.internal` is private to Railway and cannot be resolved from a local machine. Railway service-to-service interpolation such as `${{Postgres.DATABASE_URL}}` is for Railway services only.
+
+   Load the file into the current shell. Alembic and the CLI read process environment variables; they do not automatically read `.env`:
+
+   ```zsh
+   setopt allexport
+   source .env
+   unsetopt allexport
+   test -n "$DATABASE_URL" && echo "DATABASE_URL is loaded"
+   test -n "$FOXPILOT_SOURCES_CONFIG" && echo "source config is loaded"
+   ```
+
+   For Bash, use `set -a` before `source .env` and `set +a` afterward. The variables must be exported so Alembic and the CLI subprocesses can read them.
+
+   Stop if `DATABASE_URL is loaded` is not printed. Otherwise the CLI will silently use the local SQLite fallback.
+
 3. Confirm the database is reachable and apply migrations:
 
    ```bash
