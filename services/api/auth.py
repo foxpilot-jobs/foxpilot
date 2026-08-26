@@ -98,8 +98,28 @@ def create_session(store: JobStore, user_id: str) -> str:
     return token
 
 
+def _cookie_domain() -> str | None:
+    """Derive the cookie domain from FOXPILOT_PUBLIC_URL so the session cookie
+    is shared between the frontend (foxpilot.in) and the API (api.foxpilot.in).
+    Returns None for localhost / local development."""
+    public_url = os.getenv("FOXPILOT_PUBLIC_URL", "")
+    if not public_url or "localhost" in public_url or "127.0.0.1" in public_url:
+        return None
+    try:
+        from urllib.parse import urlparse
+        host = urlparse(public_url).hostname or ""
+        # Use the registrable domain (e.g. foxpilot.in from www.foxpilot.in)
+        parts = host.split(".")
+        if len(parts) >= 2:
+            return f".{'.'.join(parts[-2:])}"
+    except Exception:  # noqa: BLE001
+        return None
+    return None
+
+
 def set_session_cookie(response, token: str, production: bool) -> None:
     hosted = production or os.getenv("FOXPILOT_PUBLIC_URL", "").lower().startswith("https://")
+    domain = _cookie_domain()
     response.set_cookie(
         SESSION_COOKIE,
         token,
@@ -108,6 +128,7 @@ def set_session_cookie(response, token: str, production: bool) -> None:
         secure=hosted,
         samesite="none" if hosted else "lax",
         path="/",
+        domain=domain,
     )
 
 
@@ -130,7 +151,8 @@ def maybe_cleanup_sessions(store: JobStore, interval_minutes: int = 60) -> None:
 
 
 def clear_session_cookie(response) -> None:
-    response.delete_cookie(SESSION_COOKIE, path="/")
+    domain = _cookie_domain()
+    response.delete_cookie(SESSION_COOKIE, path="/", domain=domain)
 
 
 def current_native_user(request: Request) -> AuthContext:
