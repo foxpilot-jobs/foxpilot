@@ -52,4 +52,15 @@ def test_web_api_contracts_for_jobs_matches_profile_and_background_job(
     assert {"job_id", "title", "company", "source"} <= job.keys()
     assert {"job_id", "match"} <= match.keys()
     assert {"resume_filename", "profile", "created_at", "updated_at"} <= profile.keys()
-    assert {"job_id", "kind", "status", "result", "error"} <= background_job.keys()
+    assert {
+        "job_id",
+        "kind",
+        "status",
+        "result",
+        "error",
+        "error_class",
+        "attempt",
+        "max_attempts",
+        "progress",
+        "started_at",
+    } <= background_job.keys()

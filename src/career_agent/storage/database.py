@@ -244,6 +244,48 @@ def _initialize_schema(engine: Engine) -> None:
                 connection.exec_driver_sql(
                     "ALTER TABLE jobs ADD COLUMN canonical_key VARCHAR"
                 )
+            bg_columns = {
+                row[1]
+                for row in connection.exec_driver_sql(
+                    "PRAGMA table_info(background_jobs)"
+                ).fetchall()
+            }
+            for col, ddl in (
+                (
+                    "attempt",
+                    "ALTER TABLE background_jobs ADD COLUMN attempt INTEGER NOT NULL DEFAULT 0",
+                ),
+                (
+                    "max_attempts",
+                    "ALTER TABLE background_jobs ADD COLUMN max_attempts INTEGER NOT NULL DEFAULT 3",
+                ),
+                (
+                    "lease_owner",
+                    "ALTER TABLE background_jobs ADD COLUMN lease_owner VARCHAR",
+                ),
+                (
+                    "lease_expires_at",
+                    "ALTER TABLE background_jobs ADD COLUMN lease_expires_at DATETIME",
+                ),
+                (
+                    "error_class",
+                    "ALTER TABLE background_jobs ADD COLUMN error_class VARCHAR",
+                ),
+                (
+                    "started_at",
+                    "ALTER TABLE background_jobs ADD COLUMN started_at DATETIME",
+                ),
+                (
+                    "idempotency_key",
+                    "ALTER TABLE background_jobs ADD COLUMN idempotency_key VARCHAR",
+                ),
+                (
+                    "progress_json",
+                    "ALTER TABLE background_jobs ADD COLUMN progress_json JSON",
+                ),
+            ):
+                if col not in bg_columns:
+                    connection.exec_driver_sql(ddl)
             JobStore._upgrade_user_owned_tables(connection)
             connection.exec_driver_sql("PRAGMA foreign_keys = ON")
             connection.exec_driver_sql("PRAGMA journal_mode = WAL")
@@ -331,6 +373,14 @@ background_jobs_table = Table(
     Column("status", String, nullable=False),
     Column("result_json", JSON),
     Column("error", Text),
+    Column("attempt", Integer, nullable=False, default=0),
+    Column("max_attempts", Integer, nullable=False, default=3),
+    Column("lease_owner", String),
+    Column("lease_expires_at", DateTime(timezone=True)),
+    Column("error_class", String),
+    Column("started_at", DateTime(timezone=True)),
+    Column("idempotency_key", String, unique=True),
+    Column("progress_json", JSON),
     Column("created_at", DateTime(timezone=True), nullable=False),
     Column("updated_at", DateTime(timezone=True), nullable=False),
 )
@@ -748,7 +798,12 @@ class JobStore:
         return dict(row) if row else None
 
     def create_background_job(
-        self, job_id: str, kind: str, result: dict | None = None
+        self,
+        job_id: str,
+        kind: str,
+        result: dict | None = None,
+        max_attempts: int = 3,
+        idempotency_key: str | None = None,
     ) -> None:
         now = utc_now()
         with self.engine.begin() as connection:
@@ -759,6 +814,9 @@ class JobStore:
                     kind=kind,
                     status="queued",
                     result_json=result,
+                    attempt=0,
+                    max_attempts=max_attempts,
+                    idempotency_key=idempotency_key,
                     created_at=now,
                     updated_at=now,
                 )
@@ -795,9 +853,18 @@ class JobStore:
             )
         return dict(row) if row else None
 
-    def claim_next_background_job(self, stale_after_minutes: int = 15) -> dict | None:
-        """Atomically claim queued work or work abandoned by a dead worker."""
-        stale_before = utc_now() - timedelta(minutes=stale_after_minutes)
+    def claim_next_background_job(
+        self,
+        worker_id: str = "worker-local",
+        lease_duration_minutes: int = 5,
+    ) -> dict | None:
+        """Atomically claim queued work or work whose lease has expired.
+
+        Sets the lease owner, extends the lease expiry, and increments the
+        attempt counter.  Jobs that have exhausted their max_attempts are
+        moved to ``dead_letter`` instead of being claimed.
+        """
+        now = utc_now()
         with self.engine.begin() as connection:
             candidate = (
                 connection.execute(
@@ -806,7 +873,10 @@ class JobStore:
                         or_(
                             background_jobs_table.c.status == "queued",
                             (background_jobs_table.c.status == "running")
-                            & (background_jobs_table.c.updated_at < stale_before),
+                            & (
+                                background_jobs_table.c.lease_expires_at.is_(None)
+                                | (background_jobs_table.c.lease_expires_at < now)
+                            ),
                         )
                     )
                     .order_by(background_jobs_table.c.created_at)
@@ -817,6 +887,29 @@ class JobStore:
             )
             if not candidate:
                 return None
+
+            next_attempt = (candidate["attempt"] or 0) + 1
+            max_attempts = candidate["max_attempts"] or 3
+
+            # Exhausted retries → dead-letter rather than re-claiming.
+            if next_attempt > max_attempts:
+                connection.execute(
+                    update(background_jobs_table)
+                    .where(
+                        background_jobs_table.c.job_id == candidate["job_id"],
+                        background_jobs_table.c.status == candidate["status"],
+                        background_jobs_table.c.updated_at == candidate["updated_at"],
+                    )
+                    .values(
+                        status="dead_letter",
+                        error=candidate["error"] or "Max attempts exhausted",
+                        error_class="permanent",
+                        updated_at=now,
+                    )
+                )
+                return None
+
+            lease_expires = now + timedelta(minutes=lease_duration_minutes)
             claimed = connection.execute(
                 update(background_jobs_table)
                 .where(
@@ -824,23 +917,60 @@ class JobStore:
                     background_jobs_table.c.status == candidate["status"],
                     background_jobs_table.c.updated_at == candidate["updated_at"],
                 )
-                .values(status="running", updated_at=utc_now())
+                .values(
+                    status="running",
+                    attempt=next_attempt,
+                    lease_owner=worker_id,
+                    lease_expires_at=lease_expires,
+                    started_at=now if next_attempt == 1 else candidate["started_at"],
+                    updated_at=now,
+                )
             )
             if claimed.rowcount != 1:
                 return None
         claimed_job = dict(candidate)
         claimed_job["status"] = "running"
+        claimed_job["attempt"] = next_attempt
+        claimed_job["lease_owner"] = worker_id
+        claimed_job["lease_expires_at"] = lease_expires
         return claimed_job
 
     def recover_interrupted_background_jobs(self) -> None:
+        """Re-queue retryable interrupted jobs; dead-letter exhausted ones."""
+        now = utc_now()
         with self.engine.begin() as connection:
+            # Jobs that still have retry budget → back to queued
             connection.execute(
                 update(background_jobs_table)
-                .where(background_jobs_table.c.status.in_(("queued", "running")))
+                .where(
+                    background_jobs_table.c.status == "running",
+                    background_jobs_table.c.attempt
+                    < background_jobs_table.c.max_attempts,
+                )
                 .values(
-                    status="failed",
-                    error="Job interrupted by an API restart. Please try again.",
-                    updated_at=utc_now(),
+                    status="queued",
+                    error="Job interrupted by a process restart. Will retry.",
+                    error_class="retryable",
+                    lease_owner=None,
+                    lease_expires_at=None,
+                    updated_at=now,
+                )
+            )
+            # Jobs that exhausted retries → dead letter
+            connection.execute(
+                update(background_jobs_table)
+                .where(
+                    background_jobs_table.c.status == "running",
+                    background_jobs_table.c.attempt
+                    >= background_jobs_table.c.max_attempts,
+                )
+                .values(
+                    status="dead_letter",
+                    error="Job interrupted after exhausting all retry attempts.",
+                    error_class="permanent",
+                    lease_owner=None,
+                    lease_expires_at=None,
+                    updated_at=now,
                 )
             )
 
@@ -850,7 +980,22 @@ class JobStore:
         status: str,
         result: dict | None = None,
         error: str | None = None,
+        error_class: str | None = None,
+        progress: dict | None = None,
     ) -> None:
+        values: dict = {"status": status, "updated_at": utc_now()}
+        if result is not None:
+            values["result_json"] = result
+        if error is not None:
+            values["error"] = error
+        if error_class is not None:
+            values["error_class"] = error_class
+        if progress is not None:
+            values["progress_json"] = progress
+        # Clear lease on terminal states
+        if status in ("completed", "failed", "dead_letter"):
+            values["lease_owner"] = None
+            values["lease_expires_at"] = None
         with self.engine.begin() as connection:
             connection.execute(
                 update(background_jobs_table)
@@ -858,13 +1003,97 @@ class JobStore:
                     background_jobs_table.c.job_id == job_id,
                     background_jobs_table.c.user_id == self.user_id,
                 )
-                .values(
-                    status=status,
-                    result_json=result,
-                    error=error,
-                    updated_at=utc_now(),
-                )
+                .values(**values)
             )
+
+    def heartbeat_background_job(
+        self,
+        job_id: str,
+        worker_id: str,
+        lease_duration_minutes: int = 5,
+        progress: dict | None = None,
+    ) -> bool:
+        """Extend the lease for a running job.  Returns True if the extension succeeded."""
+        now = utc_now()
+        values: dict = {
+            "lease_expires_at": now + timedelta(minutes=lease_duration_minutes),
+            "updated_at": now,
+        }
+        if progress is not None:
+            values["progress_json"] = progress
+        with self.engine.begin() as connection:
+            result = connection.execute(
+                update(background_jobs_table)
+                .where(
+                    background_jobs_table.c.job_id == job_id,
+                    background_jobs_table.c.lease_owner == worker_id,
+                    background_jobs_table.c.status == "running",
+                )
+                .values(**values)
+            )
+        return result.rowcount == 1
+
+    def fail_background_job_retryable(
+        self,
+        job_id: str,
+        error: str,
+    ) -> None:
+        """Mark a job as failed with retryable classification.
+
+        If the job still has retry budget it goes back to ``queued``.
+        Otherwise it moves to ``dead_letter``.
+        """
+        now = utc_now()
+        with self.engine.begin() as connection:
+            row = (
+                connection.execute(
+                    select(
+                        background_jobs_table.c.attempt,
+                        background_jobs_table.c.max_attempts,
+                    ).where(
+                        background_jobs_table.c.job_id == job_id,
+                        background_jobs_table.c.user_id == self.user_id,
+                    )
+                )
+                .mappings()
+                .first()
+            )
+            if not row:
+                return
+            attempt = row["attempt"] or 0
+            max_attempts = row["max_attempts"] or 3
+            if attempt < max_attempts:
+                connection.execute(
+                    update(background_jobs_table)
+                    .where(
+                        background_jobs_table.c.job_id == job_id,
+                        background_jobs_table.c.user_id == self.user_id,
+                    )
+                    .values(
+                        status="queued",
+                        error=error,
+                        error_class="retryable",
+                        lease_owner=None,
+                        lease_expires_at=None,
+                        updated_at=now,
+                    )
+                )
+            else:
+                connection.execute(
+                    update(background_jobs_table)
+                    .where(
+                        background_jobs_table.c.job_id == job_id,
+                        background_jobs_table.c.user_id == self.user_id,
+                    )
+                    .values(
+                        status="dead_letter",
+                        error=error,
+                        error_class="permanent",
+                        lease_owner=None,
+                        lease_expires_at=None,
+                        updated_at=now,
+                    )
+                )
 
     # -- Ingestion runs (shared corpus, not user-scoped) --
 

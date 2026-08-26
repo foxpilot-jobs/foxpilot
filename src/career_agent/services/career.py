@@ -14,6 +14,7 @@ from ..llm import LLMError, create_provider
 from ..matching import match_job
 from ..profile import create_profile_from_text
 from ..storage import JobStore
+from ..worker_errors import classify_error
 from .ingestion import IngestionService
 
 
@@ -140,8 +141,14 @@ class CareerService:
                 store.save_profile(resume_text, resume_filename, profile)
                 store.update_background_job(job_id, "completed", {"profile": profile})
         except Exception as error:  # noqa: BLE001 - persist failure for polling clients
+            ec = classify_error(error)
             with self._store() as store:
-                store.update_background_job(job_id, "failed", error=str(error))
+                if ec == "retryable":
+                    store.fail_background_job_retryable(job_id, str(error))
+                else:
+                    store.update_background_job(
+                        job_id, "failed", error=str(error), error_class="permanent"
+                    )
 
     def queue_matching(self) -> str:
         with self._store() as store:
@@ -191,6 +198,11 @@ class CareerService:
             )
             ingestion.run_ingestion(run_id)
             run = ingestion.get_run(run_id)
+
+            # Propagate ingestion failure to the scan background job.
+            if run and run.get("status") == "failed":
+                raise RuntimeError(run.get("error") or "Ingestion run failed")
+
             result = run.get("result") if run else {}
             total = result.get("jobs_upserted", 0) if isinstance(result, dict) else 0
 
@@ -201,8 +213,14 @@ class CareerService:
                     {"new_jobs": total, "ingestion_run_id": run_id},
                 )
         except Exception as error:  # noqa: BLE001 - persist failure for polling clients
+            ec = classify_error(error)
             with self._store() as store:
-                store.update_background_job(job_id, "failed", error=str(error))
+                if ec == "retryable":
+                    store.fail_background_job_retryable(job_id, str(error))
+                else:
+                    store.update_background_job(
+                        job_id, "failed", error=str(error), error_class="permanent"
+                    )
 
     def get_background_job(self, job_id: str) -> dict | None:
         with self._store() as store:
@@ -220,6 +238,11 @@ class CareerService:
             "status": job["status"],
             "result": result,
             "error": job["error"],
+            "error_class": job.get("error_class"),
+            "attempt": job.get("attempt", 0),
+            "max_attempts": job.get("max_attempts", 3),
+            "progress": job.get("progress_json"),
+            "started_at": job.get("started_at"),
             "created_at": job["created_at"],
             "updated_at": job["updated_at"],
         }
@@ -237,12 +260,18 @@ class CareerService:
             with self._store() as store:
                 store.update_background_job(job_id, "completed", result)
         except Exception as error:  # noqa: BLE001 - persist failure for polling clients
+            ec = classify_error(error)
             with self._store() as store:
-                store.update_background_job(job_id, "failed", error=str(error))
+                if ec == "retryable":
+                    store.fail_background_job_retryable(job_id, str(error))
+                else:
+                    store.update_background_job(
+                        job_id, "failed", error=str(error), error_class="permanent"
+                    )
 
     def _update_matching_progress(self, job_id: str, value: dict[str, int]) -> None:
         with self._store() as store:
-            store.update_background_job(job_id, "running", value)
+            store.update_background_job(job_id, "running", progress=value)
 
     def run_matching(
         self, progress: Callable[[dict[str, int]], None] | None = None
