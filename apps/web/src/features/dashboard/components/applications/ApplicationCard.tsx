@@ -43,24 +43,28 @@ export function ApplicationCard({
         </div>
         {match && (
           <span className="applications-match-score">
-            <strong>{Math.round(match.match_score)}%</strong> match
+            <strong>{Math.round(match.match_score)}%</strong>
           </span>
         )}
       </div>
       <div className="applications-card-bottom">
-        <Badge variant={statusVariant}>{formatStatus(application.status)}</Badge>
-        <div className="applications-card-actions">
+        <div className="applications-card-status-row">
+          <Badge variant={statusVariant}>{formatStatus(application.status)}</Badge>
           <ApplicationStatusSelect
             disabled={updating}
             jobTitle={title}
             status={application.status}
             onChange={onStatusChange}
           />
-          <Link aria-label={`View ${title}`} to={`/app/jobs/${application.job_id}`}>
-            <span>View job</span>
-            <ArrowRight size={16} aria-hidden="true" />
-          </Link>
         </div>
+        <Link
+          className="applications-card-view-link"
+          aria-label={`View ${title}`}
+          to={`/app/jobs/${application.job_id}`}
+        >
+          <span>View job</span>
+          <ArrowRight size={14} aria-hidden="true" />
+        </Link>
       </div>
     </Card>
   );

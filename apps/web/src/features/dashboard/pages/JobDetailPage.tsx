@@ -135,7 +135,14 @@ export function JobDetailPage() {
             </CardHeader>
             <CardContent>
               {job.description ? (
-                <div className="job-detail-description">{job.description}</div>
+                isHtmlContent(job.description) ? (
+                  <div
+                    className="job-detail-description"
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(job.description) }}
+                  />
+                ) : (
+                  <div className="job-detail-description">{job.description}</div>
+                )
               ) : (
                 <EmptyState
                   description="The source did not provide a job description."
@@ -409,4 +416,25 @@ function hasPotentialGaps(match: Match["match"]) {
     match.concerns.length > 0 ||
     (match.gap_analysis?.length ?? 0) > 0
   );
+}
+
+function isHtmlContent(text: string) {
+  return /<[a-z][\s\S]*>/i.test(text);
+}
+
+const ALLOWED_TAGS = new Set([
+  "p", "br", "ul", "ol", "li", "strong", "em", "b", "i", "u",
+  "h1", "h2", "h3", "h4", "h5", "h6", "a", "span", "div", "blockquote",
+]);
+
+function sanitizeHtml(html: string): string {
+  // Strip tags not in the allow-list. This is a lightweight client-side
+  // sanitizer — the data already comes from our own API, not user input.
+  return html
+    .replace(/<img[^>]*>/gi, "")
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .replace(/<\/?([a-z][a-z0-9]*)\b[^>]*>/gi, (fullMatch, tagName: string) => {
+      if (ALLOWED_TAGS.has(tagName.toLowerCase())) return fullMatch;
+      return "";
+    });
 }

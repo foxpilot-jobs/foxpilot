@@ -141,8 +141,39 @@
   color: var(--color-text-secondary);
   font-size: 15px;
   line-height: 1.75;
-  white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+.job-detail-description p {
+  margin: var(--space-3) 0;
+}
+
+.job-detail-description p:first-child {
+  margin-top: 0;
+}
+
+.job-detail-description ul,
+.job-detail-description ol {
+  margin: var(--space-3) 0;
+  padding-left: var(--space-6);
+}
+
+.job-detail-description li {
+  margin: var(--space-1) 0;
+}
+
+.job-detail-description u {
+  text-decoration: none;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.job-detail-description a {
+  color: var(--color-brand);
+}
+
+.job-detail-description a:hover {
+  text-decoration: underline;
 }
 
 .job-detail-no-gaps {

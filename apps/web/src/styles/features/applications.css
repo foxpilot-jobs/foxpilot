@@ -228,36 +228,36 @@
 }
 
 .applications-card-bottom {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
+  display: grid;
+  gap: var(--space-3);
   border-top: 1px solid var(--color-border);
   padding-top: var(--space-3);
 }
 
-.applications-card-actions {
+.applications-card-status-row {
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  flex-wrap: wrap;
 }
 
-.applications-card-actions .status-select-trigger {
-  width: 116px;
+.applications-card-status-row .status-select-trigger {
+  min-width: 0;
+  font-size: 12px;
 }
 
-.applications-card-actions a {
+.applications-card-view-link {
   display: inline-flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--space-1);
   color: var(--color-brand);
   font-size: 12px;
   font-weight: 600;
   text-decoration: none;
-  white-space: nowrap;
 }
 
-.applications-card-actions a:hover {
+.applications-card-view-link:hover {
   color: var(--color-brand-hover);
 }
 
@@ -331,27 +331,12 @@
     padding-left: var(--space-4);
   }
 
-  .applications-card-bottom {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .applications-card-actions {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .applications-card-actions .status-select {
+  .applications-card-status-row .status-select {
     width: 100%;
   }
 
-  .applications-card-actions .status-select-trigger {
+  .applications-card-status-row .status-select-trigger {
     width: 100%;
-  }
-
-  .applications-card-actions a {
-    justify-content: space-between;
-    min-height: 36px;
   }
 
   .applications-state {
