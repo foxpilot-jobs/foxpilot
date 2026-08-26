@@ -196,6 +196,12 @@ def get_engine(database: Path | str | Engine) -> Engine:
 
 
 def _initialize_schema(engine: Engine) -> None:
+    if engine.dialect.name != "sqlite":
+        # Hosted/PostgreSQL deployments are Alembic-managed. Do not call
+        # metadata.create_all() here: create_all() creates missing tables but
+        # does not record or apply migrations, which causes schema drift.
+        return
+
     metadata.create_all(engine)
     if engine.dialect.name == "sqlite":
         with engine.begin() as connection:
