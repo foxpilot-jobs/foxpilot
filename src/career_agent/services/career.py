@@ -61,16 +61,21 @@ class CareerService:
             store.save_profile(resume_text, resume_filename, profile)
         return profile
 
-    def get_profile(self) -> dict | None:
+    def get_profile(self) -> dict:
         with self._store() as store:
             profile = store.get_profile()
-        if not profile or not profile["profile_json"]:
-            return None
+        if not profile:
+            return {
+                "resume_filename": "",
+                "profile": {},
+                "created_at": None,
+                "updated_at": None,
+            }
         return {
-            "resume_filename": profile["resume_filename"],
-            "profile": profile["profile_json"],
-            "created_at": profile["created_at"],
-            "updated_at": profile["updated_at"],
+            "resume_filename": profile.get("resume_filename", ""),
+            "profile": profile.get("profile_json") or {},
+            "created_at": profile.get("created_at"),
+            "updated_at": profile.get("updated_at"),
         }
 
     def queue_profile_generation(self, resume_text: str, resume_filename: str) -> str:

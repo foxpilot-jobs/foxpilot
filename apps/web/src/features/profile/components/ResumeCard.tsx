@@ -45,7 +45,8 @@ export function ResumeCard({
   );
 }
 
-function formatDate(value: string) {
+function formatDate(value: string | null) {
+  if (!value) return "Recently";
   const date = new Date(value);
   return Number.isNaN(date.getTime())
     ? value

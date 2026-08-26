@@ -74,7 +74,7 @@ export function JobDetailPage() {
     return () => {
       active = false;
     };
-  }, [jobId, retryToken, user]);
+  }, [jobId, retryToken, user?.user_id]);
 
   async function handleStatus(status: Application["status"]) {
     setUpdating(true);

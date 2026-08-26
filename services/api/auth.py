@@ -6,6 +6,8 @@ import hashlib
 import hmac
 import os
 import secrets
+import threading
+import time
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
@@ -42,6 +44,7 @@ class AuthContext:
 
     user_id: str
     email: str | None = None
+    email_verified: bool = True
 
 
 def normalize_email(email: str) -> str:
@@ -113,25 +116,69 @@ def hosted_cookie(production: bool) -> bool:
     return production or os.getenv("FOXPILOT_PUBLIC_URL", "").lower().startswith("https://")
 
 
+_LAST_CLEANUP_TIME: datetime | None = None
+_CLEANUP_LOCK = threading.Lock()
+
+
+def maybe_cleanup_sessions(store: JobStore, interval_minutes: int = 60) -> None:
+    global _LAST_CLEANUP_TIME
+    now = datetime.now(UTC)
+    with _CLEANUP_LOCK:
+        if _LAST_CLEANUP_TIME is None or (now - _LAST_CLEANUP_TIME) > timedelta(minutes=interval_minutes):
+            _LAST_CLEANUP_TIME = now
+            store.cleanup_sessions()
+
+
 def clear_session_cookie(response) -> None:
     response.delete_cookie(SESSION_COOKIE, path="/")
 
 
 def current_native_user(request: Request) -> AuthContext:
+    t_start = time.perf_counter()
+    from career_agent.storage.database import _REQUEST_TIMINGS
+    ctx = _REQUEST_TIMINGS.get()
+    if ctx is not None:
+        ctx["events"].append(("current_native_user_start", t_start))
+
     token = request.cookies.get(SESSION_COOKIE)
     if not token:
         raise _unauthorized()
+
+    if ctx is not None:
+        ctx["events"].append(("store_init_start", time.perf_counter()))
     store = _store(request)
+    if ctx is not None:
+        ctx["events"].append(("store_init_end", time.perf_counter()))
+
     try:
-        store.cleanup_sessions()
+        if ctx is not None:
+            ctx["events"].append(("maybe_cleanup_start", time.perf_counter()))
+        maybe_cleanup_sessions(store)
+        if ctx is not None:
+            ctx["events"].append(("maybe_cleanup_end", time.perf_counter()))
+
         user = store.get_session_user(_token_hash(token))
     finally:
+        if ctx is not None:
+            ctx["events"].append(("store_close_start", time.perf_counter()))
         store.close()
+        if ctx is not None:
+            ctx["events"].append(("store_close_end", time.perf_counter()))
+
     if not user:
         raise _unauthorized()
     if os.getenv("FOXPILOT_ENV", "local").lower() == "production" and not user["email_verified"]:
         raise HTTPException(status_code=403, detail="Verify your email before signing in")
-    return AuthContext(user_id=user["user_id"], email=user["email"])
+
+    elapsed_ms = (time.perf_counter() - t_start) * 1000
+    if ctx is not None:
+        ctx["auth_ms"] = elapsed_ms
+        ctx["events"].append(("current_native_user_end", time.perf_counter()))
+    return AuthContext(
+        user_id=user["user_id"],
+        email=user["email"],
+        email_verified=bool(user.get("email_verified", True)),
+    )
 
 
 def get_user_by_email(request: Request, email: str) -> dict | None:

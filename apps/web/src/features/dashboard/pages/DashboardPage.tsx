@@ -65,12 +65,14 @@ export function DashboardPage() {
       if (failures.length > 0) setError("Some workspace data could not be loaded.");
       setLoading(false);
     });
-  }, [includeInactive, reloadToken, user]);
+  }, [includeInactive, reloadToken, user?.user_id]);
 
   const matchByJob = useMemo(
     () => new Map(matches.map((item) => [item.job_id, item.match])),
     [matches],
   );
+
+  const hasProfileData = Boolean(profile && profile.resume_filename);
 
   const filteredJobs = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -78,7 +80,7 @@ export function DashboardPage() {
       .filter((job) => {
         const jobId = job.job_id ?? "";
         const match = matchByJob.get(jobId);
-        if (profile && view === "matches" && !match) return false;
+        if (hasProfileData && view === "matches" && !match) return false;
         const application = applications[jobId];
         const matchesStatus = statusFilter === "all" || application?.status === statusFilter;
         const matchesQuery =
@@ -93,7 +95,7 @@ export function DashboardPage() {
           (matchByJob.get(right.job_id ?? "")?.match_score ?? -1) -
           (matchByJob.get(left.job_id ?? "")?.match_score ?? -1),
       );
-  }, [applications, jobs, matchByJob, profile, query, statusFilter, view]);
+  }, [applications, hasProfileData, jobs, matchByJob, query, statusFilter, view]);
 
   if (!user) return null;
 
@@ -132,7 +134,7 @@ export function DashboardPage() {
           <DashboardMetrics
             applications={Object.keys(applications).length}
             matches={matches}
-            profile={profile}
+            profile={hasProfileData ? profile : null}
           />
           <div className="dashboard-overview-grid">
             <TopMatches matches={matches} />
@@ -146,9 +148,9 @@ export function DashboardPage() {
           <DashboardActions
             applicationCount={Object.keys(applications).length}
             hasMatches={matches.length > 0}
-            hasProfile={profile !== null}
+            hasProfile={hasProfileData}
           />
-          <ProfilePrompt hasProfile={profile !== null} resumeFilename={profile?.resume_filename} />
+          <ProfilePrompt hasProfile={hasProfileData} resumeFilename={profile?.resume_filename} />
           <section className="dashboard-job-explorer" aria-labelledby="job-explorer-heading">
             <div className="dashboard-section-heading">
               <div>
@@ -158,7 +160,7 @@ export function DashboardPage() {
               <span className="dashboard-count">{filteredJobs.length} showing</span>
             </div>
             <div className="dashboard-views" role="tablist" aria-label="Job views">
-              {profile && (
+              {hasProfileData && (
                 <button
                   className={view === "matches" ? "view-tab active" : "view-tab"}
                   role="tab"
@@ -170,10 +172,10 @@ export function DashboardPage() {
                 </button>
               )}
               <button
-                className={view === "all" || !profile ? "view-tab active" : "view-tab"}
+                className={view === "all" || !hasProfileData ? "view-tab active" : "view-tab"}
                 role="tab"
                 type="button"
-                aria-selected={view === "all" || !profile}
+                aria-selected={view === "all" || !hasProfileData}
                 onClick={() => setView("all")}
               >
                 All active jobs

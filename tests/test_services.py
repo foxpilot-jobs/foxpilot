@@ -160,3 +160,15 @@ def test_profile_aware_relevance_rejects_generic_roles_without_profile_fit() -> 
         },
         {"current_or_recent_roles": ["Software Engineer"]},
     ) == "REVIEW"
+
+
+def test_get_profile_returns_default_resource_when_no_resume(tmp_path: Path) -> None:
+    config = AppConfig(data_dir=tmp_path)
+    service = CareerService(config, user_id="new-user-no-resume")
+    profile = service.get_profile()
+    assert profile == {
+        "resume_filename": "",
+        "profile": {},
+        "created_at": None,
+        "updated_at": None,
+    }

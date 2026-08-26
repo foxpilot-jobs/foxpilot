@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import threading
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Self
@@ -29,6 +30,197 @@ from sqlalchemy import (
     update,
 )
 from sqlalchemy.engine import Engine
+
+_ENGINES: dict[str, Engine] = {}
+_INITIALIZED_URLS: set[str] = set()
+_ENGINE_LOCK = threading.Lock()
+
+
+def get_database_url(database: Path | str) -> str:
+    if isinstance(database, Path):
+        database_path = database.expanduser().resolve()
+        database_path.parent.mkdir(parents=True, exist_ok=True)
+        return f"sqlite:///{database_path}"
+    return database
+
+
+import contextvars
+import time
+
+from sqlalchemy import event
+
+_REQUEST_TIMINGS: contextvars.ContextVar[dict | None] = contextvars.ContextVar("request_timings", default=None)
+
+
+def _attach_instrumentation(engine: Engine) -> None:
+    if getattr(engine, "_has_timing_listeners", False):
+        return
+    engine._has_timing_listeners = True
+
+    @event.listens_for(engine, "connect")
+    def on_connect(dbapi_connection, connection_record):
+        ctx = _REQUEST_TIMINGS.get()
+        if ctx is not None:
+            ctx["events"].append(("driver_connect", time.perf_counter()))
+
+        try:
+            orig_rollback = getattr(dbapi_connection, "rollback", None)
+            if orig_rollback:
+                def traced_rollback(*args, **kwargs):
+                    ctx_inner = _REQUEST_TIMINGS.get()
+                    t0 = time.perf_counter()
+                    if ctx_inner is not None:
+                        ctx_inner["events"].append(("dbapi_rollback_start", t0))
+                    res = orig_rollback(*args, **kwargs)
+                    t1 = time.perf_counter()
+                    if ctx_inner is not None:
+                        ctx_inner["events"].append(("dbapi_rollback_end", t1, f"{round((t1 - t0) * 1000, 2)}ms"))
+                    return res
+                dbapi_connection.rollback = traced_rollback
+        except (AttributeError, TypeError):
+            pass
+
+        try:
+            orig_commit = getattr(dbapi_connection, "commit", None)
+            if orig_commit:
+                def traced_commit(*args, **kwargs):
+                    ctx_inner = _REQUEST_TIMINGS.get()
+                    t0 = time.perf_counter()
+                    if ctx_inner is not None:
+                        ctx_inner["events"].append(("dbapi_commit_start", t0))
+                    res = orig_commit(*args, **kwargs)
+                    t1 = time.perf_counter()
+                    if ctx_inner is not None:
+                        ctx_inner["events"].append(("dbapi_commit_end", t1, f"{round((t1 - t0) * 1000, 2)}ms"))
+                    return res
+                dbapi_connection.commit = traced_commit
+        except (AttributeError, TypeError):
+            pass
+
+    @event.listens_for(engine, "reset")
+    def on_reset(dbapi_connection, connection_record, reset_state):
+        ctx = _REQUEST_TIMINGS.get()
+        if ctx is not None:
+            ctx["events"].append(("engine_reset_event", time.perf_counter()))
+
+    @event.listens_for(engine, "checkout")
+    def on_checkout(dbapi_connection, connection_record, connection_proxy):
+        ctx = _REQUEST_TIMINGS.get()
+        if ctx is not None:
+            ctx["events"].append(("pool_checkout", time.perf_counter()))
+
+    @event.listens_for(engine, "checkin")
+    def on_checkin(dbapi_connection, connection_record):
+        ctx = _REQUEST_TIMINGS.get()
+        if ctx is not None:
+            ctx["events"].append(("pool_checkin", time.perf_counter()))
+
+    @event.listens_for(engine, "invalidate")
+    def on_invalidate(dbapi_connection, connection_record, exception):
+        ctx = _REQUEST_TIMINGS.get()
+        if ctx is not None:
+            ctx["events"].append(("pool_invalidate", time.perf_counter()))
+
+    @event.listens_for(engine, "before_cursor_execute")
+    def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+        conn.info.setdefault("query_start", []).append(time.perf_counter())
+        ctx = _REQUEST_TIMINGS.get()
+        if ctx is not None:
+            stmt_summary = " ".join(statement.split()[:5])
+            ctx["events"].append(("before_cursor_exec", time.perf_counter(), stmt_summary))
+
+    @event.listens_for(engine, "after_cursor_execute")
+    def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+        starts = conn.info.get("query_start", [])
+        if starts:
+            elapsed_ms = (time.perf_counter() - starts.pop()) * 1000
+            ctx = _REQUEST_TIMINGS.get()
+            if ctx is not None:
+                stmt_summary = " ".join(statement.split()[:5])
+                ctx["events"].append(("after_cursor_exec", time.perf_counter(), stmt_summary, round(elapsed_ms, 2)))
+                ctx["queries"].append({"stmt": stmt_summary, "ms": round(elapsed_ms, 2)})
+
+
+def get_engine(database: Path | str | Engine) -> Engine:
+    if isinstance(database, Engine):
+        _attach_instrumentation(database)
+        return database
+    database_url = get_database_url(database)
+    with _ENGINE_LOCK:
+        if database_url not in _ENGINES:
+            connect_args = {"check_same_thread": False} if database_url.startswith("sqlite") else {}
+            pool_recycle = 300 if not database_url.startswith("sqlite") else -1
+            engine = create_engine(
+                database_url,
+                connect_args=connect_args,
+                pool_pre_ping=False,
+                pool_recycle=pool_recycle,
+            )
+            _attach_instrumentation(engine)
+            _ENGINES[database_url] = engine
+        return _ENGINES[database_url]
+
+
+def _initialize_schema(engine: Engine) -> None:
+    metadata.create_all(engine)
+    if engine.dialect.name == "sqlite":
+        with engine.begin() as connection:
+            columns = {
+                row[1]
+                for row in connection.exec_driver_sql("PRAGMA table_info(users)").fetchall()
+            }
+            if "password_hash" not in columns:
+                connection.exec_driver_sql("ALTER TABLE users ADD COLUMN password_hash VARCHAR")
+            if "email_verified" not in columns:
+                connection.exec_driver_sql(
+                    "ALTER TABLE users ADD COLUMN email_verified BOOLEAN NOT NULL DEFAULT 0"
+                )
+            if "is_active" not in columns:
+                connection.exec_driver_sql(
+                    "ALTER TABLE users ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT 1"
+                )
+            if "auth_provider" not in columns:
+                connection.exec_driver_sql("ALTER TABLE users ADD COLUMN auth_provider VARCHAR")
+            if "auth_subject" not in columns:
+                connection.exec_driver_sql("ALTER TABLE users ADD COLUMN auth_subject VARCHAR")
+            job_columns = {
+                row[1]
+                for row in connection.exec_driver_sql("PRAGMA table_info(jobs)").fetchall()
+            }
+            if "is_active" not in job_columns:
+                connection.exec_driver_sql("ALTER TABLE jobs ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT 1")
+            if "last_seen_at" not in job_columns:
+                connection.exec_driver_sql("ALTER TABLE jobs ADD COLUMN last_seen_at DATETIME")
+            if "inactive_at" not in job_columns:
+                connection.exec_driver_sql("ALTER TABLE jobs ADD COLUMN inactive_at DATETIME")
+            if "canonical_key" not in job_columns:
+                connection.exec_driver_sql("ALTER TABLE jobs ADD COLUMN canonical_key VARCHAR")
+            JobStore._upgrade_user_owned_tables(connection)
+            connection.exec_driver_sql("PRAGMA foreign_keys = ON")
+            connection.exec_driver_sql("PRAGMA journal_mode = WAL")
+
+
+def initialize_database(database: Path | str | Engine) -> Engine:
+    engine = get_engine(database)
+    url_key = None
+    if isinstance(database, (Path, str)):
+        url_key = get_database_url(database)
+
+    with _ENGINE_LOCK:
+        if url_key is None or url_key not in _INITIALIZED_URLS:
+            _initialize_schema(engine)
+            if url_key:
+                _INITIALIZED_URLS.add(url_key)
+    return engine
+
+
+def dispose_all_engines() -> None:
+    with _ENGINE_LOCK:
+        for engine in _ENGINES.values():
+            engine.dispose()
+        _ENGINES.clear()
+        _INITIALIZED_URLS.clear()
+
 
 metadata = MetaData()
 
@@ -192,59 +384,9 @@ def _description_similarity(left: object, right: object) -> float:
 class JobStore:
     """Repository shared by CLI, API, and background workers."""
 
-    def __init__(self, database: Path | str, user_id: str = "local-user") -> None:
+    def __init__(self, database: Path | str | Engine, user_id: str = "local-user") -> None:
         self.user_id = user_id
-        if isinstance(database, Path):
-            database_path = database.expanduser().resolve()
-            database_path.parent.mkdir(parents=True, exist_ok=True)
-            database_url = f"sqlite:///{database_path}"
-        else:
-            database_url = database
-        connect_args = {"check_same_thread": False} if database_url.startswith("sqlite") else {}
-        self.engine: Engine = create_engine(
-            database_url,
-            connect_args=connect_args,
-            pool_pre_ping=True,
-        )
-        self._initialize()
-
-    def _initialize(self) -> None:
-        metadata.create_all(self.engine)
-        if self.engine.dialect.name == "sqlite":
-            with self.engine.begin() as connection:
-                columns = {
-                    row[1]
-                    for row in connection.exec_driver_sql("PRAGMA table_info(users)").fetchall()
-                }
-                if "password_hash" not in columns:
-                    connection.exec_driver_sql("ALTER TABLE users ADD COLUMN password_hash VARCHAR")
-                if "email_verified" not in columns:
-                    connection.exec_driver_sql(
-                        "ALTER TABLE users ADD COLUMN email_verified BOOLEAN NOT NULL DEFAULT 0"
-                    )
-                if "is_active" not in columns:
-                    connection.exec_driver_sql(
-                        "ALTER TABLE users ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT 1"
-                    )
-                if "auth_provider" not in columns:
-                    connection.exec_driver_sql("ALTER TABLE users ADD COLUMN auth_provider VARCHAR")
-                if "auth_subject" not in columns:
-                    connection.exec_driver_sql("ALTER TABLE users ADD COLUMN auth_subject VARCHAR")
-                job_columns = {
-                    row[1]
-                    for row in connection.exec_driver_sql("PRAGMA table_info(jobs)").fetchall()
-                }
-                if "is_active" not in job_columns:
-                    connection.exec_driver_sql("ALTER TABLE jobs ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT 1")
-                if "last_seen_at" not in job_columns:
-                    connection.exec_driver_sql("ALTER TABLE jobs ADD COLUMN last_seen_at DATETIME")
-                if "inactive_at" not in job_columns:
-                    connection.exec_driver_sql("ALTER TABLE jobs ADD COLUMN inactive_at DATETIME")
-                if "canonical_key" not in job_columns:
-                    connection.exec_driver_sql("ALTER TABLE jobs ADD COLUMN canonical_key VARCHAR")
-                self._upgrade_user_owned_tables(connection)
-                connection.exec_driver_sql("PRAGMA foreign_keys = ON")
-                connection.exec_driver_sql("PRAGMA journal_mode = WAL")
+        self.engine: Engine = initialize_database(database)
 
     @staticmethod
     def _upgrade_user_owned_tables(connection) -> None:
@@ -275,7 +417,7 @@ class JobStore:
             )
 
     def close(self) -> None:
-        self.engine.dispose()
+        pass
 
     def __enter__(self) -> Self:
         return self
@@ -375,10 +517,18 @@ class JobStore:
                 )
             )
 
-    def get_session_user(self, token_hash: str) -> dict | None:
+    def get_session_user(self, token_hash: str, touch_threshold_minutes: int = 5) -> dict | None:
+        ctx = _REQUEST_TIMINGS.get()
+        if ctx is not None:
+            ctx["events"].append(("get_session_user_start", time.perf_counter()))
         now = utc_now()
         query = (
-            select(users_table, sessions_table.c.session_id, sessions_table.c.expires_at)
+            select(
+                users_table,
+                sessions_table.c.session_id,
+                sessions_table.c.expires_at,
+                sessions_table.c.last_seen_at,
+            )
             .join(sessions_table, sessions_table.c.user_id == users_table.c.user_id)
             .where(
                 sessions_table.c.token_hash == token_hash,
@@ -387,15 +537,46 @@ class JobStore:
                 users_table.c.is_active.is_(True),
             )
         )
-        with self.engine.begin() as connection:
-            row = connection.execute(query).mappings().first()
-            if row:
+        if ctx is not None:
+            ctx["events"].append(("conn_acquire_start", time.perf_counter()))
+        with self.engine.connect().execution_options(isolation_level="AUTOCOMMIT") as connection:
+            if ctx is not None:
+                ctx["events"].append(("conn_acquired_exec_start", time.perf_counter()))
+            result_proxy = connection.execute(query)
+            if ctx is not None:
+                ctx["events"].append(("exec_end_fetch_start", time.perf_counter()))
+            row = result_proxy.mappings().first()
+            if ctx is not None:
+                ctx["events"].append(("fetch_end_conn_release_start", time.perf_counter()))
+        if ctx is not None:
+            ctx["events"].append(("conn_release_end", time.perf_counter()))
+
+        if not row:
+            if ctx is not None:
+                ctx["events"].append(("get_session_user_end_none", time.perf_counter()))
+            return None
+
+        last_seen = row.get("last_seen_at")
+        if isinstance(last_seen, datetime) and last_seen.tzinfo is None:
+            last_seen = last_seen.replace(tzinfo=UTC)
+        if last_seen is None or (now - last_seen) > timedelta(minutes=touch_threshold_minutes):
+            if ctx is not None:
+                ctx["events"].append(("touch_update_write_start", time.perf_counter()))
+            with self.engine.begin() as connection:
                 connection.execute(
                     update(sessions_table)
                     .where(sessions_table.c.session_id == row["session_id"])
                     .values(last_seen_at=now)
                 )
-        return dict(row) if row else None
+            if ctx is not None:
+                ctx["events"].append(("touch_update_write_end", time.perf_counter()))
+        else:
+            if ctx is not None:
+                ctx["events"].append(("touch_update_skipped_fresh", time.perf_counter()))
+
+        if ctx is not None:
+            ctx["events"].append(("get_session_user_end", time.perf_counter()))
+        return dict(row)
 
     def revoke_session(self, token_hash: str) -> None:
         with self.engine.begin() as connection:
@@ -608,6 +789,188 @@ class JobStore:
             return f"{source}_{source_job_id}"
         return f"{source}_{job.get('company', 'unknown')}_{job.get('title', 'unknown')}"
 
+    def bulk_upsert_jobs(self, jobs: list[dict]) -> dict[str, int]:
+        if not jobs:
+            return {"inserted": 0, "updated": 0, "deduplicated": 0}
+
+        now = utc_now()
+        prepared_jobs = []
+        for job in jobs:
+            source = job.get("source", "unknown")
+            source_job_id = str(job.get("source_job_id", self.job_id(job)))
+            visibility = job.get("visibility", "public")
+            owner_user_id = job.get("owner_user_id") if visibility == "private" else None
+            if visibility not in {"public", "private"} or (visibility == "private" and not owner_user_id):
+                raise ValueError("Private jobs require an owner_user_id")
+            listing_key = f"{visibility}:{owner_user_id or ''}:{source}:{source_job_id}"
+            canonical_key = _job_canonical_key(job)
+            prepared_jobs.append(
+                {
+                    "raw": job,
+                    "source": source,
+                    "source_job_id": source_job_id,
+                    "visibility": visibility,
+                    "owner_user_id": owner_user_id,
+                    "listing_key": listing_key,
+                    "canonical_key": canonical_key,
+                }
+            )
+
+        listing_keys = [pj["listing_key"] for pj in prepared_jobs]
+        canonical_keys = [pj["canonical_key"] for pj in prepared_jobs if pj["visibility"] == "public"]
+
+        with self.engine.begin() as connection:
+            existing_listings_rows = connection.execute(
+                select(job_listings_table.c.listing_key, job_listings_table.c.job_id).where(
+                    job_listings_table.c.listing_key.in_(listing_keys)
+                )
+            ).mappings().all()
+            existing_listings: dict[str, str] = {row["listing_key"]: row["job_id"] for row in existing_listings_rows}
+
+            existing_candidates_rows = []
+            if canonical_keys:
+                existing_candidates_rows = connection.execute(
+                    select(jobs_table).where(jobs_table.c.canonical_key.in_(canonical_keys))
+                ).mappings().all()
+
+            candidates_by_canonical_key: dict[str, list[dict]] = {}
+            for row in existing_candidates_rows:
+                ckey = row["canonical_key"]
+                if ckey not in candidates_by_canonical_key:
+                    candidates_by_canonical_key[ckey] = []
+                candidates_by_canonical_key[ckey].append(dict(row))
+
+            inserted_count = 0
+            updated_count = 0
+            deduplicated_count = 0
+
+            jobs_to_insert: list[dict] = []
+            jobs_to_update_ids: set[str] = set()
+            listings_to_insert: list[dict] = []
+            listings_to_update: list[dict] = []
+
+            batch_job_ids_by_listing: dict[str, str] = {}
+            batch_jobs_by_id: dict[str, dict] = {}
+
+            for item in prepared_jobs:
+                job = item["raw"]
+                source = item["source"]
+                source_job_id = item["source_job_id"]
+                visibility = item["visibility"]
+                owner_user_id = item["owner_user_id"]
+                listing_key = item["listing_key"]
+                canonical_key = item["canonical_key"]
+
+                job_id = existing_listings.get(listing_key) or batch_job_ids_by_listing.get(listing_key)
+                is_existing_listing = bool(job_id)
+
+                if not job_id and visibility == "public":
+                    candidates = candidates_by_canonical_key.get(canonical_key, [])
+                    for candidate in candidates:
+                        if _description_similarity(job.get("description"), candidate.get("description")) >= 0.75:
+                            job_id = candidate["job_id"]
+                            deduplicated_count += 1
+                            break
+
+                    if not job_id:
+                        for b_job in batch_jobs_by_id.values():
+                            if b_job["canonical_key"] == canonical_key and _description_similarity(job.get("description"), b_job.get("description")) >= 0.75:
+                                job_id = b_job["job_id"]
+                                deduplicated_count += 1
+                                break
+
+                if not job_id:
+                    job_id = self.job_id(job)
+                    if visibility == "private":
+                        job_id = f"private_{owner_user_id}_{job_id}"
+
+                    new_job_record = {
+                        "job_id": job_id,
+                        "source": source,
+                        "source_job_id": source_job_id,
+                        "title": job.get("title", ""),
+                        "company": job.get("company", ""),
+                        "location": job.get("location", ""),
+                        "url": job.get("url", ""),
+                        "description": job.get("description", ""),
+                        "first_published": job.get("first_published"),
+                        "work_type": job.get("work_type"),
+                        "payload_json": job,
+                        "is_active": True,
+                        "last_seen_at": now,
+                        "canonical_key": canonical_key,
+                        "created_at": now,
+                        "updated_at": now,
+                    }
+                    jobs_to_insert.append(new_job_record)
+                    batch_jobs_by_id[job_id] = new_job_record
+                    inserted_count += 1
+                else:
+                    jobs_to_update_ids.add(job_id)
+                    if is_existing_listing:
+                        updated_count += 1
+
+                batch_job_ids_by_listing[listing_key] = job_id
+
+                listing_values = {
+                    "job_id": job_id,
+                    "listing_key": listing_key,
+                    "source": source,
+                    "source_job_id": source_job_id,
+                    "url": job.get("url", ""),
+                    "payload_json": job,
+                    "availability_status": "active",
+                    "last_seen_at": now,
+                    "last_checked_at": now,
+                    "unavailable_since": None,
+                    "check_failures": 0,
+                    "status_reason": None,
+                    "visibility": visibility,
+                    "owner_user_id": owner_user_id,
+                }
+
+                if is_existing_listing:
+                    listings_to_update.append(listing_values)
+                else:
+                    listings_to_insert.append(
+                        {
+                            "listing_id": str(uuid4()),
+                            "first_seen_at": now,
+                            **listing_values,
+                        }
+                    )
+
+            if jobs_to_insert:
+                connection.execute(jobs_table.insert(), jobs_to_insert)
+
+            if jobs_to_update_ids:
+                connection.execute(
+                    update(jobs_table)
+                    .where(jobs_table.c.job_id.in_(list(jobs_to_update_ids)))
+                    .values(
+                        is_active=True,
+                        inactive_at=None,
+                        last_seen_at=now,
+                        updated_at=now,
+                    )
+                )
+
+            if listings_to_insert:
+                connection.execute(job_listings_table.insert(), listings_to_insert)
+
+            for l_val in listings_to_update:
+                connection.execute(
+                    update(job_listings_table)
+                    .where(job_listings_table.c.listing_key == l_val["listing_key"])
+                    .values(**l_val)
+                )
+
+        return {
+            "inserted": inserted_count,
+            "updated": updated_count,
+            "deduplicated": deduplicated_count,
+        }
+
     def upsert_job(self, job: dict) -> str:
         source = job.get("source", "unknown")
         source_job_id = str(job.get("source_job_id", self.job_id(job)))
@@ -616,89 +979,14 @@ class JobStore:
         if visibility not in {"public", "private"} or (visibility == "private" and not owner_user_id):
             raise ValueError("Private jobs require an owner_user_id")
         listing_key = f"{visibility}:{owner_user_id or ''}:{source}:{source_job_id}"
-        canonical_key = _job_canonical_key(job)
-        now = utc_now()
-        with self.engine.begin() as connection:
-            listing = connection.execute(
+        self.bulk_upsert_jobs([job])
+        with self.engine.connect() as connection:
+            row = connection.execute(
                 select(job_listings_table.c.job_id).where(
                     job_listings_table.c.listing_key == listing_key,
                 )
             ).first()
-            job_id = listing[0] if listing else None
-            if not job_id and visibility == "public":
-                candidates = connection.execute(
-                    select(jobs_table).where(jobs_table.c.canonical_key == canonical_key)
-                ).mappings().all()
-                for candidate in candidates:
-                    if _description_similarity(job.get("description"), candidate["description"]) >= 0.75:
-                        job_id = candidate["job_id"]
-                        break
-            if not job_id:
-                job_id = self.job_id(job)
-                if visibility == "private":
-                    job_id = f"private_{owner_user_id}_{job_id}"
-                connection.execute(
-                    jobs_table.insert().values(
-                        job_id=job_id,
-                        source=source,
-                        source_job_id=source_job_id,
-                        title=job.get("title", ""),
-                        company=job.get("company", ""),
-                        location=job.get("location", ""),
-                        url=job.get("url", ""),
-                        description=job.get("description", ""),
-                        first_published=job.get("first_published"),
-                        work_type=job.get("work_type"),
-                        payload_json=job,
-                        is_active=True,
-                        last_seen_at=now,
-                        canonical_key=canonical_key,
-                        created_at=now,
-                        updated_at=now,
-                    )
-                )
-            else:
-                connection.execute(
-                    update(jobs_table)
-                    .where(jobs_table.c.job_id == job_id)
-                    .values(
-                        is_active=True,
-                        inactive_at=None,
-                        last_seen_at=now,
-                        updated_at=now,
-                    )
-                )
-            listing_values = {
-                "job_id": job_id,
-                "listing_key": listing_key,
-                "source": source,
-                "source_job_id": source_job_id,
-                "url": job.get("url", ""),
-                "payload_json": job,
-                "availability_status": "active",
-                "last_seen_at": now,
-                "last_checked_at": now,
-                "unavailable_since": None,
-                "check_failures": 0,
-                "status_reason": None,
-                "visibility": visibility,
-                "owner_user_id": owner_user_id,
-            }
-            if listing:
-                connection.execute(
-                    update(job_listings_table)
-                    .where(job_listings_table.c.listing_key == listing_key)
-                    .values(**listing_values)
-                )
-            else:
-                connection.execute(
-                    job_listings_table.insert().values(
-                        listing_id=str(uuid4()),
-                        first_seen_at=now,
-                        **listing_values,
-                    )
-                )
-        return job_id
+            return row[0] if row else self.job_id(job)
 
     def import_legacy_jobs(self, directory: Path) -> int:
         imported = 0
@@ -712,6 +1000,63 @@ class JobStore:
                 continue
         return imported
 
+    def _build_jobs_from_rows(self, rows: list, connection) -> list[dict]:
+        if not rows:
+            return []
+        job_ids = [row["job_id"] for row in rows]
+        listings_query = (
+            select(
+                job_listings_table.c.job_id,
+                job_listings_table.c.source,
+                job_listings_table.c.source_job_id,
+                job_listings_table.c.url,
+                job_listings_table.c.availability_status,
+                job_listings_table.c.last_seen_at,
+                job_listings_table.c.last_checked_at,
+            )
+            .where(job_listings_table.c.job_id.in_(job_ids))
+            .order_by(job_listings_table.c.source)
+        )
+        listings_rows = connection.execute(listings_query).mappings().all()
+        listings_by_job: dict[str, list[dict]] = {}
+        for listing in listings_rows:
+            jid = listing["job_id"]
+            if jid not in listings_by_job:
+                listings_by_job[jid] = []
+            listings_by_job[jid].append(
+                {
+                    "source": listing["source"],
+                    "source_job_id": listing["source_job_id"],
+                    "url": listing["url"],
+                    "availability_status": listing["availability_status"],
+                    "last_seen_at": listing["last_seen_at"],
+                    "last_checked_at": listing["last_checked_at"],
+                }
+            )
+
+        results = []
+        for row in rows:
+            job = dict(row["payload_json"])
+            job["job_id"] = row["job_id"]
+            job["local_relevance"] = row["local_relevance"]
+            job["is_active"] = row["is_active"]
+            job["last_seen_at"] = row["last_seen_at"]
+            job_listings = listings_by_job.get(row["job_id"])
+            if not job_listings:
+                job_listings = [
+                    {
+                        "source": row["source"],
+                        "source_job_id": row["source_job_id"],
+                        "url": row["url"],
+                        "availability_status": "active" if row["is_active"] else "inactive",
+                        "last_seen_at": row["last_seen_at"],
+                        "last_checked_at": None,
+                    }
+                ]
+            job["sources"] = job_listings
+            results.append(job)
+        return results
+
     def get_job(self, job_id: str) -> dict | None:
         with self.engine.connect() as connection:
             row = connection.execute(
@@ -719,7 +1064,9 @@ class JobStore:
                 .where(jobs_table.c.job_id == job_id)
                 .where(self._visible_job_filter(job_id))
             ).mappings().first()
-        return self._job_from_row(row) if row else None
+            if not row:
+                return None
+            return self._build_jobs_from_rows([row], connection)[0]
 
     def list_jobs(self, relevance: str | None = None, include_inactive: bool = False) -> list[dict]:
         query = select(jobs_table).order_by(jobs_table.c.updated_at.desc())
@@ -730,7 +1077,7 @@ class JobStore:
         query = query.where(self._visible_job_filter(jobs_table.c.job_id))
         with self.engine.connect() as connection:
             rows = connection.execute(query).mappings().all()
-        return [self._job_from_row(row) for row in rows]
+            return self._build_jobs_from_rows(rows, connection)
 
     def set_relevance(self, job_id: str, relevance: str) -> None:
         with self.engine.begin() as connection:
@@ -955,37 +1302,8 @@ class JobStore:
         return [dict(row) for row in rows]
 
     def _job_from_row(self, row) -> dict:
-        job = dict(row["payload_json"])
-        job["job_id"] = row["job_id"]
-        job["local_relevance"] = row["local_relevance"]
-        job["is_active"] = row["is_active"]
-        job["last_seen_at"] = row["last_seen_at"]
         with self.engine.connect() as connection:
-            listings = connection.execute(
-                select(
-                    job_listings_table.c.source,
-                    job_listings_table.c.source_job_id,
-                    job_listings_table.c.url,
-                    job_listings_table.c.availability_status,
-                    job_listings_table.c.last_seen_at,
-                    job_listings_table.c.last_checked_at,
-                )
-                .where(job_listings_table.c.job_id == row["job_id"])
-                .order_by(job_listings_table.c.source)
-            ).mappings().all()
-        if not listings:
-            listings = [
-                {
-                    "source": row["source"],
-                    "source_job_id": row["source_job_id"],
-                    "url": row["url"],
-                    "availability_status": "active" if row["is_active"] else "inactive",
-                    "last_seen_at": row["last_seen_at"],
-                    "last_checked_at": None,
-                }
-            ]
-        job["sources"] = [dict(listing) for listing in listings]
-        return job
+            return self._build_jobs_from_rows([row], connection)[0]
 
     @staticmethod
     def _match_from_row(row) -> dict:

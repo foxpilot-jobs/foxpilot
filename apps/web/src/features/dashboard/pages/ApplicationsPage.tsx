@@ -47,7 +47,7 @@ export function ApplicationsPage() {
         setLoading(false);
       },
     );
-  }, [retryToken, user]);
+  }, [retryToken, user?.user_id]);
 
   const visibleApplications = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();

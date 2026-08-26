@@ -7,6 +7,7 @@ import hmac
 import logging
 import os
 import secrets
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 from urllib.parse import urlencode
@@ -37,7 +38,7 @@ from career_agent.email import send_email
 from career_agent.llm import LLMError
 from career_agent.profile import extract_resume_text_from_bytes
 from career_agent.services import CareerService
-from career_agent.storage import JobStore
+from career_agent.storage import JobStore, dispose_all_engines, initialize_database
 
 from .auth import (
     SESSION_COOKIE,
@@ -124,10 +125,12 @@ def _google_failure(message: str) -> RedirectResponse:
 def create_app() -> FastAPI:
     @asynccontextmanager
     async def lifespan(application: FastAPI):
+        initialize_database(application.state.service.config.resolved_database_url)
         if os.getenv("FOXPILOT_WORKER_MODE", "inline").lower() != "external":
             with JobStore(application.state.service.config.resolved_database_url) as store:
                 store.recover_interrupted_background_jobs()
         yield
+        dispose_all_engines()
 
     app = FastAPI(
         title="FoxPilot API",
@@ -162,6 +165,55 @@ def create_app() -> FastAPI:
         if unsafe_method and native_mode and origin and origin not in allowed_origins:
             return JSONResponse(status_code=403, content={"detail": "Request origin is not allowed"})
         return await call_next(request)
+
+    @app.middleware("http")
+    async def measure_endpoint_performance(request: Request, call_next):
+        path = request.url.path
+        monitored = {
+            "/api/v1/auth/me",
+            "/api/v1/profile",
+            "/api/v1/jobs",
+            "/api/v1/matches",
+            "/api/v1/applications",
+        }
+        if path not in monitored:
+            return await call_next(request)
+
+        from career_agent.storage.database import _REQUEST_TIMINGS
+        ctx = {
+            "auth_ms": 0.0,
+            "queries": [],
+            "events": [],
+        }
+        token = _REQUEST_TIMINGS.set(ctx)
+        t_start = time.perf_counter()
+        ctx["events"].append(("middleware_start", t_start))
+        try:
+            response = await call_next(request)
+            t_end = time.perf_counter()
+            ctx["events"].append(("middleware_end", t_end))
+            total_ms = (t_end - t_start) * 1000
+
+            events = ctx.get("events", [])
+            timeline_lines = []
+            for ev in events:
+                rel_ms = (ev[1] - t_start) * 1000
+                name = ev[0]
+                extra = " ".join(str(x) for x in ev[2:]) if len(ev) > 2 else ""
+                timeline_lines.append(f"  +{rel_ms:7.2f} ms | {name} {extra}".rstrip())
+
+            report_text = (
+                f"\n============================================================\n"
+                f"[HIGH-RES TIMELINE BREAKDOWN] {request.method} {path} -> Status {response.status_code}\n"
+                f"  - Total Request Time: {total_ms:.2f} ms\n"
+                + "\n".join(timeline_lines) + "\n"
+                "============================================================\n"
+            )
+            logger.info(report_text)
+            print(report_text, flush=True)
+            return response
+        finally:
+            _REQUEST_TIMINGS.reset(token)
 
     def service() -> CareerService:
         return app.state.service
@@ -372,12 +424,11 @@ def create_app() -> FastAPI:
     @app.get("/api/v1/auth/me", response_model=AuthUser)
     def auth_me(request: Request) -> AuthUser:
         user = require_api_access(request)
-        if user.user_id == "local-user":
-            return AuthUser(user_id=user.user_id, email=user.email or "", email_verified=True)
-        database_user = get_user_by_email(request, user.email or "")
-        if not database_user:
-            raise HTTPException(status_code=401, detail="User account is unavailable")
-        return _auth_user_response(database_user)
+        return AuthUser(
+            user_id=user.user_id,
+            email=user.email or "",
+            email_verified=user.email_verified,
+        )
 
     @app.post("/api/v1/auth/verify-email", response_model=AuthUser)
     def verify_email(payload: AuthToken, request: Request, response: Response) -> AuthUser:
@@ -464,10 +515,7 @@ def create_app() -> FastAPI:
 
     @app.get("/api/v1/profile")
     def get_profile(career_service: CareerService = Depends(user_service)) -> dict:
-        profile = career_service.get_profile()
-        if profile is None:
-            raise HTTPException(status_code=404, detail="No resume profile has been uploaded")
-        return profile
+        return career_service.get_profile()
 
     @app.get("/api/v1/profile/jobs/{job_id}")
     def get_profile_job(job_id: str, career_service: CareerService = Depends(user_service)) -> dict:

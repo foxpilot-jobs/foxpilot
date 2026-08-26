@@ -44,7 +44,7 @@ export function ProfileInsightsPage() {
       else setMatchesError(true);
       setLoading(false);
     });
-  }, [retryToken, user]);
+  }, [retryToken, user?.user_id]);
 
   const insights = useMemo(() => {
     if (!profile) return null;
@@ -67,7 +67,8 @@ export function ProfileInsightsPage() {
         />
       </main>
     );
-  if (!profile)
+  const hasProfileData = Boolean(profile && profile.resume_filename);
+  if (!profile || !hasProfileData)
     return (
       <main className="profile-insights-page">
         <InsightsHeader />
