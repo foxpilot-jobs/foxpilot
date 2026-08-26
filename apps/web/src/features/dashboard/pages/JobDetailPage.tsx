@@ -43,34 +43,32 @@ export function JobDetailPage() {
     setLoading(true);
     setLoadError(false);
     setNotFound(false);
-    void Promise.allSettled([getMatches(), getJobs(true), getApplications()]).then(
-      ([matchesResult, jobsResult, applicationsResult]) => {
-        if (!active) return;
-        const foundMatch =
-          matchesResult.status === "fulfilled"
-            ? matchesResult.value.find((item) => item.job_id === jobId)
-            : undefined;
-        const foundJob =
-          foundMatch?.job ??
-          (jobsResult.status === "fulfilled"
-            ? jobsResult.value.find((item) => item.job_id === jobId)
-            : undefined);
-        setJob(foundJob ?? null);
-        setMatch(foundMatch?.match ?? null);
-        setApplication(
-          applicationsResult.status === "fulfilled"
-            ? applicationsResult.value.find((item) => item.job_id === jobId)
-            : undefined,
-        );
-        setNotFound(
-          !foundJob && matchesResult.status === "fulfilled" && jobsResult.status === "fulfilled",
-        );
-        setLoadError(
-          !foundJob && (matchesResult.status === "rejected" || jobsResult.status === "rejected"),
-        );
-        setLoading(false);
-      },
-    );
+    void Promise.allSettled([
+      getMatches({ limit: 200 }),
+      getJobs({ includeInactive: true, limit: 200 }),
+      getApplications({ limit: 200 }),
+    ]).then(([matchesResult, jobsResult, applicationsResult]) => {
+      if (!active) return;
+      const matchItems =
+        matchesResult.status === "fulfilled" ? matchesResult.value.items : [];
+      const jobItems =
+        jobsResult.status === "fulfilled" ? jobsResult.value.items : [];
+      const applicationItems =
+        applicationsResult.status === "fulfilled" ? applicationsResult.value.items : [];
+      const foundMatch = matchItems.find((item) => item.job_id === jobId);
+      const foundJob =
+        foundMatch?.job ?? jobItems.find((item) => item.job_id === jobId);
+      setJob(foundJob ?? null);
+      setMatch(foundMatch?.match ?? null);
+      setApplication(applicationItems.find((item) => item.job_id === jobId));
+      setNotFound(
+        !foundJob && matchesResult.status === "fulfilled" && jobsResult.status === "fulfilled",
+      );
+      setLoadError(
+        !foundJob && (matchesResult.status === "rejected" || jobsResult.status === "rejected"),
+      );
+      setLoading(false);
+    });
     return () => {
       active = false;
     };

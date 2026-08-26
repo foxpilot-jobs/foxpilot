@@ -59,7 +59,16 @@ STOP_WORDS = frozenset(
 
 
 GENERIC_ROLE_WORDS = frozenset(
-    {"engineer", "developer", "specialist", "analyst", "consultant", "manager", "architect", "lead"}
+    {
+        "engineer",
+        "developer",
+        "specialist",
+        "analyst",
+        "consultant",
+        "manager",
+        "architect",
+        "lead",
+    }
 )
 
 
@@ -92,8 +101,12 @@ def profile_matches_job(
             return values
         return [str(item) for item in value]
 
-    target_roles = [normalize(r) for r in profile_values("target_roles") if normalize(r)]
-    recent_roles = [normalize(r) for r in profile_values("current_or_recent_roles") if normalize(r)]
+    target_roles = [
+        normalize(r) for r in profile_values("target_roles") if normalize(r)
+    ]
+    recent_roles = [
+        normalize(r) for r in profile_values("current_or_recent_roles") if normalize(r)
+    ]
     all_roles = [*target_roles, *recent_roles]
 
     # 1. Direct role phrase match in title
@@ -106,7 +119,9 @@ def profile_matches_job(
     specific_role_tokens = set()
     for role in primary_role_sources:
         tokens = [
-            t for t in role.split() if t not in STOP_WORDS and len(t) >= 3 and t not in GENERIC_ROLE_WORDS
+            t
+            for t in role.split()
+            if t not in STOP_WORDS and len(t) >= 3 and t not in GENERIC_ROLE_WORDS
         ]
         specific_role_tokens.update(tokens)
 
@@ -143,7 +158,7 @@ def classify_job(
 
 def load_jobs() -> list[dict]:
     with JobStore(load_config().resolved_database_url) as store:
-        return store.list_jobs()
+        return store.list_jobs(limit=10000)["items"]
 
 
 def print_job_list(
@@ -155,12 +170,9 @@ def print_job_list(
     if not jobs:
         return
 
-    print(
-        f"{title}:"
-    )
+    print(f"{title}:")
 
     for job in jobs:
-
         print(
             f"  {symbol} "
             f"{job.get('title', 'Unknown')} "
@@ -182,9 +194,7 @@ def main():
 
         profile = json.loads(config.profile_path.read_text(encoding="utf-8"))
 
-    print(
-        f"Loaded {len(jobs)} job(s)."
-    )
+    print(f"Loaded {len(jobs)} job(s).")
 
     target_jobs = []
     review_jobs = []
@@ -192,34 +202,22 @@ def main():
 
     with JobStore(config.resolved_database_url) as store:
         for job in jobs:
-
             classification = classify_job(
                 job,
                 profile,
             )
 
-            job["local_relevance"] = (
-                classification
-            )
+            job["local_relevance"] = classification
             store.set_relevance(job["job_id"], classification)
 
             if classification == "TARGET":
-
-                target_jobs.append(
-                    job
-                )
+                target_jobs.append(job)
 
             elif classification == "REVIEW":
-
-                review_jobs.append(
-                    job
-                )
+                review_jobs.append(job)
 
             else:
-
-                excluded_jobs.append(
-                    job
-                )
+                excluded_jobs.append(job)
 
     # --------------------------------------------------
     # Print summary
@@ -227,24 +225,13 @@ def main():
 
     print()
 
-    print(
-        "Profile-aware relevance filtering:"
-    )
+    print("Profile-aware relevance filtering:")
 
-    print(
-        f"  Target:  "
-        f"{len(target_jobs)}"
-    )
+    print(f"  Target:  {len(target_jobs)}")
 
-    print(
-        f"  Review:  "
-        f"{len(review_jobs)}"
-    )
+    print(f"  Review:  {len(review_jobs)}")
 
-    print(
-        f"  Exclude: "
-        f"{len(excluded_jobs)}"
-    )
+    print(f"  Exclude: {len(excluded_jobs)}")
 
     print()
 
@@ -274,20 +261,11 @@ def main():
 
     print()
 
-    print(
-        f"Jobs passed to AI: "
-        f"{len(target_jobs)}"
-    )
+    print(f"Jobs passed to AI: {len(target_jobs)}")
 
-    print(
-        f"Jobs held for review: "
-        f"{len(review_jobs)}"
-    )
+    print(f"Jobs held for review: {len(review_jobs)}")
 
-    print(
-        f"Jobs excluded: "
-        f"{len(excluded_jobs)}"
-    )
+    print(f"Jobs excluded: {len(excluded_jobs)}")
 
 
 if __name__ == "__main__":

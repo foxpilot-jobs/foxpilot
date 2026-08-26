@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import re
 import threading
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Self
+from typing import Any, Self
 from uuid import uuid4
 
 from sqlalchemy import (
@@ -25,8 +26,10 @@ from sqlalchemy import (
     create_engine,
     delete,
     exists,
+    func,
     or_,
     select,
+    tuple_,
     update,
 )
 from sqlalchemy.engine import Engine
@@ -492,6 +495,24 @@ def _description_similarity(left: object, right: object) -> float:
     if not left_words or not right_words:
         return 0.0
     return len(left_words & right_words) / len(left_words | right_words)
+
+
+def encode_cursor(updated_at: Any, row_id: str) -> str:
+    """Encode a keyset cursor from a timestamp and row ID."""
+    ts = str(updated_at) if updated_at else ""
+    return base64.urlsafe_b64encode(f"{ts}|{row_id}".encode()).decode()
+
+
+def decode_cursor(cursor: str) -> tuple[str, str] | None:
+    """Decode a keyset cursor.  Returns (timestamp_str, row_id) or None."""
+    try:
+        decoded = base64.urlsafe_b64decode(cursor.encode()).decode()
+        ts, _, row_id = decoded.partition("|")
+        if not row_id:
+            return None
+        return (ts, row_id)
+    except Exception:  # noqa: BLE001 – malformed cursor
+        return None
 
 
 class JobStore:
@@ -1534,17 +1555,93 @@ class JobStore:
             return self._build_jobs_from_rows([row], connection)[0]
 
     def list_jobs(
-        self, relevance: str | None = None, include_inactive: bool = False
-    ) -> list[dict]:
-        query = select(jobs_table).order_by(jobs_table.c.updated_at.desc())
+        self,
+        relevance: str | None = None,
+        include_inactive: bool = False,
+        *,
+        limit: int = 50,
+        cursor: str | None = None,
+        query_text: str | None = None,
+        source: str | None = None,
+        location: str | None = None,
+        work_type: str | None = None,
+        sort: str = "updated_at",
+    ) -> dict:
+        """Return ``{items, next_cursor, total}`` with server-side pagination."""
+        # -- base filter --
+        base = select(jobs_table).where(self._visible_job_filter(jobs_table.c.job_id))
         if relevance:
-            query = query.where(jobs_table.c.local_relevance == relevance)
+            base = base.where(jobs_table.c.local_relevance == relevance)
         if not include_inactive:
-            query = query.where(jobs_table.c.is_active.is_(True))
-        query = query.where(self._visible_job_filter(jobs_table.c.job_id))
+            base = base.where(jobs_table.c.is_active.is_(True))
+        if query_text:
+            pattern = f"%{query_text}%"
+            base = base.where(
+                or_(
+                    jobs_table.c.title.ilike(pattern),
+                    jobs_table.c.company.ilike(pattern),
+                    jobs_table.c.location.ilike(pattern),
+                )
+            )
+        if source:
+            base = base.where(jobs_table.c.source == source)
+        if location:
+            base = base.where(jobs_table.c.location.ilike(f"%{location}%"))
+        if work_type:
+            base = base.where(jobs_table.c.work_type == work_type)
+
+        # -- count --
         with self.engine.connect() as connection:
-            rows = connection.execute(query).mappings().all()
-            return self._build_jobs_from_rows(rows, connection)
+            total = (
+                connection.execute(
+                    select(func.count()).select_from(base.alias())
+                ).scalar()
+                or 0
+            )
+
+            # -- sort --
+            if sort == "title":
+                order_cols = [jobs_table.c.title, jobs_table.c.job_id]
+            elif sort == "company":
+                order_cols = [jobs_table.c.company, jobs_table.c.job_id]
+            else:
+                order_cols = [jobs_table.c.updated_at.desc(), jobs_table.c.job_id]
+
+            data_query = base.order_by(*order_cols)
+
+            # -- cursor --
+            if cursor:
+                parts = decode_cursor(cursor)
+                if parts and sort == "updated_at":
+                    data_query = data_query.where(
+                        tuple_(jobs_table.c.updated_at, jobs_table.c.job_id)
+                        < tuple_(parts[0], parts[1])
+                    )
+                elif parts:
+                    # For ascending text sorts, use > to paginate forward
+                    sort_col = (
+                        jobs_table.c.title if sort == "title" else jobs_table.c.company
+                    )
+                    data_query = data_query.where(
+                        tuple_(sort_col, jobs_table.c.job_id)
+                        > tuple_(parts[0], parts[1])
+                    )
+
+            data_query = data_query.limit(limit)
+            rows = connection.execute(data_query).mappings().all()
+            items = self._build_jobs_from_rows(rows, connection)
+
+        next_cursor = None
+        if rows and len(rows) == limit:
+            last = rows[-1]
+            if sort == "title":
+                next_cursor = encode_cursor(last["title"], last["job_id"])
+            elif sort == "company":
+                next_cursor = encode_cursor(last["company"], last["job_id"])
+            else:
+                next_cursor = encode_cursor(last["updated_at"], last["job_id"])
+
+        return {"items": items, "next_cursor": next_cursor, "total": total}
 
     def set_relevance(self, job_id: str, relevance: str) -> None:
         with self.engine.begin() as connection:
@@ -1717,22 +1814,92 @@ class JobStore:
             )
         return self._match_from_row(row) if row else None
 
-    def list_matches(self) -> list[dict]:
-        query = (
-            select(matches_table, jobs_table.c.payload_json)
+    def list_matches(
+        self,
+        *,
+        limit: int = 50,
+        cursor: str | None = None,
+        query_text: str | None = None,
+        recommendation: str | None = None,
+        sort: str = "score",
+    ) -> dict:
+        """Return ``{items, next_cursor, total}`` for matches."""
+        base = (
+            select(
+                matches_table,
+                jobs_table.c.payload_json,
+                jobs_table.c.title,
+                jobs_table.c.company,
+                jobs_table.c.location,
+            )
             .join(jobs_table, jobs_table.c.job_id == matches_table.c.job_id)
             .where(matches_table.c.user_id == self.user_id)
-            .order_by(matches_table.c.updated_at.desc())
         )
+        if query_text:
+            pattern = f"%{query_text}%"
+            base = base.where(
+                or_(
+                    jobs_table.c.title.ilike(pattern),
+                    jobs_table.c.company.ilike(pattern),
+                    jobs_table.c.location.ilike(pattern),
+                )
+            )
+        # Note: recommendation is stored inside result_json. For databases
+        # that support JSON path operators we could push this down, but for
+        # SQLite compatibility we filter in Python after fetch.  The cursor
+        # window fetches limit * 4 rows to account for filtering.
+
         with self.engine.connect() as connection:
-            rows = connection.execute(query).mappings().all()
-        return [
-            {
-                **self._match_from_row(row),
-                "job": row["payload_json"],
-            }
-            for row in rows
-        ]
+            # Sorting — score lives in result_json so we sort in Python.
+            data_query = base.order_by(matches_table.c.updated_at.desc())
+            all_rows = connection.execute(data_query).mappings().all()
+
+        # Build items from all rows, then filter by recommendation.
+        items = []
+        for row in all_rows:
+            match_data = self._match_from_row(row)
+            if recommendation:
+                result = match_data.get("match") or {}
+                if result.get("recommendation") != recommendation:
+                    continue
+            items.append({**match_data, "job": row["payload_json"]})
+
+        total = len(items)
+
+        # Sort
+        if sort == "title":
+            items.sort(key=lambda m: (m.get("job", {}).get("title", "") or "").lower())
+        elif sort == "company":
+            items.sort(
+                key=lambda m: (m.get("job", {}).get("company", "") or "").lower()
+            )
+        elif sort == "updated_at":
+            pass  # already ordered by updated_at desc from SQL
+        else:
+            # Default: score descending
+            items.sort(
+                key=lambda m: (m.get("match") or {}).get("match_score", 0),
+                reverse=True,
+            )
+
+        # Apply cursor (offset-based within the sorted list for simplicity,
+        # since the full match set is bounded by user-specific matching runs).
+        start = 0
+        if cursor:
+            parts = decode_cursor(cursor)
+            if parts:
+                offset_str = parts[0]
+                try:
+                    start = int(offset_str)
+                except ValueError:
+                    start = 0
+
+        page = items[start : start + limit]
+        next_cursor = None
+        if start + limit < total:
+            next_cursor = encode_cursor(str(start + limit), "offset")
+
+        return {"items": page, "next_cursor": next_cursor, "total": total}
 
     def save_application(
         self, job_id: str, status: str = "saved", notes: str = ""
@@ -1780,16 +1947,71 @@ class JobStore:
             )
         return dict(row) if row else None
 
-    def list_applications(self) -> list[dict]:
-        query = (
+    def list_applications(
+        self,
+        *,
+        limit: int = 50,
+        cursor: str | None = None,
+        query_text: str | None = None,
+        status_filter: str | None = None,
+        sort: str = "updated_at",
+    ) -> dict:
+        """Return ``{items, next_cursor, total}`` for applications."""
+        base = (
             select(applications_table, jobs_table.c.title, jobs_table.c.company)
             .join(jobs_table, jobs_table.c.job_id == applications_table.c.job_id)
             .where(applications_table.c.user_id == self.user_id)
-            .order_by(applications_table.c.updated_at.desc())
         )
+        if status_filter:
+            base = base.where(applications_table.c.status == status_filter)
+        if query_text:
+            pattern = f"%{query_text}%"
+            base = base.where(
+                or_(
+                    jobs_table.c.title.ilike(pattern),
+                    jobs_table.c.company.ilike(pattern),
+                )
+            )
+
         with self.engine.connect() as connection:
-            rows = connection.execute(query).mappings().all()
-        return [dict(row) for row in rows]
+            total = (
+                connection.execute(
+                    select(func.count()).select_from(base.alias())
+                ).scalar()
+                or 0
+            )
+
+            if sort == "status":
+                order_cols = [
+                    applications_table.c.status,
+                    applications_table.c.updated_at.desc(),
+                ]
+            else:
+                order_cols = [applications_table.c.updated_at.desc()]
+
+            data_query = base.order_by(*order_cols)
+
+            if cursor:
+                parts = decode_cursor(cursor)
+                if parts and sort == "updated_at":
+                    data_query = data_query.where(
+                        tuple_(
+                            applications_table.c.updated_at,
+                            applications_table.c.job_id,
+                        )
+                        < tuple_(parts[0], parts[1])
+                    )
+
+            data_query = data_query.limit(limit)
+            rows = connection.execute(data_query).mappings().all()
+
+        items = [dict(row) for row in rows]
+        next_cursor = None
+        if rows and len(rows) == limit:
+            last = rows[-1]
+            next_cursor = encode_cursor(last["updated_at"], last["job_id"])
+
+        return {"items": items, "next_cursor": next_cursor, "total": total}
 
     def _job_from_row(self, row) -> dict:
         with self.engine.connect() as connection:

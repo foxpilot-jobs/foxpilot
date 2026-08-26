@@ -26,29 +26,25 @@ class CareerService:
     def _store(self) -> JobStore:
         return JobStore(self.config.resolved_database_url, user_id=self.user_id)
 
-    def list_jobs(
-        self, relevance: str | None = None, include_inactive: bool = False
-    ) -> list[dict]:
+    def list_jobs(self, **kwargs) -> dict:
         with self._store() as store:
-            return store.list_jobs(
-                relevance=relevance, include_inactive=include_inactive
-            )
+            return store.list_jobs(**kwargs)
 
     def get_job(self, job_id: str) -> dict | None:
         with self._store() as store:
             return store.get_job(job_id)
 
-    def list_matches(self) -> list[dict]:
+    def list_matches(self, **kwargs) -> dict:
         with self._store() as store:
-            return store.list_matches()
+            return store.list_matches(**kwargs)
 
     def get_application(self, job_id: str) -> dict | None:
         with self._store() as store:
             return store.get_application(job_id)
 
-    def list_applications(self) -> list[dict]:
+    def list_applications(self, **kwargs) -> dict:
         with self._store() as store:
-            return store.list_applications()
+            return store.list_applications(**kwargs)
 
     def update_application(self, job_id: str, status: str, notes: str = "") -> dict:
         with self._store() as store:
@@ -280,9 +276,10 @@ class CareerService:
             profile_row = store.get_profile()
             if not profile_row:
                 raise ValueError("Upload a resume before running matching")
+            all_jobs = store.list_jobs(limit=10000)["items"]
             jobs = [
                 job
-                for job in store.list_jobs()
+                for job in all_jobs
                 if classify_job(job, profile_row["profile_json"]) == "TARGET"
             ]
             provider = create_provider(self.config)

@@ -44,11 +44,15 @@ def test_web_api_contracts_for_jobs_matches_profile_and_background_job(
     app.state.service.config = config
     client = TestClient(app)
 
-    job = client.get("/api/v1/jobs").json()[0]
-    match = client.get("/api/v1/matches").json()[0]
+    jobs_response = client.get("/api/v1/jobs").json()
+    matches_response = client.get("/api/v1/matches").json()
     profile = client.get("/api/v1/profile").json()
     background_job = client.get("/api/v1/profile/jobs/job-status").json()
 
+    assert {"items", "next_cursor", "total"} <= jobs_response.keys()
+    assert {"items", "next_cursor", "total"} <= matches_response.keys()
+    job = jobs_response["items"][0]
+    match = matches_response["items"][0]
     assert {"job_id", "title", "company", "source"} <= job.keys()
     assert {"job_id", "match"} <= match.keys()
     assert {"resume_filename", "profile", "created_at", "updated_at"} <= profile.keys()

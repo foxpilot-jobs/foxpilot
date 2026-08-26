@@ -43,20 +43,23 @@ export function DashboardPage() {
     setLoading(true);
     setError(null);
     void Promise.allSettled([
-      getJobs(includeInactive),
-      getMatches(),
-      getApplications(),
+      getJobs({ includeInactive, limit: 200 }),
+      getMatches({ limit: 200 }),
+      getApplications({ limit: 200 }),
       getProfile(),
     ]).then(([jobsResult, matchesResult, applicationsResult, profileResult]) => {
       const failures: string[] = [];
-      if (jobsResult.status === "fulfilled") setJobs(jobsResult.value);
+      if (jobsResult.status === "fulfilled") setJobs(jobsResult.value.items);
       else failures.push("jobs");
-      if (matchesResult.status === "fulfilled") setMatches(matchesResult.value);
+      if (matchesResult.status === "fulfilled") setMatches(matchesResult.value.items);
       else failures.push("matches");
       if (applicationsResult.status === "fulfilled") {
         setApplications(
           Object.fromEntries(
-            applicationsResult.value.map((application) => [application.job_id, application]),
+            applicationsResult.value.items.map((application) => [
+              application.job_id,
+              application,
+            ]),
           ),
         );
       } else failures.push("applications");

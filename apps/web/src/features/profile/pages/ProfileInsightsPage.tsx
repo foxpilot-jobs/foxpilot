@@ -37,13 +37,15 @@ export function ProfileInsightsPage() {
     setLoading(true);
     setLoadError(false);
     setMatchesError(false);
-    void Promise.allSettled([getProfile(), getMatches()]).then(([profileResult, matchesResult]) => {
-      if (profileResult.status === "fulfilled") setProfile(profileResult.value);
-      else setLoadError(true);
-      if (matchesResult.status === "fulfilled") setMatches(matchesResult.value);
-      else setMatchesError(true);
-      setLoading(false);
-    });
+    void Promise.allSettled([getProfile(), getMatches({ limit: 200 })]).then(
+      ([profileResult, matchesResult]) => {
+        if (profileResult.status === "fulfilled") setProfile(profileResult.value);
+        else setLoadError(true);
+        if (matchesResult.status === "fulfilled") setMatches(matchesResult.value.items);
+        else setMatchesError(true);
+        setLoading(false);
+      },
+    );
   }, [retryToken, user?.user_id]);
 
   const insights = useMemo(() => {

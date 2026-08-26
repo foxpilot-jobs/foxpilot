@@ -259,7 +259,7 @@ def create_app() -> FastAPI:
     @app.get("/api/v1/health/ready")
     def readiness(career_service: CareerService = Depends(service)) -> dict[str, str]:
         try:
-            career_service.list_jobs()
+            career_service.list_jobs(limit=1)
         except Exception as error:
             raise HTTPException(
                 status_code=503, detail="Database is not ready"
@@ -673,9 +673,24 @@ def create_app() -> FastAPI:
             default=None, pattern="^(TARGET|REVIEW|EXCLUDE)$"
         ),
         include_inactive: bool = Query(default=False),
-    ) -> list[dict]:
+        limit: int = Query(default=50, ge=1, le=200),
+        cursor: str | None = Query(default=None),
+        query: str | None = Query(default=None, alias="query"),
+        source: str | None = Query(default=None),
+        location: str | None = Query(default=None),
+        work_type: str | None = Query(default=None),
+        sort: str = Query(default="updated_at", pattern="^(updated_at|title|company)$"),
+    ) -> dict:
         return career_service.list_jobs(
-            relevance=relevance, include_inactive=include_inactive
+            relevance=relevance,
+            include_inactive=include_inactive,
+            limit=limit,
+            cursor=cursor,
+            query_text=query,
+            source=source,
+            location=location,
+            work_type=work_type,
+            sort=sort,
         )
 
     @app.get("/api/v1/jobs/{job_id}")
@@ -691,14 +706,44 @@ def create_app() -> FastAPI:
     @app.get("/api/v1/matches")
     def list_matches(
         career_service: CareerService = Depends(user_service),
-    ) -> list[dict]:
-        return career_service.list_matches()
+        limit: int = Query(default=50, ge=1, le=200),
+        cursor: str | None = Query(default=None),
+        query: str | None = Query(default=None, alias="query"),
+        recommendation: str | None = Query(
+            default=None, pattern="^(APPLY|CONSIDER|SKIP)$"
+        ),
+        sort: str = Query(
+            default="score", pattern="^(score|updated_at|title|company)$"
+        ),
+    ) -> dict:
+        return career_service.list_matches(
+            limit=limit,
+            cursor=cursor,
+            query_text=query,
+            recommendation=recommendation,
+            sort=sort,
+        )
 
     @app.get("/api/v1/applications")
     def list_applications(
         career_service: CareerService = Depends(user_service),
-    ) -> list[dict]:
-        return career_service.list_applications()
+        limit: int = Query(default=50, ge=1, le=200),
+        cursor: str | None = Query(default=None),
+        query: str | None = Query(default=None, alias="query"),
+        status: str | None = Query(
+            default=None,
+            alias="application_status",
+            pattern="^(saved|applied|interviewing|rejected|offered)$",
+        ),
+        sort: str = Query(default="updated_at", pattern="^(updated_at|status)$"),
+    ) -> dict:
+        return career_service.list_applications(
+            limit=limit,
+            cursor=cursor,
+            query_text=query,
+            status_filter=status,
+            sort=sort,
+        )
 
     @app.get("/api/v1/jobs/{job_id}/application")
     def get_application(
