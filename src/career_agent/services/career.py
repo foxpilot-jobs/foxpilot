@@ -34,6 +34,17 @@ class CareerService:
         with self._store() as store:
             return store.get_job(job_id)
 
+    def get_job_detail(self, job_id: str) -> dict | None:
+        with self._store() as store:
+            job = store.get_job(job_id)
+            if job is None:
+                return None
+            return {
+                **job,
+                "match": (store.get_match(job_id) or {}).get("match"),
+                "application": store.get_application(job_id),
+            }
+
     def list_matches(self, **kwargs) -> dict:
         with self._store() as store:
             return store.list_matches(**kwargs)

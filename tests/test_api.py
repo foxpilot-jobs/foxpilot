@@ -41,6 +41,46 @@ def test_api_health_and_jobs(tmp_path: Path) -> None:
     assert body["items"][0]["title"] == "Data Engineer"
 
 
+def test_api_job_detail_returns_user_context(tmp_path: Path) -> None:
+    config = AppConfig(data_dir=tmp_path)
+    with JobStore(config.database_path) as store:
+        job_id = store.upsert_job(
+            {
+                "source": "test",
+                "source_job_id": "detail-1",
+                "title": "Data Engineer",
+                "company": "Example",
+            }
+        )
+        store.save_match(
+            job_id,
+            "hash",
+            "test-provider",
+            "test-model",
+            {"match_score": 88, "recommendation": "APPLY"},
+        )
+        store.save_application(job_id, status="saved", notes="Review this role")
+
+    app = create_app()
+    app.state.service.config = config
+    response = TestClient(app).get(f"/api/v1/jobs/{job_id}")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["job_id"] == job_id
+    assert body["sources"][0]["source"] == "test"
+    assert body["match"]["match_score"] == 88
+    assert body["application"]["status"] == "saved"
+
+
+def test_api_job_detail_returns_404_for_unknown_job(tmp_path: Path) -> None:
+    config = AppConfig(data_dir=tmp_path)
+    app = create_app()
+    app.state.service.config = config
+
+    assert TestClient(app).get("/api/v1/jobs/missing").status_code == 404
+
+
 def test_hosted_cors_preflight_accepts_configured_origin_with_trailing_slash(
     tmp_path: Path, monkeypatch
 ) -> None:

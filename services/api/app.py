@@ -697,7 +697,7 @@ def create_app() -> FastAPI:
         job_id: str,
         career_service: CareerService = Depends(user_service),
     ) -> dict:
-        job = career_service.get_job(job_id)
+        job = career_service.get_job_detail(job_id)
         if job is None:
             raise HTTPException(status_code=404, detail="Job not found")
         return job
