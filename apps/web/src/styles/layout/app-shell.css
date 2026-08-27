@@ -305,8 +305,7 @@
     justify-content: center;
   }
 
-  .ui-shell-collapsed .ui-nav-item:hover:not(.ui-nav-item-flyout-suppressed) .ui-nav-flyout,
-  .ui-shell-collapsed .ui-nav-item:focus-within:not(.ui-nav-item-flyout-suppressed) .ui-nav-flyout {
+  .ui-shell-collapsed .ui-nav-item-flyout-open .ui-nav-flyout {
     display: block;
     opacity: 1;
     transform: translateX(0);
