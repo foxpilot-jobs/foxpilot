@@ -22,7 +22,8 @@ export function DashboardActions({
       !hasMatches && {
         icon: Search,
         title: "Find your next opportunity",
-        description: "Run a scan and matching job to discover roles aligned with you.",
+        description:
+          "Run matching against the current job shortlist to discover roles aligned with you.",
         href: "/app/profile",
         label: "Run matching",
       },

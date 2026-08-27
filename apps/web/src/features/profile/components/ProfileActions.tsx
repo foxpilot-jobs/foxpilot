@@ -1,14 +1,14 @@
-import { ScanSearch, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { Button } from "../../../shared/ui/Button";
 
 export function ProfileActions({
   disabled,
+  loading,
   onMatching,
-  onScan,
 }: {
   disabled: boolean;
+  loading: boolean;
   onMatching: () => void;
-  onScan: () => void;
 }) {
   return (
     <section className="profile-actions">
@@ -19,13 +19,10 @@ export function ProfileActions({
       <div className="profile-action-buttons">
         <Button
           disabled={disabled}
-          icon={<ScanSearch size={18} />}
-          variant="outline"
-          onClick={onScan}
+          icon={<Sparkles size={18} />}
+          loading={loading}
+          onClick={onMatching}
         >
-          Run job scan
-        </Button>
-        <Button disabled={disabled} icon={<Sparkles size={18} />} onClick={onMatching}>
           Run matching
         </Button>
       </div>
