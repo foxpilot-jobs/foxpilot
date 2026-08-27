@@ -104,9 +104,11 @@
 
 .applications-pipeline {
   display: grid;
-  grid-template-columns: repeat(5, minmax(190px, 1fr));
+  grid-template-columns: repeat(5, minmax(220px, 1fr));
   gap: var(--space-3);
   align-items: start;
+  overflow-x: auto;
+  padding-bottom: var(--space-2);
 }
 
 .applications-column {
@@ -165,7 +167,6 @@
   display: grid;
   gap: var(--space-4);
   min-width: 0;
-  overflow: hidden;
   padding: var(--space-4);
   box-shadow: var(--shadow-xs);
 }

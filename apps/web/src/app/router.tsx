@@ -9,6 +9,7 @@ import { ProfileSetupPage } from "../features/profile/pages/ProfileSetupPage";
 import { ProfileInsightsPage } from "../features/profile/pages/ProfileInsightsPage";
 import { SettingsPage } from "../features/settings/pages/SettingsPage";
 import { AppLayout } from "../shared/layouts/AppLayout";
+import { Spinner } from "../shared/ui/Spinner";
 
 export function AppRouter() {
   return (
@@ -54,12 +55,17 @@ function ProtectedRoute() {
 
 function LoadingScreen() {
   return (
-    <main className="auth-shell">
-      <div className="auth-brand">
-        <img src="/brand/foxpilot-mark.png" alt="FoxPilot" />
-        <span className="eyebrow">FOXPILOT</span>
+    <main className="auth-loading-screen" aria-label="Loading FoxPilot" role="status">
+      <div className="auth-loading-card">
+        <span className="auth-loading-mark">
+          <img src="/brand/foxpilot-mark.png" alt="" />
+        </span>
+        <div className="auth-loading-copy">
+          <strong>FoxPilot</strong>
+          <span>Preparing your workspace</span>
+        </div>
+        <Spinner label="Loading" size={20} />
       </div>
-      <h1>Preparing your workspace...</h1>
     </main>
   );
 }

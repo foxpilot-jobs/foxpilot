@@ -122,6 +122,7 @@ function NavigationLink({ item, mobile = false }: { item: NavItem; mobile?: bool
   const hasChildren = Boolean(item.children?.length);
   const childActive = item.children?.some((child) => location.pathname.startsWith(child.to));
   const [open, setOpen] = useState(Boolean(childActive));
+  const [flyoutSuppressed, setFlyoutSuppressed] = useState(false);
 
   if (mobile) {
     return (
@@ -139,7 +140,11 @@ function NavigationLink({ item, mobile = false }: { item: NavItem; mobile?: bool
   }
 
   return (
-    <div className="ui-nav-item">
+    <div
+      className={`ui-nav-item ${flyoutSuppressed ? "ui-nav-item-flyout-suppressed" : ""}`}
+      onMouseEnter={() => setFlyoutSuppressed(false)}
+      onMouseLeave={() => setFlyoutSuppressed(false)}
+    >
       <div className="ui-nav-item-row">
         <NavLink
           className={({ isActive }) =>
@@ -147,6 +152,8 @@ function NavigationLink({ item, mobile = false }: { item: NavItem; mobile?: bool
           }
           end={item.end}
           to={item.to}
+          onClick={() => setFlyoutSuppressed(true)}
+          onFocus={() => setFlyoutSuppressed(false)}
         >
           <Icon size={18} aria-hidden="true" />
           <span className="ui-nav-label">{item.label}</span>

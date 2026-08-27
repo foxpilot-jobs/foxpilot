@@ -3,7 +3,6 @@ import {
   getBackgroundJob,
   getProfile,
   runMatching,
-  runScan,
   uploadResume,
   type BackgroundJob,
   type Profile,
@@ -26,6 +25,7 @@ export function ProfileSetupPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [activeAction, setActiveAction] = useState<"upload" | "matching" | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -117,6 +117,7 @@ export function ProfileSetupPage() {
     if (!file) return;
     setSelectedFileName(file.name);
     setBusy(true);
+    setActiveAction("upload");
     setActionError(null);
     setMessage(null);
     try {
@@ -126,11 +127,13 @@ export function ProfileSetupPage() {
       setActionError("We couldn't upload your resume. Please check that it is a PDF under 10 MB.");
     } finally {
       setBusy(false);
+      setActiveAction(null);
     }
   }
 
   async function handleMatching() {
     setBusy(true);
+    setActiveAction("matching");
     setActionError(null);
     setMessage(null);
     try {
@@ -142,20 +145,7 @@ export function ProfileSetupPage() {
       setActionError("We couldn't start matching. Please try again.");
     } finally {
       setBusy(false);
-    }
-  }
-
-  async function handleScan() {
-    setBusy(true);
-    setActionError(null);
-    setMessage(null);
-    try {
-      setActiveJob(await runScan());
-      setMessage("Scan started. FoxPilot is searching for roles derived from your profile.");
-    } catch {
-      setActionError("We couldn't start the job scan. Please try again.");
-    } finally {
-      setBusy(false);
+      setActiveAction(null);
     }
   }
 
@@ -181,7 +171,10 @@ export function ProfileSetupPage() {
 
   const fields = profile?.profile ?? {};
   const hasProfileData = Boolean(profile && Object.keys(fields).length > 0);
-  const processing = busy || activeJob?.status === "queued" || activeJob?.status === "running";
+  const jobProcessing = activeJob?.status === "queued" || activeJob?.status === "running";
+  const processing = busy || jobProcessing;
+  const resumeBusy =
+    activeAction === "upload" || (jobProcessing && activeJob?.kind === "profile_generation");
   return (
     <main className="profile-page">
       <ProfileHeader hasProfileData={hasProfileData} profile={profile} />
@@ -201,7 +194,7 @@ export function ProfileSetupPage() {
       <div className="profile-page-layout">
         <div className="profile-page-primary">
           <ResumeCard
-            busy={processing}
+            busy={resumeBusy}
             onFile={handleUpload}
             profile={profile}
             selectedFileName={selectedFileName}
@@ -214,7 +207,9 @@ export function ProfileSetupPage() {
             <ProfileActions
               disabled={processing}
               onMatching={() => void handleMatching()}
-              onScan={() => void handleScan()}
+              loading={
+                activeAction === "matching" || (jobProcessing && activeJob?.kind === "matching")
+              }
             />
           )}
           <ProfileInsightsLink />

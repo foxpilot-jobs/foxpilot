@@ -24,28 +24,32 @@ export function MatchGapAnalysis({ match }: { match: Match["match"] }) {
           <div className="matches-gap-section">
             <strong>Gap analysis</strong>
             <div className="matches-gap-list">
-              {gaps.map((gap, index) => (
-                <div className="matches-gap-item" key={gap.gap || index}>
-                  <div className="matches-gap-item-header">
-                    <GapIcon severity={gap.severity} />
-                    <span className="matches-gap-item-label">{gap.gap || gap.explanation}</span>
-                    <Badge
-                      variant={
-                        gap.severity === "blocking"
-                          ? "error"
-                          : gap.severity === "addressable"
-                            ? "warning"
-                            : "neutral"
-                      }
-                    >
-                      {gap.severity}
-                    </Badge>
+              {gaps.map((gap, index) => {
+                const label = gap.gap || match.missing_skills[index] || "Gap details unavailable";
+                const explanation =
+                  gap.explanation ||
+                  "Review this requirement against your experience before applying.";
+                return (
+                  <div className="matches-gap-item" key={label || index}>
+                    <div className="matches-gap-item-header">
+                      <GapIcon severity={gap.severity} />
+                      <span className="matches-gap-item-label">{label}</span>
+                      <Badge
+                        variant={
+                          gap.severity === "blocking"
+                            ? "error"
+                            : gap.severity === "addressable"
+                              ? "warning"
+                              : "neutral"
+                        }
+                      >
+                        {gap.severity}
+                      </Badge>
+                    </div>
+                    <p className="matches-gap-item-explanation">{explanation}</p>
                   </div>
-                  {gap.gap && gap.explanation && (
-                    <p className="matches-gap-item-explanation">{gap.explanation}</p>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

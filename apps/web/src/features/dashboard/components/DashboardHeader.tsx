@@ -1,13 +1,25 @@
 import { Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { getGreeting } from "./greeting";
 
 export function DashboardHeader({ email }: { email: string }) {
   const firstName = formatFirstName(email);
+  const [greeting, setGreeting] = useState(() => getGreeting());
+
+  useEffect(() => {
+    const updateGreeting = () => setGreeting(getGreeting());
+    const timer = window.setInterval(updateGreeting, 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
   return (
     <header className="dashboard-header">
       <div>
         <p className="ui-eyebrow">Career workspace</p>
-        <h1 className="dashboard-title">Good morning, {firstName}.</h1>
+        <h1 className="dashboard-title">
+          {greeting}, {firstName}.
+        </h1>
         <p className="dashboard-subtitle">Here&apos;s what&apos;s happening with your career.</p>
       </div>
       <Link className="dashboard-header-link" to="/app/matches">
