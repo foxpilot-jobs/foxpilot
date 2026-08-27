@@ -19,6 +19,11 @@ export type Job = {
   }>;
 };
 
+export type JobDetail = Job & {
+  match?: Match["match"] | null;
+  application?: Application | null;
+};
+
 export type Match = {
   job_id: string;
   job: Job;
@@ -230,6 +235,15 @@ export function getJobs(
   if (params.relevance) searchParams.set("relevance", params.relevance);
   const qs = searchParams.toString();
   return request<PaginatedResponse<Job>>(`/api/v1/jobs${qs ? `?${qs}` : ""}`);
+}
+
+export async function getJob(jobId: string): Promise<JobDetail | null> {
+  const response = await fetch(`${API_BASE}/api/v1/jobs/${encodeURIComponent(jobId)}`, {
+    credentials: "include",
+  });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`Unable to load job: ${response.status}`);
+  return response.json() as Promise<JobDetail>;
 }
 
 export function getMatches(

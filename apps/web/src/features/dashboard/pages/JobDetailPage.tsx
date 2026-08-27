@@ -2,12 +2,11 @@ import { ArrowLeft, ExternalLink, MapPin, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
-  getApplications,
-  getJobs,
-  getMatches,
+  getJob,
   updateApplication,
   type Application,
   type Job,
+  type JobDetail,
   type Match,
 } from "../../../api";
 import { Button } from "../../../shared/ui/Button";
@@ -26,7 +25,7 @@ import { MatchScore } from "../components/matches/MatchScore";
 export function JobDetailPage() {
   const { jobId = "" } = useParams();
   const { user } = useAuth();
-  const [job, setJob] = useState<Job | null>(null);
+  const [job, setJob] = useState<JobDetail | null>(null);
   const [match, setMatch] = useState<Match["match"] | null>(null);
   const [application, setApplication] = useState<Application | undefined>();
   const [loading, setLoading] = useState(true);
@@ -43,29 +42,20 @@ export function JobDetailPage() {
     setLoading(true);
     setLoadError(false);
     setNotFound(false);
-    void Promise.allSettled([
-      getMatches({ limit: 200 }),
-      getJobs({ includeInactive: true, limit: 200 }),
-      getApplications({ limit: 200 }),
-    ]).then(([matchesResult, jobsResult, applicationsResult]) => {
-      if (!active) return;
-      const matchItems = matchesResult.status === "fulfilled" ? matchesResult.value.items : [];
-      const jobItems = jobsResult.status === "fulfilled" ? jobsResult.value.items : [];
-      const applicationItems =
-        applicationsResult.status === "fulfilled" ? applicationsResult.value.items : [];
-      const foundMatch = matchItems.find((item) => item.job_id === jobId);
-      const foundJob = foundMatch?.job ?? jobItems.find((item) => item.job_id === jobId);
-      setJob(foundJob ?? null);
-      setMatch(foundMatch?.match ?? null);
-      setApplication(applicationItems.find((item) => item.job_id === jobId));
-      setNotFound(
-        !foundJob && matchesResult.status === "fulfilled" && jobsResult.status === "fulfilled",
-      );
-      setLoadError(
-        !foundJob && (matchesResult.status === "rejected" || jobsResult.status === "rejected"),
-      );
-      setLoading(false);
-    });
+    void getJob(jobId)
+      .then((detail) => {
+        if (!active) return;
+        setJob(detail);
+        setMatch(detail?.match ?? null);
+        setApplication(detail?.application ?? undefined);
+        setNotFound(detail === null);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (!active) return;
+        setLoadError(true);
+        setLoading(false);
+      });
     return () => {
       active = false;
     };
