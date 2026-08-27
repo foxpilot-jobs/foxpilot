@@ -1453,6 +1453,122 @@ class JobStore:
             "deduplicated": deduplicated_count,
         }
 
+    def reconcile_source_listings(
+        self,
+        source: str,
+        returned_source_job_ids: set[str],
+        miss_threshold: int = 2,
+    ) -> dict[str, int]:
+        """Reconcile active listings for a source after a successful fetch.
+
+        Jobs present in returned_source_job_ids have check_failures reset to 0.
+        Jobs missing from returned_source_job_ids increment check_failures.
+        Jobs exceeding miss_threshold transition to availability_status='inactive'.
+        Canonical jobs with zero remaining active listings transition to is_active=False.
+        """
+        now = utc_now()
+        source_norm = source.lower()
+
+        with self.engine.begin() as connection:
+            listings_query = (
+                select(
+                    job_listings_table.c.listing_id,
+                    job_listings_table.c.job_id,
+                    job_listings_table.c.source_job_id,
+                    job_listings_table.c.check_failures,
+                    job_listings_table.c.availability_status,
+                )
+                .where(
+                    job_listings_table.c.source == source_norm,
+                    job_listings_table.c.availability_status != "inactive",
+                )
+            )
+            existing_listings = connection.execute(listings_query).mappings().all()
+
+            archived_listings_count = 0
+            affected_job_ids: set[str] = set()
+
+            for listing in existing_listings:
+                source_job_id = listing["source_job_id"]
+                job_id = listing["job_id"]
+                affected_job_ids.add(job_id)
+
+                if source_job_id in returned_source_job_ids:
+                    connection.execute(
+                        update(job_listings_table)
+                        .where(job_listings_table.c.listing_id == listing["listing_id"])
+                        .values(
+                            check_failures=0,
+                            availability_status="active",
+                            status_reason=None,
+                            unavailable_since=None,
+                            last_checked_at=now,
+                        )
+                    )
+                else:
+                    new_failures = listing["check_failures"] + 1
+                    if new_failures >= miss_threshold:
+                        connection.execute(
+                            update(job_listings_table)
+                            .where(job_listings_table.c.listing_id == listing["listing_id"])
+                            .values(
+                                check_failures=new_failures,
+                                availability_status="inactive",
+                                status_reason="missing_from_source_consecutive_runs",
+                                unavailable_since=now,
+                                last_checked_at=now,
+                            )
+                        )
+                        archived_listings_count += 1
+                    else:
+                        connection.execute(
+                            update(job_listings_table)
+                            .where(job_listings_table.c.listing_id == listing["listing_id"])
+                            .values(
+                                check_failures=new_failures,
+                                last_checked_at=now,
+                            )
+                        )
+
+            archived_jobs_count = 0
+            for job_id in affected_job_ids:
+                active_listings_count = (
+                    connection.execute(
+                        select(func.count(job_listings_table.c.listing_id)).where(
+                            job_listings_table.c.job_id == job_id,
+                            job_listings_table.c.availability_status == "active",
+                        )
+                    ).scalar()
+                    or 0
+                )
+
+                if active_listings_count == 0:
+                    connection.execute(
+                        update(jobs_table)
+                        .where(jobs_table.c.job_id == job_id)
+                        .values(
+                            is_active=False,
+                            inactive_at=now,
+                            updated_at=now,
+                        )
+                    )
+                    archived_jobs_count += 1
+                else:
+                    connection.execute(
+                        update(jobs_table)
+                        .where(jobs_table.c.job_id == job_id)
+                        .values(
+                            is_active=True,
+                            inactive_at=None,
+                            updated_at=now,
+                        )
+                    )
+
+            return {
+                "archived_listings": archived_listings_count,
+                "archived_jobs": archived_jobs_count,
+            }
+
     def upsert_job(self, job: dict) -> str:
         source = job.get("source", "unknown")
         source_job_id = str(job.get("source_job_id", self.job_id(job)))

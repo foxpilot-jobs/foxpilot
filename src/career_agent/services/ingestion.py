@@ -49,13 +49,14 @@ class IngestionService:
                     return
                 store.update_ingestion_run(run_id, "running")
 
-            total = fetch_configured_sources(profile=None, user_id="system")
+            res = fetch_configured_sources(None, "system")
+            result = res if isinstance(res, dict) else {"jobs_upserted": res}
 
             with self._store() as store:
                 store.update_ingestion_run(
                     run_id,
                     "completed",
-                    result={"jobs_upserted": total},
+                    result=result,
                 )
         except Exception as error:  # noqa: BLE001 - persist failure for polling clients
             with self._store() as store:

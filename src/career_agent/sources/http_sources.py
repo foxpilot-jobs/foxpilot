@@ -400,19 +400,33 @@ def _load_source_config() -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def _save_jobs(jobs: list[SourceJob], user_id: str) -> int:
+def _save_jobs(jobs: list[SourceJob | dict[str, Any]], user_id: str) -> dict[str, int]:
     if not jobs:
-        return 0
+        return {"inserted": 0, "updated": 0, "deduplicated": 0}
     with JobStore(load_config().resolved_database_url, user_id=user_id) as store:
-        stats = store.bulk_upsert_jobs([job.as_dict() for job in jobs])
-        return stats.get("inserted", 0) + stats.get("updated", 0)
+        job_dicts = [j if isinstance(j, dict) else j.as_dict() for j in jobs]
+        return store.bulk_upsert_jobs(job_dicts)
 
 
-def fetch_configured_sources(profile: dict | None = None, user_id: str = "local-user") -> int:
+from ..tech_classification import classify_tech_job
+
+
+def fetch_configured_sources(
+    profile: dict | None = None,
+    user_id: str = "local-user",
+    max_jobs: int | None = None,
+    miss_threshold: int = 2,
+    return_details: bool = False,
+) -> int | dict[str, Any]:
     config = _load_source_config()
     queries = profile_search_queries(profile) if profile else []
     client = PublicSourceClient()
     total = 0
+    total_raw_fetched = 0
+    total_tech_accepted = 0
+    total_non_tech_rejected = 0
+    source_stats: list[dict[str, Any]] = []
+
     adapters = [
         ("RemoteOK", lambda: fetch_remoteok(client, queries), config.get("remoteok", {}).get("enabled", True)),
         ("Remotive", lambda: fetch_remotive(client, queries), config.get("remotive", {}).get("enabled", True)),
@@ -429,14 +443,114 @@ def fetch_configured_sources(profile: dict | None = None, user_id: str = "local-
         for name, fetch, enabled in adapters:
             if not enabled:
                 print(f"[SOURCE] {name}: disabled")
+                source_stats.append({
+                    "source": name.lower(),
+                    "status": "disabled",
+                    "fetched": 0,
+                    "tech_accepted": 0,
+                    "non_tech_rejected": 0,
+                    "inserted": 0,
+                    "updated": 0,
+                    "archived_listings": 0,
+                    "archived_jobs": 0,
+                    "error": None,
+                })
                 continue
+
+            if max_jobs is not None and total >= max_jobs:
+                print(f"[SOURCE] Cap reached ({total}/{max_jobs} jobs), stopping ingestion.")
+                break
+
             try:
-                jobs = fetch()
-                saved = _save_jobs(jobs, user_id)
+                raw_jobs = fetch()
+                if max_jobs is not None and (total + len(raw_jobs)) > max_jobs:
+                    remaining = max_jobs - total
+                    raw_jobs = raw_jobs[:remaining]
+
+                tech_accepted_jobs: list[dict[str, Any]] = []
+                non_tech_rejected_count = 0
+
+                for j in raw_jobs:
+                    j_dict = j.as_dict()
+                    res = classify_tech_job(j_dict)
+
+                    payload = j_dict.get("source_payload")
+                    if payload is None or not isinstance(payload, dict):
+                        payload = {}
+
+                    payload["tech_classification"] = {
+                        "is_tech_job": res.is_tech_job,
+                        "tech_category": res.tech_category,
+                        "confidence": res.confidence,
+                        "score": res.score,
+                        "signals": res.signals,
+                    }
+                    j_dict["source_payload"] = payload
+
+                    if res.is_tech_job:
+                        tech_accepted_jobs.append(j_dict)
+                    else:
+                        non_tech_rejected_count += 1
+
+                total_raw_fetched += len(raw_jobs)
+                total_tech_accepted += len(tech_accepted_jobs)
+                total_non_tech_rejected += non_tech_rejected_count
+
+                stats = _save_jobs(tech_accepted_jobs, user_id)
+                saved = stats.get("inserted", 0) + stats.get("updated", 0)
                 total += saved
-                print(f"[SOURCE] {name}: fetched {len(jobs)}, upserted {saved}")
+
+                reconcile_stats = {"archived_listings": 0, "archived_jobs": 0}
+                if max_jobs is None:
+                    returned_ids = {str(j.source_job_id) for j in raw_jobs if j.source_job_id}
+                    with JobStore(load_config().resolved_database_url, user_id=user_id) as store:
+                        reconcile_stats = store.reconcile_source_listings(
+                            source=name.lower(),
+                            returned_source_job_ids=returned_ids,
+                            miss_threshold=miss_threshold,
+                        )
+
+                source_stats.append({
+                    "source": name.lower(),
+                    "status": "success",
+                    "fetched": len(raw_jobs),
+                    "tech_accepted": len(tech_accepted_jobs),
+                    "non_tech_rejected": non_tech_rejected_count,
+                    "inserted": stats.get("inserted", 0),
+                    "updated": stats.get("updated", 0),
+                    "deduplicated": stats.get("deduplicated", 0),
+                    "archived_listings": reconcile_stats.get("archived_listings", 0),
+                    "archived_jobs": reconcile_stats.get("archived_jobs", 0),
+                    "error": None,
+                })
+                print(
+                    f"[SOURCE] {name}: fetched {len(raw_jobs)} raw, "
+                    f"accepted {len(tech_accepted_jobs)} tech (rejected {non_tech_rejected_count} non-tech), "
+                    f"upserted {saved}, archived listings {reconcile_stats.get('archived_listings', 0)}"
+                )
             except Exception as error:  # noqa: BLE001 - isolate every external source
                 print(f"[SOURCE] {name}: failed, continuing: {error}")
+                source_stats.append({
+                    "source": name.lower(),
+                    "status": "failed",
+                    "fetched": 0,
+                    "tech_accepted": 0,
+                    "non_tech_rejected": 0,
+                    "inserted": 0,
+                    "updated": 0,
+                    "archived_listings": 0,
+                    "archived_jobs": 0,
+                    "error": str(error),
+                })
     finally:
         client.close()
+
+    if return_details:
+        return {
+            "jobs_upserted": total,
+            "raw_fetched": total_raw_fetched,
+            "tech_accepted": total_tech_accepted,
+            "non_tech_rejected": total_non_tech_rejected,
+            "source_stats": source_stats,
+        }
     return total
