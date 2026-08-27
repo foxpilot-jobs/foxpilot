@@ -21,8 +21,8 @@
 }
 
 .ui-alert-success {
-  border-color: #a6e5c5;
-  background: #f0fbf5;
+  border-color: color-mix(in srgb, var(--color-success) 45%, var(--color-border));
+  background: color-mix(in srgb, var(--color-success) 12%, var(--color-surface));
 }
 
 .ui-alert-success .ui-alert-icon {
@@ -30,8 +30,8 @@
 }
 
 .ui-alert-info {
-  border-color: #b2d4ff;
-  background: #f3f8ff;
+  border-color: color-mix(in srgb, var(--color-info) 45%, var(--color-border));
+  background: color-mix(in srgb, var(--color-info) 12%, var(--color-surface));
 }
 
 .ui-alert-info .ui-alert-icon {
@@ -39,8 +39,8 @@
 }
 
 .ui-alert-warning {
-  border-color: #fbd29a;
-  background: #fffaf2;
+  border-color: color-mix(in srgb, var(--color-warning) 45%, var(--color-border));
+  background: color-mix(in srgb, var(--color-warning) 12%, var(--color-surface));
 }
 
 .ui-alert-warning .ui-alert-icon {
@@ -48,8 +48,8 @@
 }
 
 .ui-alert-error {
-  border-color: #f3b5b0;
-  background: #fff6f5;
+  border-color: color-mix(in srgb, var(--color-error) 45%, var(--color-border));
+  background: color-mix(in srgb, var(--color-error) 12%, var(--color-surface));
 }
 
 .ui-alert-error .ui-alert-icon {

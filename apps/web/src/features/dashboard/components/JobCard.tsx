@@ -1,4 +1,4 @@
-import type { Application, Job, Match } from "../../../api";
+import { availableJobSources, type Application, type Job, type Match } from "../../../api";
 import { ApplicationStatusSelect } from "./ApplicationStatusSelect";
 
 type JobCardProps = {
@@ -10,6 +10,7 @@ type JobCardProps = {
 };
 
 export function JobCard({ application, job, match, onStatusChange, updating }: JobCardProps) {
+  const availableSources = availableJobSources(job);
   const scoreTone =
     match && match.match_score >= 70
       ? "strong"
@@ -20,7 +21,9 @@ export function JobCard({ application, job, match, onStatusChange, updating }: J
     <article className="job-card">
       <div className="card-topline">
         <span className="source-label">
-          {job.sources?.map((source) => source.source).join(" + ") || job.source || "JOB SOURCE"}
+          {availableSources.map((source) => source.source).join(" + ") ||
+            job.source ||
+            "JOB SOURCE"}
         </span>
         {job.is_active === false && <span className="count-pill">Closed</span>}
         {match && <span className={`score score-${scoreTone}`}>{match.match_score}% fit</span>}
@@ -64,8 +67,8 @@ export function JobCard({ application, job, match, onStatusChange, updating }: J
         </details>
       )}
       <div className="card-actions">
-        {job.sources && job.sources.length > 0
-          ? job.sources.map((source) => (
+        {availableSources.length > 0
+          ? availableSources.map((source) => (
               <a
                 href={source.url}
                 key={`${source.source}-${source.source_job_id}`}

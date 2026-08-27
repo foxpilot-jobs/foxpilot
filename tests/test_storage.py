@@ -48,8 +48,32 @@ def test_jobs_from_multiple_sources_share_a_canonical_record(tmp_path: Path) -> 
         )
 
         assert second_id == first_id
-        sources = store.get_job(first_id)["sources"]
+        canonical = store.get_job(first_id)
+        sources = canonical["sources"]
         assert {source["source"] for source in sources} == {"company", "greenhouse"}
+        assert canonical["active_listing_count"] == 2
+        assert canonical["normalized_company"] == "example"
+        assert canonical["normalized_location"] == "remote"
+        assert canonical["canonical_content_hash"]
+
+        store.upsert_job(
+            {
+                "source": "greenhouse",
+                "source_job_id": "gh-1",
+                "title": "Data Engineer",
+                "company": "Example",
+                "location": "Remote",
+                "url": "https://greenhouse.example/roles/gh-1",
+                "description": "Build data pipelines with Python and SQL.",
+            }
+        )
+        greenhouse = next(
+            source
+            for source in store.get_job(first_id)["sources"]
+            if source["source"] == "greenhouse"
+        )
+        assert greenhouse["url"] == "https://greenhouse.example/roles/gh-1"
+        assert greenhouse["source_url_history"] == ["https://greenhouse.example/gh-1"]
 
 
 def test_inactive_listing_hides_canonical_job_only_when_last_source_closes(

@@ -1,6 +1,6 @@
 import { ExternalLink, MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
-import type { Application, Match } from "../../../../api";
+import { availableJobSources, type Application, type Match } from "../../../../api";
 import { Avatar } from "../../../../shared/ui/Avatar";
 import { Badge } from "../../../../shared/ui/Badge";
 import { ApplicationStatusSelect } from "../ApplicationStatusSelect";
@@ -26,7 +26,8 @@ export function MatchCard({
       : match.recommendation === "CONSIDER"
         ? "warning"
         : "neutral";
-  const source = job.sources?.[0]?.source ?? job.source;
+  const availableSources = availableJobSources(job);
+  const source = availableSources[0]?.source ?? job.source;
   return (
     <article className="matches-card">
       <header className="matches-card-header">
@@ -70,8 +71,8 @@ export function MatchCard({
           <Link className="matches-primary-link" to={`/app/jobs/${item.job_id}`}>
             View details
           </Link>
-          {job.sources && job.sources.length > 0 ? (
-            <a href={job.sources[0].url} rel="noreferrer" target="_blank">
+          {availableSources.length > 0 ? (
+            <a href={availableSources[0].url} rel="noreferrer" target="_blank">
               Open original listing <ExternalLink size={14} aria-hidden="true" />
             </a>
           ) : (

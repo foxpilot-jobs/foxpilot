@@ -17,6 +17,7 @@ from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
+    ForeignKey,
     Integer,
     MetaData,
     String,
@@ -32,6 +33,8 @@ from sqlalchemy import (
     tuple_,
     update,
 )
+from sqlalchemy.dialects.postgresql import insert as postgresql_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.engine import Engine
 
 _ENGINES: dict[str, Engine] = {}
@@ -71,6 +74,7 @@ def _attach_instrumentation(engine: Engine) -> None:
         try:
             orig_rollback = getattr(dbapi_connection, "rollback", None)
             if orig_rollback:
+
                 def traced_rollback(*args, **kwargs):
                     ctx_inner = _REQUEST_TIMINGS.get()
                     t0 = time.perf_counter()
@@ -95,6 +99,7 @@ def _attach_instrumentation(engine: Engine) -> None:
         try:
             orig_commit = getattr(dbapi_connection, "commit", None)
             if orig_commit:
+
                 def traced_commit(*args, **kwargs):
                     ctx_inner = _REQUEST_TIMINGS.get()
                     t0 = time.perf_counter()
@@ -203,6 +208,8 @@ def _initialize_schema(engine: Engine) -> None:
     metadata.create_all(engine)
     if engine.dialect.name == "sqlite":
         with engine.begin() as connection:
+            connection.exec_driver_sql("PRAGMA foreign_keys = ON")
+            connection.exec_driver_sql("PRAGMA journal_mode = WAL")
             columns = {
                 row[1]
                 for row in connection.exec_driver_sql(
@@ -251,6 +258,75 @@ def _initialize_schema(engine: Engine) -> None:
                 connection.exec_driver_sql(
                     "ALTER TABLE jobs ADD COLUMN canonical_key VARCHAR"
                 )
+            for col, ddl in (
+                (
+                    "canonical_content_hash",
+                    "ALTER TABLE jobs ADD COLUMN canonical_content_hash VARCHAR",
+                ),
+                (
+                    "normalized_company",
+                    "ALTER TABLE jobs ADD COLUMN normalized_company VARCHAR",
+                ),
+                (
+                    "normalized_location",
+                    "ALTER TABLE jobs ADD COLUMN normalized_location VARCHAR",
+                ),
+                (
+                    "active_listing_count",
+                    "ALTER TABLE jobs ADD COLUMN active_listing_count INTEGER NOT NULL DEFAULT 0",
+                ),
+            ):
+                if col not in job_columns:
+                    connection.exec_driver_sql(ddl)
+            listing_columns = {
+                row[1]
+                for row in connection.exec_driver_sql(
+                    "PRAGMA table_info(job_listings)"
+                ).fetchall()
+            }
+            for col, ddl in (
+                (
+                    "source_requisition_id",
+                    "ALTER TABLE job_listings ADD COLUMN source_requisition_id VARCHAR",
+                ),
+                (
+                    "source_url_history",
+                    "ALTER TABLE job_listings ADD COLUMN source_url_history JSON NOT NULL DEFAULT '[]'",
+                ),
+            ):
+                if col not in listing_columns:
+                    connection.exec_driver_sql(ddl)
+            connection.exec_driver_sql(
+                "UPDATE job_listings SET source_requisition_id = source_job_id "
+                "WHERE source_requisition_id IS NULL"
+            )
+            for row in connection.execute(
+                select(jobs_table).where(
+                    (jobs_table.c.canonical_content_hash == "")
+                    | jobs_table.c.canonical_content_hash.is_(None)
+                )
+            ).mappings():
+                connection.execute(
+                    update(jobs_table)
+                    .where(jobs_table.c.job_id == row["job_id"])
+                    .values(
+                        canonical_content_hash=_canonical_content_hash(dict(row)),
+                        normalized_company=_normalise_job_text(row["company"]),
+                        normalized_location=_normalise_job_text(row["location"]),
+                    )
+                )
+            connection.exec_driver_sql(
+                "UPDATE jobs SET active_listing_count = ("
+                "SELECT COUNT(*) FROM job_listings "
+                "WHERE job_listings.job_id = jobs.job_id "
+                "AND job_listings.availability_status = 'active')"
+            )
+            connection.exec_driver_sql(
+                "INSERT OR IGNORE INTO users "
+                "(user_id, email, email_verified, is_active, created_at, updated_at) "
+                "VALUES ('local-user', 'local@foxpilot.local', 0, 1, "
+                "CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+            )
             bg_columns = {
                 row[1]
                 for row in connection.exec_driver_sql(
@@ -294,8 +370,6 @@ def _initialize_schema(engine: Engine) -> None:
                 if col not in bg_columns:
                     connection.exec_driver_sql(ddl)
             JobStore._upgrade_user_owned_tables(connection)
-            connection.exec_driver_sql("PRAGMA foreign_keys = ON")
-            connection.exec_driver_sql("PRAGMA journal_mode = WAL")
 
 
 def initialize_database(database: Path | str | Engine) -> Engine:
@@ -411,6 +485,10 @@ jobs_table = Table(
     Column("last_seen_at", DateTime(timezone=True)),
     Column("inactive_at", DateTime(timezone=True)),
     Column("canonical_key", String),
+    Column("canonical_content_hash", String, nullable=False, default=""),
+    Column("normalized_company", String, nullable=False, default=""),
+    Column("normalized_location", String, nullable=False, default=""),
+    Column("active_listing_count", Integer, nullable=False, default=0),
     Column("created_at", DateTime(timezone=True), nullable=False),
     Column("updated_at", DateTime(timezone=True), nullable=False),
     UniqueConstraint("source", "source_job_id"),
@@ -421,9 +499,10 @@ job_listings_table = Table(
     metadata,
     Column("listing_id", String, primary_key=True),
     Column("listing_key", String, nullable=False, unique=True),
-    Column("job_id", String, nullable=False),
+    Column("job_id", String, ForeignKey("jobs.job_id"), nullable=False),
     Column("source", String, nullable=False),
     Column("source_job_id", String, nullable=False),
+    Column("source_requisition_id", String, nullable=False),
     Column("url", String, nullable=False, default=""),
     Column("payload_json", JSON, nullable=False),
     Column("availability_status", String, nullable=False, default="active"),
@@ -434,7 +513,8 @@ job_listings_table = Table(
     Column("check_failures", Integer, nullable=False, default=0),
     Column("status_reason", String),
     Column("visibility", String, nullable=False, default="public"),
-    Column("owner_user_id", String),
+    Column("owner_user_id", String, ForeignKey("users.user_id")),
+    Column("source_url_history", JSON, nullable=False, default=list),
 )
 
 ingestion_runs_table = Table(
@@ -454,8 +534,8 @@ ingestion_runs_table = Table(
 matches_table = Table(
     "matches",
     metadata,
-    Column("user_id", String, primary_key=True),
-    Column("job_id", String, primary_key=True),
+    Column("user_id", String, ForeignKey("users.user_id"), primary_key=True),
+    Column("job_id", String, ForeignKey("jobs.job_id"), primary_key=True),
     Column("job_hash", String, nullable=False),
     Column("provider", String, nullable=False),
     Column("model", String, nullable=False),
@@ -467,8 +547,8 @@ matches_table = Table(
 applications_table = Table(
     "applications",
     metadata,
-    Column("user_id", String, primary_key=True),
-    Column("job_id", String, primary_key=True),
+    Column("user_id", String, ForeignKey("users.user_id"), primary_key=True),
+    Column("job_id", String, ForeignKey("jobs.job_id"), primary_key=True),
     Column("status", String, nullable=False, default="saved"),
     Column("notes", Text, nullable=False, default=""),
     Column("applied_at", DateTime(timezone=True)),
@@ -491,6 +571,19 @@ def _job_canonical_key(job: dict) -> str:
         _normalise_job_text(job.get("location")),
     )
     return hashlib.sha256("|".join(parts).encode("utf-8")).hexdigest()
+
+
+def _canonical_content_hash(job: dict) -> str:
+    content = {
+        "title": _normalise_job_text(job.get("title")),
+        "company": _normalise_job_text(job.get("company")),
+        "location": _normalise_job_text(job.get("location")),
+        "description": _normalise_job_text(job.get("description")),
+        "work_type": _normalise_job_text(job.get("work_type")),
+    }
+    return hashlib.sha256(
+        json.dumps(content, sort_keys=True, ensure_ascii=False).encode("utf-8")
+    ).hexdigest()
 
 
 def _description_similarity(left: object, right: object) -> float:
@@ -527,6 +620,32 @@ class JobStore:
     ) -> None:
         self.user_id = user_id
         self.engine: Engine = initialize_database(database)
+
+    def _ensure_user_exists(self, user_id: str | None = None) -> None:
+        target_user_id = user_id or self.user_id
+        now = utc_now()
+        with self.engine.begin() as connection:
+            values = {
+                "user_id": target_user_id,
+                "email": f"{target_user_id}@local.invalid",
+                "email_verified": False,
+                "is_active": True,
+                "created_at": now,
+                "updated_at": now,
+            }
+            if connection.dialect.name == "sqlite":
+                statement = (
+                    sqlite_insert(users_table)
+                    .values(**values)
+                    .on_conflict_do_nothing(index_elements=[users_table.c.user_id])
+                )
+            else:
+                statement = (
+                    postgresql_insert(users_table)
+                    .values(**values)
+                    .on_conflict_do_nothing(index_elements=[users_table.c.user_id])
+                )
+            connection.execute(statement)
 
     @staticmethod
     def _upgrade_user_owned_tables(connection) -> None:
@@ -1244,11 +1363,14 @@ class JobStore:
         if not jobs:
             return {"inserted": 0, "updated": 0, "deduplicated": 0}
 
+        self._ensure_user_exists()
+
         now = utc_now()
         prepared_jobs = []
         for job in jobs:
             source = job.get("source", "unknown")
             source_job_id = str(job.get("source_job_id", self.job_id(job)))
+            source_requisition_id = str(job.get("source_requisition_id", source_job_id))
             visibility = job.get("visibility", "public")
             owner_user_id = (
                 job.get("owner_user_id") if visibility == "private" else None
@@ -1257,17 +1379,24 @@ class JobStore:
                 visibility == "private" and not owner_user_id
             ):
                 raise ValueError("Private jobs require an owner_user_id")
+            if owner_user_id:
+                self._ensure_user_exists(owner_user_id)
             listing_key = f"{visibility}:{owner_user_id or ''}:{source}:{source_job_id}"
             canonical_key = _job_canonical_key(job)
+            canonical_content_hash = _canonical_content_hash(job)
             prepared_jobs.append(
                 {
                     "raw": job,
                     "source": source,
                     "source_job_id": source_job_id,
+                    "source_requisition_id": source_requisition_id,
                     "visibility": visibility,
                     "owner_user_id": owner_user_id,
                     "listing_key": listing_key,
                     "canonical_key": canonical_key,
+                    "canonical_content_hash": canonical_content_hash,
+                    "normalized_company": _normalise_job_text(job.get("company")),
+                    "normalized_location": _normalise_job_text(job.get("location")),
                 }
             )
 
@@ -1280,7 +1409,10 @@ class JobStore:
             existing_listings_rows = (
                 connection.execute(
                     select(
-                        job_listings_table.c.listing_key, job_listings_table.c.job_id
+                        job_listings_table.c.listing_key,
+                        job_listings_table.c.job_id,
+                        job_listings_table.c.url,
+                        job_listings_table.c.source_url_history,
                     ).where(job_listings_table.c.listing_key.in_(listing_keys))
                 )
                 .mappings()
@@ -1288,6 +1420,9 @@ class JobStore:
             )
             existing_listings: dict[str, str] = {
                 row["listing_key"]: row["job_id"] for row in existing_listings_rows
+            }
+            existing_listing_data = {
+                row["listing_key"]: dict(row) for row in existing_listings_rows
             }
 
             existing_candidates_rows = []
@@ -1320,15 +1455,18 @@ class JobStore:
 
             batch_job_ids_by_listing: dict[str, str] = {}
             batch_jobs_by_id: dict[str, dict] = {}
+            job_metadata_by_id: dict[str, dict[str, str]] = {}
 
             for item in prepared_jobs:
                 job = item["raw"]
                 source = item["source"]
                 source_job_id = item["source_job_id"]
+                source_requisition_id = item["source_requisition_id"]
                 visibility = item["visibility"]
                 owner_user_id = item["owner_user_id"]
                 listing_key = item["listing_key"]
                 canonical_key = item["canonical_key"]
+                canonical_content_hash = item["canonical_content_hash"]
 
                 job_id = existing_listings.get(
                     listing_key
@@ -1381,6 +1519,10 @@ class JobStore:
                         "is_active": True,
                         "last_seen_at": now,
                         "canonical_key": canonical_key,
+                        "canonical_content_hash": canonical_content_hash,
+                        "normalized_company": item["normalized_company"],
+                        "normalized_location": item["normalized_location"],
+                        "active_listing_count": 1,
                         "created_at": now,
                         "updated_at": now,
                     }
@@ -1393,12 +1535,18 @@ class JobStore:
                         updated_count += 1
 
                 batch_job_ids_by_listing[listing_key] = job_id
+                job_metadata_by_id[job_id] = {
+                    "canonical_content_hash": canonical_content_hash,
+                    "normalized_company": item["normalized_company"],
+                    "normalized_location": item["normalized_location"],
+                }
 
                 listing_values = {
                     "job_id": job_id,
                     "listing_key": listing_key,
                     "source": source,
                     "source_job_id": source_job_id,
+                    "source_requisition_id": source_requisition_id,
                     "url": job.get("url", ""),
                     "payload_json": job,
                     "availability_status": "active",
@@ -1410,6 +1558,20 @@ class JobStore:
                     "visibility": visibility,
                     "owner_user_id": owner_user_id,
                 }
+                previous_listing = existing_listing_data.get(listing_key)
+                previous_url = (previous_listing or {}).get("url", "")
+                previous_history = (previous_listing or {}).get(
+                    "source_url_history"
+                ) or []
+                if not isinstance(previous_history, list):
+                    previous_history = []
+                if (
+                    previous_url
+                    and previous_url != listing_values["url"]
+                    and previous_url not in previous_history
+                ):
+                    previous_history = [*previous_history, previous_url]
+                listing_values["source_url_history"] = previous_history
 
                 if is_existing_listing:
                     listings_to_update.append(listing_values)
@@ -1447,6 +1609,27 @@ class JobStore:
                     .values(**l_val)
                 )
 
+            affected_job_ids = set(batch_job_ids_by_listing.values())
+            for affected_job_id in affected_job_ids:
+                active_count = (
+                    connection.execute(
+                        select(func.count(job_listings_table.c.listing_id)).where(
+                            job_listings_table.c.job_id == affected_job_id,
+                            job_listings_table.c.availability_status == "active",
+                        )
+                    ).scalar()
+                    or 0
+                )
+                connection.execute(
+                    update(jobs_table)
+                    .where(jobs_table.c.job_id == affected_job_id)
+                    .values(
+                        active_listing_count=active_count,
+                        is_active=active_count > 0,
+                        **job_metadata_by_id[affected_job_id],
+                    )
+                )
+
         return {
             "inserted": inserted_count,
             "updated": updated_count,
@@ -1470,18 +1653,15 @@ class JobStore:
         source_norm = source.lower()
 
         with self.engine.begin() as connection:
-            listings_query = (
-                select(
-                    job_listings_table.c.listing_id,
-                    job_listings_table.c.job_id,
-                    job_listings_table.c.source_job_id,
-                    job_listings_table.c.check_failures,
-                    job_listings_table.c.availability_status,
-                )
-                .where(
-                    job_listings_table.c.source == source_norm,
-                    job_listings_table.c.availability_status != "inactive",
-                )
+            listings_query = select(
+                job_listings_table.c.listing_id,
+                job_listings_table.c.job_id,
+                job_listings_table.c.source_job_id,
+                job_listings_table.c.check_failures,
+                job_listings_table.c.availability_status,
+            ).where(
+                job_listings_table.c.source == source_norm,
+                job_listings_table.c.availability_status != "inactive",
             )
             existing_listings = connection.execute(listings_query).mappings().all()
 
@@ -1510,7 +1690,9 @@ class JobStore:
                     if new_failures >= miss_threshold:
                         connection.execute(
                             update(job_listings_table)
-                            .where(job_listings_table.c.listing_id == listing["listing_id"])
+                            .where(
+                                job_listings_table.c.listing_id == listing["listing_id"]
+                            )
                             .values(
                                 check_failures=new_failures,
                                 availability_status="inactive",
@@ -1523,7 +1705,9 @@ class JobStore:
                     else:
                         connection.execute(
                             update(job_listings_table)
-                            .where(job_listings_table.c.listing_id == listing["listing_id"])
+                            .where(
+                                job_listings_table.c.listing_id == listing["listing_id"]
+                            )
                             .values(
                                 check_failures=new_failures,
                                 last_checked_at=now,
@@ -1548,6 +1732,7 @@ class JobStore:
                         .where(jobs_table.c.job_id == job_id)
                         .values(
                             is_active=False,
+                            active_listing_count=active_listings_count,
                             inactive_at=now,
                             updated_at=now,
                         )
@@ -1559,6 +1744,7 @@ class JobStore:
                         .where(jobs_table.c.job_id == job_id)
                         .values(
                             is_active=True,
+                            active_listing_count=active_listings_count,
                             inactive_at=None,
                             updated_at=now,
                         )
@@ -1609,7 +1795,9 @@ class JobStore:
                 job_listings_table.c.job_id,
                 job_listings_table.c.source,
                 job_listings_table.c.source_job_id,
+                job_listings_table.c.source_requisition_id,
                 job_listings_table.c.url,
+                job_listings_table.c.source_url_history,
                 job_listings_table.c.availability_status,
                 job_listings_table.c.last_seen_at,
                 job_listings_table.c.last_checked_at,
@@ -1627,7 +1815,9 @@ class JobStore:
                 {
                     "source": listing["source"],
                     "source_job_id": listing["source_job_id"],
+                    "source_requisition_id": listing["source_requisition_id"],
                     "url": listing["url"],
+                    "source_url_history": listing["source_url_history"] or [],
                     "availability_status": listing["availability_status"],
                     "last_seen_at": listing["last_seen_at"],
                     "last_checked_at": listing["last_checked_at"],
@@ -1641,13 +1831,19 @@ class JobStore:
             job["local_relevance"] = row["local_relevance"]
             job["is_active"] = row["is_active"]
             job["last_seen_at"] = row["last_seen_at"]
+            job["canonical_content_hash"] = row["canonical_content_hash"]
+            job["normalized_company"] = row["normalized_company"]
+            job["normalized_location"] = row["normalized_location"]
+            job["active_listing_count"] = row["active_listing_count"]
             job_listings = listings_by_job.get(row["job_id"])
             if not job_listings:
                 job_listings = [
                     {
                         "source": row["source"],
                         "source_job_id": row["source_job_id"],
+                        "source_requisition_id": row["source_job_id"],
                         "url": row["url"],
+                        "source_url_history": [],
                         "availability_status": "active"
                         if row["is_active"]
                         else "inactive",
@@ -1889,6 +2085,7 @@ class JobStore:
         model: str,
         result: dict,
     ) -> None:
+        self._ensure_user_exists()
         now = utc_now()
         values = {
             "user_id": self.user_id,
@@ -2024,6 +2221,7 @@ class JobStore:
     def save_application(
         self, job_id: str, status: str = "saved", notes: str = ""
     ) -> None:
+        self._ensure_user_exists()
         if status not in {"saved", "applied", "interviewing", "rejected", "offered"}:
             raise ValueError(f"Unsupported application status: {status}")
         now = utc_now()

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   getJob,
+  availableJobSources,
   updateApplication,
   type Application,
   type Job,
@@ -82,7 +83,7 @@ export function JobDetailPage() {
     return <JobDetailError onRetry={() => setRetryToken((token) => token + 1)} />;
   if (notFound || !job) return <JobNotFound />;
 
-  const sourceRecord = job.sources?.find((item) => item.url);
+  const sourceRecord = availableJobSources(job)[0];
   const listing = sourceRecord?.url ?? job.url;
   const source =
     sourceRecord?.source ?? job.sources?.[0]?.source ?? job.source ?? "original listing";
