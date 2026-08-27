@@ -33,33 +33,32 @@ STRONG_TECH_TITLE_PATTERNS: list[tuple[str, str]] = [
     # (regex_pattern, assigned_category)
     # Design / UX
     (r"\b(graphic designer|ux designer|ui designer|product designer|ux researcher|visual designer|interaction designer|web designer|motion designer|design engineer|design systems designer|diseñador|designer)\b", "design_ux"),
-    # Product Management
-    (r"\b(technical product manager|product manager|product owner|technical program manager|tpm|head of product|vp of product)\b", "product_management"),
-    # Technical / Solutions / Implementation / Technical Sales
+    # Product Management & Technical Project/Program Management
+    (r"\b(technical product manager|product manager|product owner|technical program manager|technical project manager|engineering program manager|tpm|head of product|vp of product)\b", "product_management"),
+    # Technical / Solutions / Implementation / Developer Relations / Technical Sales
     (r"\b(solutions architect|solutions engineer|sales engineer|technical sales|technical consultant|implementation consultant|implementation specialist|solutions consultant|technical account manager|developer relations|devrel|developer advocate|customer engineer)\b", "technical_solutions"),
     # Product & Technical Support
-    (r"\b(technical support|support engineer|product support|tier \w+ support|saas support|customer support engineer|it support specialist)\b", "technical_solutions"),
+    (r"\b(technical support|support engineer|product support|tier \w+ support|saas support|customer support engineer|it support specialist|product support engineer|technical support engineer)\b", "technical_solutions"),
     # Technical Writing & Documentation
-    (r"\b(technical writer|documentation engineer|developer documentation|api documentation|tech writer|technical content)\b", "technical_writing"),
-    # Business Technology & Systems
+    (r"\b(technical writer|documentation engineer|developer documentation|developer documentation specialist|api documentation|tech writer|technical content)\b", "technical_writing"),
+    # Business Technology & Systems Analysis
     (r"\b(it business analyst|business systems analyst|technology analyst|systems analyst|project systems specialist)\b", "business_technology"),
     # Data Annotation & AI Data Operations
-    (r"\b(data (labeling|annotation|annotator|labeler|collection|specialists?))\b", "data_analytics"),
+    (r"\b(data (labeling|annotation|annotator|labeler|collection|specialists?)|ai data trainer|ai trainer|ai evaluator|ai tutor|data annotation specialist)\b", "data_analytics"),
     # Marketing Technology & Digital Growth
-    (r"\b(marketing technology|martech|growth engineer|marketing automation|marketing operations|digital marketing specialist)\b", "marketing_tech"),
+    (r"\b(marketing technology|martech|growth engineer|marketing automation|marketing automation specialist|marketing operations|digital marketing specialist)\b", "marketing_tech"),
     # Data & Analytics
-    (r"\b(data engineer(ing)?|analytics engineer|data architect|database developer|database administrator|dba)\b", "data_analytics"),
-    (r"\b(data analyst|bi analyst|bi developer|data analytics)\b", "data_analytics"),
+    (r"\b(data engineer(ing)?|analytics engineer|data architect|database developer|database administrator|dba|bi analyst|bi developer|data analyst|data analytics)\b", "data_analytics"),
     (r"\b(data scientist|data science)\b", "ai_ml"),
     # AI / ML
     (r"\b(machine learning|ml engineer|ai engineer|ai researcher|mlops|nlp engineer|computer vision engineer|deep learning engineer)\b", "ai_ml"),
     # Software Engineering
-    (r"\b(backend|frontend|full[\s\-]?stack|software engineer|software developer|web developer|mobile engineer|mobile developer|ios developer|android developer|platform engineer|embedded engineer|application developer|api developer|desarrollador|développeur|desenvolvedor)\b", "software_engineering"),
+    (r"\b(backend|frontend|full[\s\-]?stack|software engineer|software developer|web developer|mobile engineer|mobile developer|ios developer|android developer|platform engineer|embedded engineer|application developer|api developer|release engineer|build engineer|desarrollador|développeur|desenvolvedor)\b", "software_engineering"),
     (r"\b(engineering manager|vp of engineering|head of engineering|cto|chief technology officer)\b", "software_engineering"),
     # DevOps & Cloud
     (r"\b(devops|site reliability|sre|cloud engineer|cloud architect)\b", "devops_cloud"),
-    # Cybersecurity
-    (r"\b(cybersecurity|security engineer|application security|secops|infosec|information security|cloud security|soc analyst|grc analyst|security analyst)\b", "cybersecurity"),
+    # Cybersecurity & Compliance
+    (r"\b(cybersecurity|security engineer|application security|secops|infosec|information security|cloud security|soc analyst|grc analyst|security analyst|compliance analyst)\b", "cybersecurity"),
     # Infrastructure
     (r"\b(infrastructure engineer|systems engineer|network engineer|sysadmin|systems administrator|network administrator|it administrator)\b", "infrastructure"),
     # QA & Testing
@@ -187,6 +186,9 @@ SECONDARY_TECH_KEYWORDS: list[str] = [
     "ai training",
     "system requirements",
     "software integration",
+    "compliance",
+    "soc2",
+    "gdpr",
 ]
 
 
@@ -236,10 +238,10 @@ def classify_tech_job(job: dict[str, Any]) -> TechClassificationResult:
     if not title_strong_matched:
         for pattern, cat in AMBIGUOUS_TITLE_PATTERNS:
             if re.search(pattern, title_norm):
-                score += 15.0
+                score += 20.0
                 title_assigned_category = cat
                 signals.append(f"ambiguous_title: '{title_raw}' ({cat})")
-                category_votes[cat] += 15.0
+                category_votes[cat] += 20.0
                 break
 
     # Non-tech title penalties
@@ -284,7 +286,6 @@ def classify_tech_job(job: dict[str, Any]) -> TechClassificationResult:
     for kw, cat in STRONG_TECH_KEYWORDS.items():
         if re.search(r"\b" + re.escape(kw) + r"\b", full_text_norm):
             matched_strong_keywords.append(kw)
-            # Apply category vote if title is not strongly anchored to design/product/writing
             if not title_assigned_category or title_assigned_category in ("software_engineering", "data_analytics", "ai_ml", "devops_cloud", "marketing_tech"):
                 category_votes[cat] += 5.0
 
@@ -303,7 +304,7 @@ def classify_tech_job(job: dict[str, Any]) -> TechClassificationResult:
         score += sec_score
         signals.append(f"keywords_secondary ({len(matched_secondary_keywords)}): {', '.join(matched_secondary_keywords[:4])}")
 
-    # Description Context Penalty for Ambiguous Non-Tech Marketing/Finance Roles
+    # Context Penalty for Ambiguous Non-Tech Marketing/Finance Roles
     if not title_strong_matched and ("marketing" in title_norm or "business analyst" in title_norm):
         non_tech_context = ["budget", "payroll", "sales leads", "cold call", "brochure", "event planning", "flyer"]
         if any(c in desc_norm for c in non_tech_context) and not matched_strong_keywords:
@@ -317,17 +318,17 @@ def classify_tech_job(job: dict[str, Any]) -> TechClassificationResult:
     elif max(category_votes.values()) > 0:
         final_category = max(category_votes, key=lambda k: category_votes[k])
 
-    # 5. Threshold & Confidence Calibration
-    is_tech_job = score >= 24.0
+    # 5. Threshold & Confidence Calibration (High Recall: score >= 20.0)
+    is_tech_job = score >= 20.0
 
-    if score >= 45.0:
-        confidence = min(0.88 + (score - 45.0) * 0.002, 0.98)
-    elif 24.0 <= score < 45.0:
-        confidence = round(0.70 + (score - 24.0) * 0.008, 2)
-    elif 12.0 <= score < 24.0:
-        confidence = round(0.45 + (score - 12.0) * 0.015, 2)
+    if score >= 40.0:
+        confidence = min(0.85 + (score - 40.0) * 0.003, 0.98)
+    elif 20.0 <= score < 40.0:
+        confidence = round(0.70 + (score - 20.0) * 0.007, 2)
+    elif 10.0 <= score < 20.0:
+        confidence = round(0.45 + (score - 10.0) * 0.02, 2)
     else:
-        confidence = min(0.85 + max(0.0, 12.0 - score) * 0.005, 0.99)
+        confidence = min(0.85 + max(0.0, 10.0 - score) * 0.005, 0.99)
 
     return TechClassificationResult(
         is_tech_job=is_tech_job,
