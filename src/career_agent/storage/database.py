@@ -621,12 +621,13 @@ class JobStore:
         self.user_id = user_id
         self.engine: Engine = initialize_database(database)
 
-    def _ensure_user_exists(self) -> None:
+    def _ensure_user_exists(self, user_id: str | None = None) -> None:
+        target_user_id = user_id or self.user_id
         now = utc_now()
         with self.engine.begin() as connection:
             values = {
-                "user_id": self.user_id,
-                "email": f"{self.user_id}@local.invalid",
+                "user_id": target_user_id,
+                "email": f"{target_user_id}@local.invalid",
                 "email_verified": False,
                 "is_active": True,
                 "created_at": now,
@@ -1378,6 +1379,8 @@ class JobStore:
                 visibility == "private" and not owner_user_id
             ):
                 raise ValueError("Private jobs require an owner_user_id")
+            if owner_user_id:
+                self._ensure_user_exists(owner_user_id)
             listing_key = f"{visibility}:{owner_user_id or ''}:{source}:{source_job_id}"
             canonical_key = _job_canonical_key(job)
             canonical_content_hash = _canonical_content_hash(job)
