@@ -9,10 +9,16 @@ export type Job = {
   local_relevance?: "TARGET" | "REVIEW" | "EXCLUDE" | null;
   is_active?: boolean;
   last_seen_at?: string | null;
+  canonical_content_hash?: string;
+  normalized_company?: string;
+  normalized_location?: string;
+  active_listing_count?: number;
   sources?: Array<{
     source: string;
     source_job_id: string;
+    source_requisition_id: string;
     url: string;
+    source_url_history: string[];
     availability_status: "active" | "inactive" | "unknown";
     last_seen_at: string;
     last_checked_at: string | null;
@@ -23,6 +29,12 @@ export type JobDetail = Job & {
   match?: Match["match"] | null;
   application?: Application | null;
 };
+
+export function availableJobSources(job: Job) {
+  return (job.sources ?? []).filter(
+    (source) => source.availability_status !== "inactive" && Boolean(source.url),
+  );
+}
 
 export type Match = {
   job_id: string;
