@@ -230,8 +230,8 @@ function ProfileJobStatus({ job }: { job: BackgroundJob }) {
   if (job.status === "failed")
     return (
       <div className="profile-job-status profile-job-failed" role="alert">
-        <strong>We couldn't process your resume</strong>
-        <span>You can try the action again when ready.</span>
+        <strong>We couldn't complete this {formatJobKind(job.kind)}</strong>
+        <span>Nothing was changed. You can try the action again when ready.</span>
       </div>
     );
   return (
