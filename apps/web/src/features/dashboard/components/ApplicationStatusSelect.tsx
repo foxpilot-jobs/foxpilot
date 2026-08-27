@@ -26,6 +26,14 @@ export function ApplicationStatusSelect({
   const triggerRef = useRef<HTMLButtonElement>(null);
 
   const current = options.find((o) => o.value === (status ?? "")) ?? options[0];
+  const variant =
+    status === "offered"
+      ? "success"
+      : status === "rejected"
+        ? "error"
+        : status === "interviewing"
+          ? "brand"
+          : "neutral";
 
   useEffect(() => {
     if (!open) return;
@@ -61,7 +69,7 @@ export function ApplicationStatusSelect({
       <button
         ref={triggerRef}
         type="button"
-        className="status-select-trigger"
+        className={`status-select-trigger ui-badge ui-badge-${variant}`}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label={`Application status for ${jobTitle}`}

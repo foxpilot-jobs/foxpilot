@@ -1,9 +1,7 @@
 import { ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { Application, Job } from "../../../api";
-import { Badge } from "../../../shared/ui/Badge";
 import { EmptyState } from "../../../shared/ui/EmptyState";
-import { formatStatus } from "../constants";
 import { ApplicationStatusSelect } from "./ApplicationStatusSelect";
 
 export function RecentApplications({
@@ -64,21 +62,12 @@ function ApplicationRow({
 }) {
   const title = application.title ?? job?.title ?? "Untitled role";
   const company = application.company ?? job?.company ?? "Company not specified";
-  const variant =
-    application.status === "offered"
-      ? "success"
-      : application.status === "rejected"
-        ? "error"
-        : application.status === "applied" || application.status === "interviewing"
-          ? "brand"
-          : "neutral";
   return (
     <div className="dashboard-application-row">
       <div className="dashboard-application-copy">
         <strong>{company}</strong>
         <span>{title}</span>
       </div>
-      <Badge variant={variant}>{formatStatus(application.status)}</Badge>
       <ApplicationStatusSelect
         disabled={updating}
         jobTitle={title}

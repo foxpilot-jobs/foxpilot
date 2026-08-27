@@ -107,8 +107,6 @@
   grid-template-columns: repeat(5, minmax(220px, 1fr));
   gap: var(--space-3);
   align-items: start;
-  overflow-x: auto;
-  padding-bottom: var(--space-2);
 }
 
 .applications-column {
