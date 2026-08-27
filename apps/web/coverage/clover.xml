@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<coverage generated="1787825332385" clover="3.2.0">
-  <project timestamp="1787825332385" name="All files">
-    <metrics statements="115" coveredstatements="96" conditionals="129" coveredconditionals="91" methods="55" coveredmethods="43" elements="299" coveredelements="230" complexity="0" loc="115" ncloc="115" packages="5" files="10" classes="10"/>
+<coverage generated="1787825952325" clover="3.2.0">
+  <project timestamp="1787825952326" name="All files">
+    <metrics statements="118" coveredstatements="99" conditionals="134" coveredconditionals="96" methods="56" coveredmethods="44" elements="308" coveredelements="239" complexity="0" loc="118" ncloc="118" packages="5" files="11" classes="11"/>
     <package name="features.dashboard">
       <metrics statements="2" coveredstatements="2" conditionals="0" coveredconditionals="0" methods="1" coveredmethods="1"/>
       <file name="constants.ts" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/dashboard/constants.ts">
@@ -11,7 +11,7 @@
       </file>
     </package>
     <package name="features.dashboard.components">
-      <metrics statements="26" coveredstatements="22" conditionals="26" coveredconditionals="17" methods="12" coveredmethods="11"/>
+      <metrics statements="29" coveredstatements="25" conditionals="31" coveredconditionals="22" methods="13" coveredmethods="12"/>
       <file name="ApplicationStatusSelect.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/dashboard/components/ApplicationStatusSelect.tsx">
         <metrics statements="26" coveredstatements="22" conditionals="26" coveredconditionals="17" methods="12" coveredmethods="11"/>
         <line num="13" count="1" type="stmt"/>
@@ -40,6 +40,12 @@
         <line num="69" count="1" type="stmt"/>
         <line num="77" count="6" type="stmt"/>
         <line num="83" count="1" type="stmt"/>
+      </file>
+      <file name="greeting.ts" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/dashboard/components/greeting.ts">
+        <metrics statements="3" coveredstatements="3" conditionals="5" coveredconditionals="5" methods="1" coveredmethods="1"/>
+        <line num="2" count="6" type="cond" truecount="2" falsecount="0"/>
+        <line num="3" count="4" type="cond" truecount="2" falsecount="0"/>
+        <line num="4" count="2" type="stmt"/>
       </file>
     </package>
     <package name="features.dashboard.components.matches">
