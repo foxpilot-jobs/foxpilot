@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import {
+  deleteProfile,
+  deleteResume,
   getBackgroundJob,
   getProfile,
   runMatching,
@@ -8,7 +10,9 @@ import {
   type Profile,
 } from "../../../api";
 import { Alert } from "../../../shared/ui/Alert";
+import { Button } from "../../../shared/ui/Button";
 import { ErrorState } from "../../../shared/ui/ErrorState";
+import { Modal, ModalActions } from "../../../shared/ui/Modal";
 import { Spinner } from "../../../shared/ui/Spinner";
 import { Toast } from "../../../shared/ui/Toast";
 import { ProfileActions } from "../components/ProfileActions";
@@ -18,6 +22,7 @@ import { ProfileOverview } from "../components/ProfileOverview";
 import { ProfileReadiness } from "../components/ProfileReadiness";
 import { ProfileSkeleton } from "../components/ProfileSkeleton";
 import { ResumeCard } from "../components/ResumeCard";
+import { WorkspaceManager } from "../components/WorkspaceManager";
 
 const JOB_POLL_DELAYS_MS = [3000, 6000, 12000, 24000, 30000, 30000, 30000, 30000, 30000];
 
@@ -32,6 +37,12 @@ export function ProfileSetupPage() {
   const [activeJob, setActiveJob] = useState<BackgroundJob | null>(null);
   const [selectedFileName, setSelectedFileName] = useState<string | undefined>();
   const [retryToken, setRetryToken] = useState(0);
+
+  // Deletion modals
+  const [showDeleteResume, setShowDeleteResume] = useState(false);
+  const [showDeleteProfile, setShowDeleteProfile] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -149,6 +160,36 @@ export function ProfileSetupPage() {
     }
   }
 
+  async function handleDeleteResume() {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteResume();
+      setShowDeleteResume(false);
+      setRetryToken((t) => t + 1);
+      setMessage("Resume removed. Your extracted profile data is still available.");
+    } catch {
+      setDeleteError("Could not remove the resume. Please try again.");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  async function handleDeleteProfile() {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteProfile();
+      setShowDeleteProfile(false);
+      setRetryToken((t) => t + 1);
+      setMessage("Profile data removed from this workspace.");
+    } catch {
+      setDeleteError("Could not remove the profile. Please try again.");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   if (loading) return <ProfileSkeleton />;
   if (loadError)
     return (
@@ -175,9 +216,30 @@ export function ProfileSetupPage() {
   const processing = busy || jobProcessing;
   const resumeBusy =
     activeAction === "upload" || (jobProcessing && activeJob?.kind === "profile_generation");
+
+  const dangerActions = (
+    <>
+      {profile?.resume_filename && (
+        <Button size="sm" variant="danger" onClick={() => setShowDeleteResume(true)}>
+          Remove resume
+        </Button>
+      )}
+      {hasProfileData && (
+        <Button size="sm" variant="danger" onClick={() => setShowDeleteProfile(true)}>
+          Clear profile data
+        </Button>
+      )}
+    </>
+  );
+
   return (
     <main className="profile-page">
-      <ProfileHeader hasProfileData={hasProfileData} profile={profile} />
+      <ProfileHeader
+        dangerActions={dangerActions}
+        hasProfileData={hasProfileData}
+        profile={profile}
+        workspaceSlot={<WorkspaceManager onSwitch={() => setRetryToken((t) => t + 1)} />}
+      />
       {message && (
         <div className="profile-message">
           <Toast title="Profile update" variant="success" onDismiss={() => setMessage(null)}>
@@ -215,6 +277,49 @@ export function ProfileSetupPage() {
           <ProfileInsightsLink />
         </aside>
       </div>
+
+      {/* ── Delete resume confirmation ── */}
+      <Modal
+        open={showDeleteResume}
+        title="Remove resume?"
+        onClose={() => setShowDeleteResume(false)}
+      >
+        <p>
+          This will remove the original resume file from this workspace. The extracted profile data
+          will remain until you clear it separately.
+        </p>
+        {deleteError && <p className="workspace-error">{deleteError}</p>}
+        <ModalActions>
+          <Button variant="outline" onClick={() => setShowDeleteResume(false)}>
+            Cancel
+          </Button>
+          <Button disabled={deleting} variant="danger" onClick={() => void handleDeleteResume()}>
+            {deleting ? "Removing…" : "Remove resume"}
+          </Button>
+        </ModalActions>
+      </Modal>
+
+      {/* ── Clear profile confirmation ── */}
+      <Modal
+        open={showDeleteProfile}
+        title="Clear profile data?"
+        onClose={() => setShowDeleteProfile(false)}
+      >
+        <p>
+          This will permanently remove your extracted career profile and resume for the current
+          workspace. Match results already generated will also be removed. You can re-upload your
+          resume at any time.
+        </p>
+        {deleteError && <p className="workspace-error">{deleteError}</p>}
+        <ModalActions>
+          <Button variant="outline" onClick={() => setShowDeleteProfile(false)}>
+            Cancel
+          </Button>
+          <Button disabled={deleting} variant="danger" onClick={() => void handleDeleteProfile()}>
+            {deleting ? "Clearing…" : "Clear profile data"}
+          </Button>
+        </ModalActions>
+      </Modal>
     </main>
   );
 }
