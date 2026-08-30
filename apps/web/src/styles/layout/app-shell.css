@@ -246,6 +246,57 @@
   background: var(--color-brand-soft);
 }
 
+/* Workspace switcher items inside expanded nav */
+.ui-nav-subgroup-label {
+  display: block;
+  padding: var(--space-2) var(--space-2) var(--space-1);
+  color: var(--color-text-subtle);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ui-nav-workspace-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ui-nav-workspace-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ui-nav-workspace-active {
+  color: var(--color-brand);
+}
+
+/* Flyout workspace section label */
+.ui-nav-flyout-section {
+  margin-top: var(--space-1);
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-2);
+  font-weight: 600;
+}
+
+/* Workspace button inside flyout */
+.ui-nav-workspace-flyout {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
 .ui-app-content {
   min-height: calc(100vh - 64px);
   margin-left: var(--sidebar-w, 240px);

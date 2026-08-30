@@ -188,29 +188,28 @@
   outline: none;
 }
 
-/* Profile header layout with workspace + danger actions */
-.profile-header-top {
+/* Danger zone at the bottom of the profile page */
+.profile-danger-zone {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-6);
-  margin-bottom: var(--space-4);
-}
-
-.profile-header-workspace {
-  flex: 0 0 auto;
-  padding-top: var(--space-1);
-}
-
-.profile-header-bottom {
-  display: flex;
-  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-3);
+  gap: var(--space-4);
+  border-top: 1px solid var(--color-border);
+  margin-top: var(--space-10);
+  padding-top: var(--space-6);
 }
 
-.profile-danger-actions {
-  display: flex;
-  gap: var(--space-2);
+.profile-danger-zone-copy {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.profile-danger-zone-copy strong {
+  color: var(--color-text-primary);
+  font-size: 14px;
+}
+
+.profile-danger-zone-copy span {
+  color: var(--color-text-muted);
+  font-size: 13px;
 }

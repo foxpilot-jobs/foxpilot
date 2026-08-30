@@ -5,37 +5,57 @@
 }
 
 .profile-page-header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--space-8);
   margin-bottom: var(--space-8);
 }
 
-.profile-page-header h1 {
-  margin: var(--space-2) 0 var(--space-3);
+/* Row 1: eyebrow label (left) + workspace selector (right) */
+.profile-header-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-2);
+}
+
+.profile-header-workspace {
+  flex: 0 0 auto;
+}
+
+/* Row 2: big title (left) + readiness badge (right, baseline-aligned) */
+.profile-header-title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-6);
+  margin-bottom: var(--space-3);
+}
+
+.profile-header-title-row h1 {
+  margin: 0;
   color: var(--color-text-primary);
   font-family: var(--font-heading);
-  font-size: clamp(32px, 4vw, 48px);
+  font-size: clamp(28px, 4vw, 44px);
   font-weight: 700;
   letter-spacing: -0.035em;
   line-height: 1.1;
 }
 
-.profile-page-header p:not(.ui-eyebrow) {
+.profile-header-sub {
   margin: 0;
   color: var(--color-text-secondary);
-  font-size: 16px;
+  font-size: 15px;
   line-height: 24px;
 }
 
 .profile-readiness-chip {
-  display: grid;
-  justify-items: end;
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
   gap: var(--space-2);
   color: var(--color-text-muted);
   font-size: 12px;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .profile-readiness,
@@ -159,6 +179,27 @@
 .profile-resume-current span:not(.profile-resume-file-icon) {
   color: var(--color-text-muted);
   font-size: 12px;
+}
+
+.profile-resume-delete {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  background: transparent;
+  cursor: pointer;
+  transition:
+    color var(--duration-fast),
+    background-color var(--duration-fast);
+}
+
+.profile-resume-delete:hover {
+  color: var(--color-error);
+  background: color-mix(in srgb, var(--color-error) 10%, transparent);
 }
 
 .profile-upload {

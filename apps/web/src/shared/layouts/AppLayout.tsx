@@ -1,5 +1,6 @@
 import {
   BriefcaseBusiness,
+  Check,
   ChevronDown,
   ChevronRight,
   CircleUserRound,
@@ -10,8 +11,9 @@ import {
   Sun,
   type LucideIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { listWorkspaces, switchWorkspace, type Workspace } from "../../api";
 import { useAuth } from "../../features/auth/useAuth";
 import { AppShell, MobileNav, Sidebar, Topbar } from "../ui/AppShell";
 import { Button } from "../ui/Button";
@@ -25,6 +27,7 @@ type NavItem = {
   icon: LucideIcon;
   end?: boolean;
   children?: NavChild[];
+  workspaces?: true; // renders live workspace switcher as sub-items
 };
 
 const primaryNavigation: NavItem[] = [
@@ -39,6 +42,7 @@ const profileNavigation: NavItem[] = [
     to: "/app/profile",
     icon: CircleUserRound,
     children: [{ label: "Insights", to: "/app/profile/insights" }],
+    workspaces: true,
   },
 ];
 
@@ -124,6 +128,27 @@ function NavigationLink({ item, mobile = false }: { item: NavItem; mobile?: bool
   const [open, setOpen] = useState(Boolean(childActive));
   const [flyoutOpen, setFlyoutOpen] = useState(false);
 
+  // Live workspace list — only loaded when this nav item has workspaces: true
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  useEffect(() => {
+    if (!item.workspaces) return;
+    listWorkspaces()
+      .then(setWorkspaces)
+      .catch(() => {});
+  }, [item.workspaces]);
+
+  async function handleWorkspaceSwitch(ws: Workspace) {
+    if (ws.is_active) return;
+    try {
+      await switchWorkspace(ws.workspace_id);
+      setWorkspaces((prev) =>
+        prev.map((w) => ({ ...w, is_active: w.workspace_id === ws.workspace_id })),
+      );
+    } catch {
+      // non-blocking — user can retry from the profile page
+    }
+  }
+
   if (mobile) {
     return (
       <NavLink
@@ -181,6 +206,23 @@ function NavigationLink({ item, mobile = false }: { item: NavItem; mobile?: bool
               {child.label}
             </NavLink>
           ))}
+          {item.workspaces && workspaces.length > 0 && (
+            <>
+              <span className="ui-nav-subgroup-label">Workspaces</span>
+              {workspaces.map((ws) => (
+                <button
+                  className={`ui-nav-sublink ui-nav-workspace-item ${ws.is_active ? "ui-nav-workspace-active" : ""}`}
+                  key={ws.workspace_id}
+                  title={ws.name}
+                  type="button"
+                  onClick={() => void handleWorkspaceSwitch(ws)}
+                >
+                  {ws.is_active && <Check size={12} aria-hidden="true" />}
+                  <span className="ui-nav-workspace-name">{ws.name}</span>
+                </button>
+              ))}
+            </>
+          )}
         </div>
       )}
       <div className="ui-nav-flyout" role={hasChildren ? "menu" : undefined}>
@@ -196,6 +238,25 @@ function NavigationLink({ item, mobile = false }: { item: NavItem; mobile?: bool
             {child.label}
           </NavLink>
         ))}
+        {item.workspaces && workspaces.length > 0 && (
+          <>
+            <span className="ui-nav-flyout-label ui-nav-flyout-section">Workspaces</span>
+            {workspaces.map((ws) => (
+              <button
+                className={`ui-nav-flyout-link ui-nav-workspace-flyout ${ws.is_active ? "ui-nav-workspace-active" : ""}`}
+                key={ws.workspace_id}
+                type="button"
+                onClick={() => {
+                  void handleWorkspaceSwitch(ws);
+                  setFlyoutOpen(false);
+                }}
+              >
+                {ws.is_active && <Check size={12} aria-hidden="true" />}
+                {ws.name}
+              </button>
+            ))}
+          </>
+        )}
       </div>
     </div>
   );
