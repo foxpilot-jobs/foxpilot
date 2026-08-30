@@ -48,6 +48,14 @@ The chosen stack for when frontend tests are added is **Vitest + React Testing L
 
 The initial coverage prioritizes the changed behaviors: `ThemeProvider` persistence, the `AppShell` sidebar collapse/mobile-drawer toggle, and the `Modal` confirmation flow. Future behavior changes should extend this suite.
 
+## Workspaces as the multi-profile primitive
+
+A workspace is a named, user-owned job-search context. Each workspace carries its own resume, extracted profile, target-role intent, match results, and application history. This is intentionally broader than "multiple resumes": the same resume may produce a different profile when the user targets a different role family (e.g. "Senior IC" vs "Engineering Manager"). A user may hold any number of workspaces; exactly one is active at a time. Switching activates a different workspace atomically.
+
+Implementation is a `workspaces` table (`workspace_id`, `user_id`, `name`, `is_active`, `created_at`, `updated_at`). The `profiles` table gains a `workspace_id` foreign key and a unique constraint on `(user_id, workspace_id)`. Background jobs and match results reference `workspace_id` for full isolation. Deleting a workspace hard-deletes the profile row (resume text + extracted profile) to satisfy SYSTEM_DESIGN's retention requirement. Match results and applications referencing the workspace are also deleted. No soft-delete is used for workspaces because there is no operational need to recover a deleted workspace; the user must re-upload the resume if they want to recreate it.
+
+Original resume bytes in encrypted object storage is a deferred architecture item (see SYSTEM_DESIGN implementation order step 6). For now, resume text is stored in Postgres and is scrubbed on workspace or profile deletion. The API must delete the profile row immediately and synchronously on a DELETE request; no background job is needed.
+
 ## India Production Architecture
 
 Limited beta staging uses Railway Hobby in Singapore for speed and low operational overhead, with an explicit small-user/no-SLA boundary. Production targets AWS `ap-south-1` (Mumbai) with managed PostgreSQL, encrypted object storage, a durable queue, separate API and worker services, and authenticated API-only access for web and CLI clients. Local SQLite/Ollama remains supported for privacy and development, but production clients must not connect directly to PostgreSQL. See `SYSTEM_DESIGN.md` for the complete boundary and rollout contract.

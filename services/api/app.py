@@ -599,6 +599,85 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=404, detail="Background job not found")
         return job
 
+    # -- Workspaces ----------------------------------------------------------
+
+    @app.get("/api/v1/workspaces")
+    def list_workspaces(
+        career_service: CareerService = Depends(user_service),
+    ) -> dict:
+        return {"workspaces": career_service.list_workspaces()}
+
+    @app.post("/api/v1/workspaces", status_code=201)
+    def create_workspace(
+        body: dict,
+        career_service: CareerService = Depends(user_service),
+    ) -> dict:
+        name = str(body.get("name", "")).strip()
+        if not name:
+            raise HTTPException(status_code=422, detail="Workspace name is required")
+        if len(name) > 80:
+            raise HTTPException(
+                status_code=422, detail="Workspace name must be 80 characters or fewer"
+            )
+        return career_service.create_workspace(name)
+
+    @app.patch("/api/v1/workspaces/{workspace_id}")
+    def rename_workspace(
+        workspace_id: str,
+        body: dict,
+        career_service: CareerService = Depends(user_service),
+    ) -> dict:
+        name = str(body.get("name", "")).strip()
+        if not name:
+            raise HTTPException(status_code=422, detail="Workspace name is required")
+        if len(name) > 80:
+            raise HTTPException(
+                status_code=422, detail="Workspace name must be 80 characters or fewer"
+            )
+        if not career_service.rename_workspace(workspace_id, name):
+            raise HTTPException(status_code=404, detail="Workspace not found")
+        return {"workspace_id": workspace_id, "name": name}
+
+    @app.post("/api/v1/workspaces/{workspace_id}/activate", status_code=200)
+    def switch_workspace(
+        workspace_id: str,
+        career_service: CareerService = Depends(user_service),
+    ) -> dict:
+        if not career_service.switch_workspace(workspace_id):
+            raise HTTPException(status_code=404, detail="Workspace not found")
+        return {"workspace_id": workspace_id, "is_active": True}
+
+    @app.delete("/api/v1/workspaces/{workspace_id}", status_code=200)
+    def delete_workspace(
+        workspace_id: str,
+        career_service: CareerService = Depends(user_service),
+    ) -> dict:
+        workspaces = career_service.list_workspaces()
+        if len(workspaces) <= 1:
+            raise HTTPException(
+                status_code=409,
+                detail="You must have at least one workspace. Create another before deleting this one.",
+            )
+        if not career_service.delete_workspace(workspace_id):
+            raise HTTPException(status_code=404, detail="Workspace not found")
+        return {"deleted": True, "workspace_id": workspace_id}
+
+    # -- Profile / resume deletion -------------------------------------------
+
+    @app.delete("/api/v1/profile/resume", status_code=200)
+    def delete_resume(
+        career_service: CareerService = Depends(user_service),
+    ) -> dict:
+        career_service.delete_resume()
+        return {"deleted": True}
+
+    @app.delete("/api/v1/profile", status_code=200)
+    def delete_profile(
+        career_service: CareerService = Depends(user_service),
+    ) -> dict:
+        career_service.delete_profile()
+        return {"deleted": True}
+
     @app.post("/api/v1/profile/match", status_code=202)
     def run_profile_matching(
         background_tasks: BackgroundTasks,

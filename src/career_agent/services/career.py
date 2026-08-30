@@ -82,13 +82,43 @@ class CareerService:
                 "profile": {},
                 "created_at": None,
                 "updated_at": None,
+                "workspace_id": None,
             }
         return {
             "resume_filename": profile.get("resume_filename", ""),
             "profile": profile.get("profile_json") or {},
             "created_at": profile.get("created_at"),
             "updated_at": profile.get("updated_at"),
+            "workspace_id": profile.get("workspace_id"),
         }
+
+    def list_workspaces(self) -> list[dict]:
+        with self._store() as store:
+            return store.list_workspaces()
+
+    def create_workspace(self, name: str) -> dict:
+        with self._store() as store:
+            return store.create_workspace(name)
+
+    def rename_workspace(self, workspace_id: str, name: str) -> bool:
+        with self._store() as store:
+            return store.rename_workspace(workspace_id, name)
+
+    def switch_workspace(self, workspace_id: str) -> bool:
+        with self._store() as store:
+            return store.switch_workspace(workspace_id)
+
+    def delete_workspace(self, workspace_id: str) -> bool:
+        with self._store() as store:
+            return store.delete_workspace(workspace_id)
+
+    def delete_profile(self) -> bool:
+        with self._store() as store:
+            return store.delete_profile()
+
+    def delete_resume(self) -> bool:
+        with self._store() as store:
+            return store.delete_resume()
 
     def queue_profile_generation(self, resume_text: str, resume_filename: str) -> str:
         job_id = str(uuid4())

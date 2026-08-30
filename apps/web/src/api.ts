@@ -296,6 +296,77 @@ export function getApplications(
   return request<PaginatedResponse<Application>>(`/api/v1/applications${qs ? `?${qs}` : ""}`);
 }
 
+// -- Workspaces --------------------------------------------------------------
+
+export type Workspace = {
+  workspace_id: string;
+  name: string;
+  is_active: boolean;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
+export async function listWorkspaces(): Promise<Workspace[]> {
+  const data = await request<{ workspaces: Workspace[] }>("/api/v1/workspaces");
+  return data.workspaces;
+}
+
+export async function createWorkspace(name: string): Promise<Workspace> {
+  const response = await fetch(`${API_BASE}/api/v1/workspaces`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ name }),
+  });
+  if (!response.ok) throw new Error(`Could not create workspace: ${response.status}`);
+  return response.json() as Promise<Workspace>;
+}
+
+export async function renameWorkspace(workspaceId: string, name: string): Promise<void> {
+  const response = await fetch(`${API_BASE}/api/v1/workspaces/${encodeURIComponent(workspaceId)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ name }),
+  });
+  if (!response.ok) throw new Error(`Could not rename workspace: ${response.status}`);
+}
+
+export async function switchWorkspace(workspaceId: string): Promise<void> {
+  const response = await fetch(
+    `${API_BASE}/api/v1/workspaces/${encodeURIComponent(workspaceId)}/activate`,
+    { method: "POST", credentials: "include" },
+  );
+  if (!response.ok) throw new Error(`Could not switch workspace: ${response.status}`);
+}
+
+export async function deleteWorkspace(workspaceId: string): Promise<void> {
+  const response = await fetch(`${API_BASE}/api/v1/workspaces/${encodeURIComponent(workspaceId)}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error((body as { detail?: string }).detail ?? `Delete failed: ${response.status}`);
+  }
+}
+
+export async function deleteResume(): Promise<void> {
+  const response = await fetch(`${API_BASE}/api/v1/profile/resume`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  if (!response.ok) throw new Error(`Could not delete resume: ${response.status}`);
+}
+
+export async function deleteProfile(): Promise<void> {
+  const response = await fetch(`${API_BASE}/api/v1/profile`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  if (!response.ok) throw new Error(`Could not delete profile: ${response.status}`);
+}
+
 export async function updateApplication(
   jobId: string,
   status: Application["status"],

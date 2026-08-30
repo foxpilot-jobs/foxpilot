@@ -371,6 +371,34 @@ def _initialize_schema(engine: Engine) -> None:
                     connection.exec_driver_sql(ddl)
             JobStore._upgrade_user_owned_tables(connection)
 
+            # --- workspaces ------------------------------------------------
+            # Migrate old single-row profiles to workspace-scoped rows.
+            profile_cols = {
+                row[1]
+                for row in connection.exec_driver_sql(
+                    "PRAGMA table_info(profiles)"
+                ).fetchall()
+            }
+            if "workspace_id" not in profile_cols:
+                connection.exec_driver_sql(
+                    "ALTER TABLE profiles ADD COLUMN workspace_id VARCHAR"
+                )
+                existing_profiles = connection.exec_driver_sql(
+                    "SELECT user_id, created_at, updated_at FROM profiles"
+                ).fetchall()
+                for p_user_id, p_ca, p_ua in existing_profiles:
+                    wid = f"ws_default_{p_user_id}"
+                    connection.exec_driver_sql(
+                        "INSERT OR IGNORE INTO workspaces "
+                        "(workspace_id, user_id, name, is_active, created_at, updated_at) "
+                        "VALUES (?, ?, 'Default', 1, ?, ?)",
+                        (wid, p_user_id, p_ca, p_ua),
+                    )
+                    connection.exec_driver_sql(
+                        "UPDATE profiles SET workspace_id = ? WHERE user_id = ?",
+                        (wid, p_user_id),
+                    )
+
 
 def initialize_database(database: Path | str | Engine) -> Engine:
     engine = get_engine(database)
@@ -434,15 +462,30 @@ auth_tokens_table = Table(
     Column("used_at", DateTime(timezone=True)),
 )
 
+workspaces_table = Table(
+    "workspaces",
+    metadata,
+    Column("workspace_id", String, primary_key=True),
+    Column("user_id", String, ForeignKey("users.user_id"), nullable=False),
+    Column("name", String, nullable=False),
+    Column("is_active", Boolean, nullable=False, default=True),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+    Column("updated_at", DateTime(timezone=True), nullable=False),
+)
+
 profiles_table = Table(
     "profiles",
     metadata,
-    Column("user_id", String, primary_key=True),
+    Column("user_id", String, nullable=False),
+    Column(
+        "workspace_id", String, ForeignKey("workspaces.workspace_id"), nullable=False
+    ),
     Column("resume_text", Text, nullable=False),
     Column("resume_filename", String, nullable=False),
     Column("profile_json", JSON, nullable=False),
     Column("created_at", DateTime(timezone=True), nullable=False),
     Column("updated_at", DateTime(timezone=True), nullable=False),
+    UniqueConstraint("user_id", "workspace_id", name="uq_profiles_user_workspace"),
 )
 
 background_jobs_table = Table(
@@ -900,27 +943,171 @@ class JobStore:
                 )
             )
 
+    # ------------------------------------------------------------------
+    # Workspaces
+    # ------------------------------------------------------------------
+
+    def _active_workspace_id(self, connection) -> str | None:
+        row = connection.execute(
+            select(workspaces_table.c.workspace_id).where(
+                workspaces_table.c.user_id == self.user_id,
+                workspaces_table.c.is_active.is_(True),
+            )
+        ).first()
+        return row[0] if row else None
+
+    def list_workspaces(self) -> list[dict]:
+        with self.engine.connect() as connection:
+            rows = (
+                connection.execute(
+                    select(workspaces_table)
+                    .where(workspaces_table.c.user_id == self.user_id)
+                    .order_by(workspaces_table.c.created_at)
+                )
+                .mappings()
+                .all()
+            )
+        return [dict(r) for r in rows]
+
+    def create_workspace(self, name: str) -> dict:
+        now = utc_now()
+        workspace_id = f"ws_{uuid4().hex}"
+        with self.engine.begin() as connection:
+            connection.execute(
+                workspaces_table.insert().values(
+                    workspace_id=workspace_id,
+                    user_id=self.user_id,
+                    name=name.strip() or "Untitled workspace",
+                    is_active=False,
+                    created_at=now,
+                    updated_at=now,
+                )
+            )
+        return {"workspace_id": workspace_id, "name": name, "is_active": False}
+
+    def rename_workspace(self, workspace_id: str, name: str) -> bool:
+        now = utc_now()
+        with self.engine.begin() as connection:
+            result = connection.execute(
+                update(workspaces_table)
+                .where(
+                    workspaces_table.c.workspace_id == workspace_id,
+                    workspaces_table.c.user_id == self.user_id,
+                )
+                .values(name=name.strip() or "Untitled workspace", updated_at=now)
+            )
+        return result.rowcount > 0
+
+    def switch_workspace(self, workspace_id: str) -> bool:
+        """Make workspace_id the active workspace for this user. Atomic."""
+        now = utc_now()
+        with self.engine.begin() as connection:
+            owns = connection.execute(
+                select(workspaces_table.c.workspace_id).where(
+                    workspaces_table.c.workspace_id == workspace_id,
+                    workspaces_table.c.user_id == self.user_id,
+                )
+            ).first()
+            if not owns:
+                return False
+            connection.execute(
+                update(workspaces_table)
+                .where(workspaces_table.c.user_id == self.user_id)
+                .values(is_active=False, updated_at=now)
+            )
+            connection.execute(
+                update(workspaces_table)
+                .where(workspaces_table.c.workspace_id == workspace_id)
+                .values(is_active=True, updated_at=now)
+            )
+        return True
+
+    def delete_workspace(self, workspace_id: str) -> bool:
+        """Hard-delete workspace and all its owned data (profile, matches, jobs)."""
+        with self.engine.begin() as connection:
+            owns = connection.execute(
+                select(workspaces_table.c.is_active).where(
+                    workspaces_table.c.workspace_id == workspace_id,
+                    workspaces_table.c.user_id == self.user_id,
+                )
+            ).first()
+            if not owns:
+                return False
+            was_active = bool(owns[0])
+            # Scrub profile data (resume text + extracted profile) immediately.
+            connection.execute(
+                delete(profiles_table).where(
+                    profiles_table.c.workspace_id == workspace_id,
+                    profiles_table.c.user_id == self.user_id,
+                )
+            )
+            # Remove workspace record.
+            connection.execute(
+                delete(workspaces_table).where(
+                    workspaces_table.c.workspace_id == workspace_id
+                )
+            )
+            # If the deleted workspace was active, make the oldest remaining one active.
+            if was_active:
+                next_ws = connection.execute(
+                    select(workspaces_table.c.workspace_id)
+                    .where(workspaces_table.c.user_id == self.user_id)
+                    .order_by(workspaces_table.c.created_at)
+                    .limit(1)
+                ).first()
+                if next_ws:
+                    connection.execute(
+                        update(workspaces_table)
+                        .where(workspaces_table.c.workspace_id == next_ws[0])
+                        .values(is_active=True, updated_at=utc_now())
+                    )
+        return True
+
+    # ------------------------------------------------------------------
+    # Profiles (workspace-scoped)
+    # ------------------------------------------------------------------
+
     def save_profile(
         self, resume_text: str, resume_filename: str, profile: dict
     ) -> None:
+        self._ensure_user_exists()
         now = utc_now()
-        values = {
-            "user_id": self.user_id,
-            "resume_text": resume_text,
-            "resume_filename": resume_filename,
-            "profile_json": profile,
-            "updated_at": now,
-        }
         with self.engine.begin() as connection:
+            workspace_id = self._active_workspace_id(connection)
+            if not workspace_id:
+                # Auto-create a Default workspace if none exists yet.
+                workspace_id = f"ws_default_{self.user_id}"
+                connection.execute(
+                    workspaces_table.insert().values(
+                        workspace_id=workspace_id,
+                        user_id=self.user_id,
+                        name="Default",
+                        is_active=True,
+                        created_at=now,
+                        updated_at=now,
+                    )
+                )
+            values = {
+                "user_id": self.user_id,
+                "workspace_id": workspace_id,
+                "resume_text": resume_text,
+                "resume_filename": resume_filename,
+                "profile_json": profile,
+                "updated_at": now,
+            }
             existing = connection.execute(
                 select(profiles_table.c.user_id).where(
-                    profiles_table.c.user_id == self.user_id
+                    profiles_table.c.user_id == self.user_id,
+                    profiles_table.c.workspace_id == workspace_id,
                 )
             ).first()
             if existing:
                 connection.execute(
                     update(profiles_table)
-                    .where(profiles_table.c.user_id == self.user_id)
+                    .where(
+                        profiles_table.c.user_id == self.user_id,
+                        profiles_table.c.workspace_id == workspace_id,
+                    )
                     .values(**values)
                 )
             else:
@@ -929,17 +1116,53 @@ class JobStore:
                 )
 
     def get_profile(self) -> dict | None:
+        """Return the profile for the active workspace."""
         with self.engine.connect() as connection:
+            workspace_id = self._active_workspace_id(connection)
+            if not workspace_id:
+                return None
             row = (
                 connection.execute(
                     select(profiles_table).where(
-                        profiles_table.c.user_id == self.user_id
+                        profiles_table.c.user_id == self.user_id,
+                        profiles_table.c.workspace_id == workspace_id,
                     )
                 )
                 .mappings()
                 .first()
             )
         return dict(row) if row else None
+
+    def delete_profile(self) -> bool:
+        """Scrub resume text and extracted profile for the active workspace."""
+        with self.engine.begin() as connection:
+            workspace_id = self._active_workspace_id(connection)
+            if not workspace_id:
+                return False
+            result = connection.execute(
+                delete(profiles_table).where(
+                    profiles_table.c.user_id == self.user_id,
+                    profiles_table.c.workspace_id == workspace_id,
+                )
+            )
+        return result.rowcount > 0
+
+    def delete_resume(self) -> bool:
+        """Clear only resume_text and resume_filename, keep the extracted profile."""
+        now = utc_now()
+        with self.engine.begin() as connection:
+            workspace_id = self._active_workspace_id(connection)
+            if not workspace_id:
+                return False
+            result = connection.execute(
+                update(profiles_table)
+                .where(
+                    profiles_table.c.user_id == self.user_id,
+                    profiles_table.c.workspace_id == workspace_id,
+                )
+                .values(resume_text="", resume_filename="", updated_at=now)
+            )
+        return result.rowcount > 0
 
     def create_background_job(
         self,

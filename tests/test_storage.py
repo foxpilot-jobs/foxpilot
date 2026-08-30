@@ -333,3 +333,60 @@ def test_bulk_upsert_jobs_preserves_uniqueness_and_canonical_deduplication(
         assert len(all_jobs) == 2
         be_job = next(j for j in all_jobs if j["title"] == "Backend Engineer")
         assert len(be_job["sources"]) == 2
+
+
+def test_workspace_lifecycle(tmp_path: Path) -> None:
+    """Create, switch, rename, and delete workspaces; verify profile isolation."""
+    db = tmp_path / "ws.sqlite3"
+    with JobStore(db, user_id="alice") as store:
+        # Default workspace auto-created on first save_profile
+        store.save_profile("Resume text A", "resume_a.pdf", {"name": "Alice A"})
+        ws_list = store.list_workspaces()
+        assert len(ws_list) == 1
+        assert ws_list[0]["is_active"] is True
+        default_id = ws_list[0]["workspace_id"]
+
+        # Create a second workspace and verify it is not yet active
+        ws2 = store.create_workspace("PM pivot")
+        assert not ws2["is_active"]
+        assert len(store.list_workspaces()) == 2
+
+        # Rename the second workspace
+        renamed = store.rename_workspace(ws2["workspace_id"], "Product roles")
+        assert renamed is True
+        assert store.list_workspaces()[1]["name"] == "Product roles"
+
+        # Switch to the second workspace; profile should be empty there
+        switched = store.switch_workspace(ws2["workspace_id"])
+        assert switched is True
+        assert store.get_profile() is None
+
+        # Save a new profile in the second workspace
+        store.save_profile("Resume text B", "resume_b.pdf", {"name": "Alice B"})
+        profile_b = store.get_profile()
+        assert profile_b is not None
+        assert profile_b["profile_json"]["name"] == "Alice B"
+
+        # Switch back; should see original profile
+        store.switch_workspace(default_id)
+        profile_a = store.get_profile()
+        assert profile_a is not None
+        assert profile_a["profile_json"]["name"] == "Alice A"
+
+        # delete_resume only clears the file, not the extracted profile
+        store.delete_resume()
+        after_resume_delete = store.get_profile()
+        assert after_resume_delete is not None
+        assert after_resume_delete["resume_text"] == ""
+        assert after_resume_delete["profile_json"]["name"] == "Alice A"
+
+        # delete_profile scrubs both
+        store.delete_profile()
+        assert store.get_profile() is None
+
+        # Deleting the only remaining workspace with data is allowed if another exists
+        deleted = store.delete_workspace(ws2["workspace_id"])
+        assert deleted is True
+        assert len(store.list_workspaces()) == 1
+        assert store.list_workspaces()[0]["workspace_id"] == default_id
+        assert store.list_workspaces()[0]["is_active"] is True
