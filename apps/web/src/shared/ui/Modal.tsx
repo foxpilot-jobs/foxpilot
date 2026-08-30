@@ -23,7 +23,12 @@ export function Modal({
     };
     document.addEventListener("keydown", onKeyDown);
     document.body.classList.add("ui-scroll-locked");
-    dialogRef.current?.focus();
+    // Only focus the dialog container if focus is not already inside it
+    // (e.g. an autoFocus input). Moving focus to the container steals it
+    // from inputs on every state update that re-triggers the effect.
+    if (!dialogRef.current?.contains(document.activeElement)) {
+      dialogRef.current?.focus();
+    }
     return () => {
       document.removeEventListener("keydown", onKeyDown);
       document.body.classList.remove("ui-scroll-locked");

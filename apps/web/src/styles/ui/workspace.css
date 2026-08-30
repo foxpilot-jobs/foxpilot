@@ -188,29 +188,43 @@
   outline: none;
 }
 
-/* Profile header layout with workspace + danger actions */
-.profile-header-top {
+/* Profile header layout: copy left, controls right */
+.profile-header-layout {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--space-6);
-  margin-bottom: var(--space-4);
+  gap: var(--space-8);
 }
 
-.profile-header-workspace {
-  flex: 0 0 auto;
-  padding-top: var(--space-1);
+.profile-header-copy {
+  flex: 1;
+  min-width: 0;
 }
 
-.profile-header-bottom {
+/* Right-hand panel: workspace selector → readiness → danger actions,
+   stacked vertically and right-aligned so they form one coherent column. */
+.profile-header-panel {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: flex-end;
   gap: var(--space-3);
+  padding-top: var(--space-1);
 }
 
 .profile-danger-actions {
   display: flex;
   gap: var(--space-2);
+}
+
+@media (max-width: 640px) {
+  .profile-header-layout {
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .profile-header-panel {
+    align-items: flex-start;
+    flex-flow: row wrap;
+  }
 }

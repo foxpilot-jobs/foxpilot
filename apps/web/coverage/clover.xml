@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<coverage generated="1788102747986" clover="3.2.0">
-  <project timestamp="1788102747986" name="All files">
-    <metrics statements="1184" coveredstatements="142" conditionals="1252" coveredconditionals="115" methods="476" coveredmethods="58" elements="2912" coveredelements="315" complexity="0" loc="1184" ncloc="1184" packages="17" files="83" classes="83"/>
+<coverage generated="1788109952074" clover="3.2.0">
+  <project timestamp="1788109952079" name="All files">
+    <metrics statements="1185" coveredstatements="143" conditionals="1252" coveredconditionals="116" methods="476" coveredmethods="58" elements="2913" coveredelements="317" complexity="0" loc="1185" ncloc="1185" packages="17" files="83" classes="83"/>
     <package name="src">
       <metrics statements="104" coveredstatements="1" conditionals="109" coveredconditionals="2" methods="34" coveredmethods="0"/>
       <file name="api.ts" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/api.ts">
@@ -756,13 +756,13 @@
       </file>
     </package>
     <package name="src.features.profile.components">
-      <metrics statements="144" coveredstatements="1" conditionals="132" coveredconditionals="0" methods="66" coveredmethods="1"/>
+      <metrics statements="144" coveredstatements="1" conditionals="130" coveredconditionals="0" methods="66" coveredmethods="1"/>
       <file name="ProfileActions.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/profile/components/ProfileActions.tsx">
         <metrics statements="1" coveredstatements="1" conditionals="0" coveredconditionals="0" methods="1" coveredmethods="1"/>
         <line num="13" count="2" type="stmt"/>
       </file>
       <file name="ProfileHeader.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/profile/components/ProfileHeader.tsx">
-        <metrics statements="3" coveredstatements="0" conditionals="12" coveredconditionals="0" methods="1" coveredmethods="0"/>
+        <metrics statements="3" coveredstatements="0" conditionals="10" coveredconditionals="0" methods="1" coveredmethods="0"/>
         <line num="16" count="0" type="cond" truecount="0" falsecount="4"/>
         <line num="18" count="0" type="cond" truecount="0" falsecount="4"/>
         <line num="19" count="0" type="stmt"/>
@@ -1284,7 +1284,7 @@
       </file>
     </package>
     <package name="src.shared.ui">
-      <metrics statements="143" coveredstatements="65" conditionals="168" coveredconditionals="60" methods="77" coveredmethods="27"/>
+      <metrics statements="144" coveredstatements="66" conditionals="170" coveredconditionals="61" methods="77" coveredmethods="27"/>
       <file name="Alert.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/shared/ui/Alert.tsx">
         <metrics statements="3" coveredstatements="1" conditionals="5" coveredconditionals="0" methods="1" coveredmethods="0"/>
         <line num="4" count="1" type="stmt"/>
@@ -1396,7 +1396,7 @@
         <line num="25" count="0" type="stmt"/>
       </file>
       <file name="Modal.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/shared/ui/Modal.tsx">
-        <metrics statements="16" coveredstatements="16" conditionals="6" coveredconditionals="5" methods="6" coveredmethods="6"/>
+        <metrics statements="17" coveredstatements="17" conditionals="8" coveredconditionals="6" methods="6" coveredmethods="6"/>
         <line num="16" count="2" type="stmt"/>
         <line num="17" count="2" type="stmt"/>
         <line num="19" count="2" type="stmt"/>
@@ -1405,14 +1405,15 @@
         <line num="22" count="1" type="cond" truecount="1" falsecount="1"/>
         <line num="24" count="1" type="stmt"/>
         <line num="25" count="1" type="stmt"/>
-        <line num="26" count="1" type="stmt"/>
-        <line num="27" count="2" type="stmt"/>
-        <line num="28" count="1" type="stmt"/>
-        <line num="29" count="1" type="stmt"/>
-        <line num="33" count="2" type="cond" truecount="2" falsecount="0"/>
-        <line num="35" count="1" type="stmt"/>
-        <line num="44" count="1" type="stmt"/>
-        <line num="66" count="1" type="stmt"/>
+        <line num="29" count="1" type="cond" truecount="1" falsecount="1"/>
+        <line num="30" count="1" type="stmt"/>
+        <line num="32" count="1" type="stmt"/>
+        <line num="33" count="1" type="stmt"/>
+        <line num="34" count="1" type="stmt"/>
+        <line num="38" count="2" type="cond" truecount="2" falsecount="0"/>
+        <line num="40" count="1" type="stmt"/>
+        <line num="49" count="1" type="stmt"/>
+        <line num="71" count="1" type="stmt"/>
       </file>
       <file name="Skeleton.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/shared/ui/Skeleton.tsx">
         <metrics statements="6" coveredstatements="0" conditionals="4" coveredconditionals="0" methods="6" coveredmethods="0"/>
