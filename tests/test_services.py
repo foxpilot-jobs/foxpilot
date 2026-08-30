@@ -174,4 +174,5 @@ def test_get_profile_returns_default_resource_when_no_resume(tmp_path: Path) -> 
         "profile": {},
         "created_at": None,
         "updated_at": None,
+        "workspace_id": None,
     }
