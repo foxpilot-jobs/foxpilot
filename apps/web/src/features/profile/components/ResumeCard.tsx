@@ -1,4 +1,4 @@
-import { FileText } from "lucide-react";
+import { FileText, Trash2 } from "lucide-react";
 import type { Profile } from "../../../api";
 import { Badge } from "../../../shared/ui/Badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../shared/ui/Card";
@@ -7,11 +7,13 @@ import { ResumeUpload } from "./ResumeUpload";
 export function ResumeCard({
   busy,
   onFile,
+  onDeleteResume,
   profile,
   selectedFileName,
 }: {
   busy: boolean;
   onFile: (file: File | undefined) => void;
+  onDeleteResume?: () => void;
   profile: Profile | null;
   selectedFileName?: string;
 }) {
@@ -27,7 +29,7 @@ export function ResumeCard({
         {profile && <FileText size={20} aria-hidden="true" />}
       </CardHeader>
       <CardContent>
-        {profile && (
+        {profile?.resume_filename && (
           <div className="profile-resume-current">
             <span className="profile-resume-file-icon">
               <FileText size={18} aria-hidden="true" />
@@ -37,6 +39,17 @@ export function ResumeCard({
               <span>Updated {formatDate(profile.updated_at)}</span>
             </div>
             <Badge variant="success">Uploaded</Badge>
+            {onDeleteResume && (
+              <button
+                aria-label="Remove resume"
+                className="profile-resume-delete"
+                title="Remove resume"
+                type="button"
+                onClick={onDeleteResume}
+              >
+                <Trash2 size={15} aria-hidden="true" />
+              </button>
+            )}
           </div>
         )}
         <ResumeUpload disabled={busy} onFile={onFile} selectedFileName={selectedFileName} />

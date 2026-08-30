@@ -217,25 +217,9 @@ export function ProfileSetupPage() {
   const resumeBusy =
     activeAction === "upload" || (jobProcessing && activeJob?.kind === "profile_generation");
 
-  const dangerActions = (
-    <>
-      {profile?.resume_filename && (
-        <Button size="sm" variant="danger" onClick={() => setShowDeleteResume(true)}>
-          Remove resume
-        </Button>
-      )}
-      {hasProfileData && (
-        <Button size="sm" variant="danger" onClick={() => setShowDeleteProfile(true)}>
-          Clear profile data
-        </Button>
-      )}
-    </>
-  );
-
   return (
     <main className="profile-page">
       <ProfileHeader
-        dangerActions={dangerActions}
         hasProfileData={hasProfileData}
         profile={profile}
         workspaceSlot={<WorkspaceManager onSwitch={() => setRetryToken((t) => t + 1)} />}
@@ -257,6 +241,7 @@ export function ProfileSetupPage() {
         <div className="profile-page-primary">
           <ResumeCard
             busy={resumeBusy}
+            onDeleteResume={profile?.resume_filename ? () => setShowDeleteResume(true) : undefined}
             onFile={handleUpload}
             profile={profile}
             selectedFileName={selectedFileName}
@@ -277,6 +262,22 @@ export function ProfileSetupPage() {
           <ProfileInsightsLink />
         </aside>
       </div>
+
+      {/* ── Danger zone ── */}
+      {hasProfileData && (
+        <div className="profile-danger-zone">
+          <div className="profile-danger-zone-copy">
+            <strong>Clear profile data</strong>
+            <span>
+              Permanently removes your extracted profile and resume for this workspace. You can
+              re-upload any time.
+            </span>
+          </div>
+          <Button size="sm" variant="danger" onClick={() => setShowDeleteProfile(true)}>
+            Clear profile data
+          </Button>
+        </div>
+      )}
 
       {/* ── Delete resume confirmation ── */}
       <Modal
