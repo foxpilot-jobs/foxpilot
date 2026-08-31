@@ -24,6 +24,7 @@ def test_ingestion_tech_filtering_and_ambiguous_roles(tmp_path) -> None:
     mock_source_config = {
         "remoteok": {"enabled": True},
         "remotive": {"enabled": True},
+        "weworkremotely": {"enabled": False},
         "hacker_news": {"enabled": False},
         "arbeitnow": {"enabled": False},
         "jobicy": {"enabled": False},
@@ -75,6 +76,7 @@ def test_idempotent_ingestion_and_source_failure_isolation(tmp_path) -> None:
     mock_source_config = {
         "remoteok": {"enabled": True},
         "remotive": {"enabled": True},
+        "weworkremotely": {"enabled": False},
         "hacker_news": {"enabled": False},
         "arbeitnow": {"enabled": False},
         "jobicy": {"enabled": False},

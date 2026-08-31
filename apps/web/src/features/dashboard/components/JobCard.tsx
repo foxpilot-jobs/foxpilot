@@ -30,7 +30,14 @@ export function JobCard({ application, job, match, onStatusChange, updating }: J
       </div>
       <h3>{job.title}</h3>
       <p className="company">{job.company}</p>
-      <p className="location">{job.location || "Location not specified"}</p>
+      <p className="location">
+        {job.location || "Location not specified"}
+        {job.work_arrangement?.display_label && (
+          <span style={{ marginLeft: "0.5rem", opacity: 0.9 }}>
+            · {job.work_arrangement.display_label}
+          </span>
+        )}
+      </p>
       {match && (
         <span className={`recommendation recommendation-${match.recommendation.toLowerCase()}`}>
           {match.recommendation}

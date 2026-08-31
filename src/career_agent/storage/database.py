@@ -37,6 +37,8 @@ from sqlalchemy.dialects.postgresql import insert as postgresql_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.engine import Engine
 
+from ..work_arrangement import parse_work_arrangement
+
 _ENGINES: dict[str, Engine] = {}
 _INITIALIZED_URLS: set[str] = set()
 _ENGINE_LOCK = threading.Lock()
@@ -2058,6 +2060,8 @@ class JobStore:
             job["normalized_company"] = row["normalized_company"]
             job["normalized_location"] = row["normalized_location"]
             job["active_listing_count"] = row["active_listing_count"]
+            if "work_arrangement" not in job:
+                job["work_arrangement"] = parse_work_arrangement(job).as_dict()
             job_listings = listings_by_job.get(row["job_id"])
             if not job_listings:
                 job_listings = [
@@ -2402,7 +2406,10 @@ class JobStore:
                 result = match_data.get("match") or {}
                 if result.get("recommendation") != recommendation:
                     continue
-            items.append({**match_data, "job": row["payload_json"]})
+            job_payload = dict(row["payload_json"])
+            if "work_arrangement" not in job_payload:
+                job_payload["work_arrangement"] = parse_work_arrangement(job_payload).as_dict()
+            items.append({**match_data, "job": job_payload})
 
         total = len(items)
 
