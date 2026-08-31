@@ -10,6 +10,7 @@ data/jobs
 data/*.db
 data/*.sqlite*
 data/*.json
+!data/sources.json
 tests
 apps/web/node_modules
 apps/web/dist

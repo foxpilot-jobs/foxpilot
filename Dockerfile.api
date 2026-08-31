@@ -13,6 +13,7 @@ ARG PIP_TRUSTED_HOSTS="pypi.org files.pythonhosted.org"
 COPY pyproject.toml requirements.txt README.md LICENSE ./
 COPY src ./src
 COPY services ./services
+COPY data ./data
 COPY alembic.ini ./alembic.ini
 COPY alembic ./alembic
 
