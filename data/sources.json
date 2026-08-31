@@ -10,11 +10,15 @@
   },
   "lever": {
     "boards": [
+      { "slug": "meesho", "company": "Meesho" },
+      { "slug": "zeta", "company": "Zeta" },
       { "slug": "hotstar", "company": "Disney+ Hotstar" }
     ]
   },
   "greenhouse": {
     "boards": [
+      { "slug": "razorpaysoftwareprivatelimited", "company": "Razorpay" },
+      { "slug": "groww", "company": "Groww" },
       { "slug": "postman", "company": "Postman" },
       { "slug": "thoughtworks", "company": "Thoughtworks" },
       { "slug": "inmobi", "company": "InMobi" },
@@ -34,7 +38,9 @@
     "boards": []
   },
   "smartrecruiters": {
-    "boards": []
+    "boards": [
+      { "slug": "Freshworks", "company": "Freshworks" }
+    ]
   },
   "hacker_news": {
     "enabled": true,
