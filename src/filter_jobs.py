@@ -72,6 +72,9 @@ GENERIC_ROLE_WORDS = frozenset(
 )
 
 
+from career_agent.work_arrangement import parse_work_arrangement
+
+
 def profile_matches_job(
     job: dict,
     profile: dict,
@@ -82,6 +85,28 @@ def profile_matches_job(
 
     if job.get("source") == "hackernews":
         return False
+
+    def profile_values(field: str) -> list[str]:
+        value = profile.get(field) or []
+        if isinstance(value, str):
+            return [value]
+        if isinstance(value, dict):
+            values = []
+            for nested in value.values():
+                if isinstance(nested, list):
+                    values.extend(str(item) for item in nested)
+                elif isinstance(nested, str):
+                    values.append(nested)
+            return values
+        return [str(item) for item in value]
+
+    # Location / Work Mode Eligibility Filter for India-based Candidates
+    loc_vals = [normalize(l) for l in profile_values("locations")]
+    candidate_is_india = any("india" in l or "in" in l for l in loc_vals) or not loc_vals
+    if candidate_is_india:
+        wa = parse_work_arrangement(job)
+        if wa.is_india_eligible is False:
+            return False
 
     title_norm = normalize(job.get("title", ""))
     desc_norm = normalize(job.get("description", ""))

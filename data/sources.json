@@ -5,14 +5,30 @@
   "remotive": {
     "enabled": true
   },
+  "weworkremotely": {
+    "enabled": true
+  },
   "lever": {
-    "boards": []
+    "boards": [
+      { "slug": "hotstar", "company": "Disney+ Hotstar" }
+    ]
   },
   "greenhouse": {
-    "boards": []
+    "boards": [
+      { "slug": "postman", "company": "Postman" },
+      { "slug": "thoughtworks", "company": "Thoughtworks" },
+      { "slug": "inmobi", "company": "InMobi" },
+      { "slug": "hackerrank", "company": "HackerRank" },
+      { "slug": "rubrik", "company": "Rubrik" },
+      { "slug": "stripe", "company": "Stripe" },
+      { "slug": "figma", "company": "Figma" }
+    ]
   },
   "ashby": {
-    "boards": []
+    "boards": [
+      { "slug": "notion", "company": "Notion" },
+      { "slug": "linear", "company": "Linear" }
+    ]
   },
   "workable": {
     "boards": []

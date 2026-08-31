@@ -8,6 +8,7 @@ from career_agent.sources.http_sources import (
     fetch_remoteok,
     fetch_remotive,
     fetch_smartrecruiters,
+    fetch_weworkremotely,
     fetch_workable,
 )
 
@@ -19,6 +20,10 @@ class FakeClient:
     def get_json(self, url: str, params=None):
         key = url if params is None else (url, tuple(sorted(params.items())))
         return self.responses[key]
+
+    def get_text(self, url: str, params=None):
+        key = url if params is None else (url, tuple(sorted(params.items())))
+        return str(self.responses[key])
 
 
 def test_remoteok_normalizes_jobs() -> None:
@@ -215,3 +220,28 @@ def test_hacker_news_normalizes_matching_comments() -> None:
 
     assert jobs[0].source == "hackernews"
     assert jobs[0].source_job_id == "99"
+
+
+def test_weworkremotely_parses_rss_feed() -> None:
+    rss_xml = """<?xml version="1.0" encoding="UTF-8"?>
+    <rss version="2.0">
+      <channel>
+        <title>We Work Remotely</title>
+        <item>
+          <title>Mixpanel: Customer Engineer</title>
+          <link>https://weworkremotely.com/remote-jobs/mixpanel-customer-engineer</link>
+          <guid>wwr-12345</guid>
+          <pubDate>Mon, 31 Aug 2026 12:00:00 +0000</pubDate>
+          <description>&lt;p&gt;Looking for a Customer Engineer with Python and SQL skills.&lt;/p&gt;</description>
+          <category>Full-Stack Programming</category>
+        </item>
+      </channel>
+    </rss>
+    """
+    client = FakeClient({"https://weworkremotely.com/remote-jobs.rss": rss_xml})
+    jobs = fetch_weworkremotely(client, ["Customer Engineer"])
+    assert len(jobs) == 1
+    assert jobs[0].source == "weworkremotely"
+    assert jobs[0].company == "Mixpanel"
+    assert jobs[0].title == "Customer Engineer"
+    assert jobs[0].source_job_id == "wwr-12345"

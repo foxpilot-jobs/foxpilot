@@ -77,6 +77,22 @@ class PublicSourceClient:
             return response.json()
         raise RuntimeError(f"Unable to fetch {url}")
 
+    def get_text(self, url: str, params: dict[str, Any] | None = None) -> str:
+        wait = 0.25 - (time.monotonic() - self._last_request)
+        if wait > 0:
+            time.sleep(wait)
+        for attempt in range(3):
+            response = self.client.get(url, params=params)
+            self._last_request = time.monotonic()
+            if response.status_code == 429 or response.status_code >= 500:
+                if attempt == 2:
+                    response.raise_for_status()
+                time.sleep(min(float(response.headers.get("retry-after", "1")), 5.0))
+                continue
+            response.raise_for_status()
+            return response.text
+        raise RuntimeError(f"Unable to fetch {url}")
+
 
 def _clean(value: Any) -> str:
     text = html.unescape(str(value or ""))
@@ -355,6 +371,55 @@ def fetch_jobicy(client: PublicSourceClient, queries: list[str]) -> list[SourceJ
     return jobs
 
 
+def fetch_weworkremotely(client: PublicSourceClient, queries: list[str] | None = None) -> list[SourceJob]:
+    import xml.etree.ElementTree as ET
+
+    try:
+        response_text = client.get_text("https://weworkremotely.com/remote-jobs.rss")
+    except (httpx.HTTPError, RuntimeError):
+        return []
+
+    jobs: list[SourceJob] = []
+    try:
+        root = ET.fromstring(response_text)
+        for item_elem in root.findall("./channel/item"):
+            title_raw = _clean(item_elem.findtext("title"))
+            link = _clean(item_elem.findtext("link"))
+            guid = _clean(item_elem.findtext("guid")) or link
+            pub_date = _clean(item_elem.findtext("pubDate"))
+            description = _clean_html(item_elem.findtext("description"))
+            category = _clean(item_elem.findtext("category"))
+
+            company = "WeWorkRemotely"
+            title = title_raw
+            if ":" in title_raw:
+                parts = title_raw.split(":", 1)
+                company = parts[0].strip()
+                title = parts[1].strip()
+
+            searchable = f"{title} {description} {category}".casefold()
+            if queries and not any(str(query).casefold() in searchable for query in queries):
+                continue
+
+            job_item = _job(
+                "weworkremotely",
+                guid,
+                title,
+                company,
+                category or "Remote",
+                link,
+                description,
+                pub_date,
+                "remote",
+                {"raw_category": category},
+            )
+            if job_item:
+                jobs.append(job_item)
+    except ET.ParseError:
+        return jobs
+    return jobs
+
+
 def _hn_title(text: str) -> str:
     return (_clean(text).split(" | ")[0].split("\n")[0] or "Hacker News hiring opportunity")[:160]
 
@@ -409,6 +474,7 @@ def _save_jobs(jobs: list[SourceJob | dict[str, Any]], user_id: str) -> dict[str
 
 
 from ..tech_classification import classify_tech_job
+from ..work_arrangement import parse_work_arrangement
 
 
 def fetch_configured_sources(
@@ -430,6 +496,7 @@ def fetch_configured_sources(
     adapters = [
         ("RemoteOK", lambda: fetch_remoteok(client, queries), config.get("remoteok", {}).get("enabled", True)),
         ("Remotive", lambda: fetch_remotive(client, queries), config.get("remotive", {}).get("enabled", True)),
+        ("WeWorkRemotely", lambda: fetch_weworkremotely(client, queries), config.get("weworkremotely", {}).get("enabled", True)),
         ("Lever", lambda: fetch_lever(client, config.get("lever", {}).get("boards", [])), bool(config.get("lever", {}).get("boards"))),
         ("Greenhouse", lambda: fetch_greenhouse(client, config.get("greenhouse", {}).get("boards", [])), bool(config.get("greenhouse", {}).get("boards"))),
         ("Ashby", lambda: fetch_ashby(client, config.get("ashby", {}).get("boards", [])), bool(config.get("ashby", {}).get("boards"))),
@@ -473,6 +540,8 @@ def fetch_configured_sources(
                 for j in raw_jobs:
                     j_dict = j.as_dict()
                     res = classify_tech_job(j_dict)
+                    wa = parse_work_arrangement(j_dict)
+                    wa_dict = wa.as_dict()
 
                     payload = j_dict.get("source_payload")
                     if payload is None or not isinstance(payload, dict):
@@ -485,7 +554,9 @@ def fetch_configured_sources(
                         "score": res.score,
                         "signals": res.signals,
                     }
+                    payload["work_arrangement"] = wa_dict
                     j_dict["source_payload"] = payload
+                    j_dict["work_arrangement"] = wa_dict
 
                     if res.is_tech_job:
                         tech_accepted_jobs.append(j_dict)

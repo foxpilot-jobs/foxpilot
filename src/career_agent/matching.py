@@ -34,11 +34,16 @@ MATCH_RESPONSE_SCHEMA = {
 }
 
 
+from .work_arrangement import parse_work_arrangement
+
+
 def build_match_prompt(profile: dict, job: dict) -> str:
+    wa = job.get("work_arrangement") or parse_work_arrangement(job).as_dict()
     compact_job = {
         field: job.get(field, "")
         for field in ("title", "company", "location", "url", "description")
     }
+    compact_job["work_arrangement"] = wa
     description = str(compact_job["description"])
     if len(description) > MAX_JOB_DESCRIPTION_CHARS:
         compact_job["description"] = (
@@ -68,6 +73,7 @@ Rules:
 - Explicitly mention missing mandatory experience or skills.
 - Do not treat similar technology names as equivalent without evidence.
 - AI-assisted development is not machine-learning engineering experience unless the profile says so.
+- Location and Work Arrangement: If the job requires on-site or hybrid presence outside the candidate's country, or is restricted to a specific country (e.g. US Only) that differs from candidate location, note it clearly in concerns and reduce recommendation/score accordingly.
 - Keep reasons and concerns concise; return no more than 3 items in each list.
 - For each material missing skill, include gap_analysis entries with severity blocking only when the posting clearly makes it mandatory; use addressable for learnable or adjacent gaps and unknown when the posting is ambiguous.
 - Never claim a gap is bypassable without evidence from the posting; explain what should be verified.

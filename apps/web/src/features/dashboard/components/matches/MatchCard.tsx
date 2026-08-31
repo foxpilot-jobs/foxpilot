@@ -45,10 +45,25 @@ export function MatchCard({
       </header>
       <div className="matches-card-title">
         <h2>{job.title}</h2>
-        <p>
-          <MapPin size={15} aria-hidden="true" />
-          {job.location || "Location not specified"}
-        </p>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
+            flexWrap: "wrap",
+            marginTop: "0.25rem",
+          }}
+        >
+          <p style={{ margin: 0, display: "flex", alignItems: "center", gap: "0.25rem" }}>
+            <MapPin size={15} aria-hidden="true" />
+            {job.location || "Location not specified"}
+          </p>
+          {job.work_arrangement?.display_label && (
+            <Badge variant={job.work_arrangement.is_india_eligible === false ? "warning" : "info"}>
+              {job.work_arrangement.display_label}
+            </Badge>
+          )}
+        </div>
       </div>
       <MatchReasons match={match} />
       <div className="matches-skills">

@@ -1,9 +1,19 @@
+export type WorkArrangement = {
+  work_mode: "remote" | "hybrid" | "onsite" | "unknown";
+  remote_scope: "worldwide" | "country_specific" | "region_specific" | "unknown";
+  remote_countries?: string[];
+  remote_regions?: string[];
+  is_india_eligible?: boolean | null;
+  display_label: string;
+};
+
 export type Job = {
   job_id?: string;
   source?: string;
   title: string;
   company: string;
   location?: string;
+  work_arrangement?: WorkArrangement;
   url?: string;
   description?: string;
   local_relevance?: "TARGET" | "REVIEW" | "EXCLUDE" | null;
