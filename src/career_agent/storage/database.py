@@ -1205,7 +1205,10 @@ class JobStore:
             )
         return dict(row) if row else None
 
-    def get_active_background_job(self, kind: str) -> dict | None:
+    def get_active_background_job(
+        self, kind: str, max_stale_seconds: int = 600
+    ) -> dict | None:
+        now = utc_now()
         with self.engine.connect() as connection:
             row = (
                 connection.execute(
@@ -1220,7 +1223,25 @@ class JobStore:
                 .mappings()
                 .first()
             )
-        return dict(row) if row else None
+        if not row:
+            return None
+
+        job = dict(row)
+        updated_at = job.get("updated_at") or job.get("created_at") or now
+        if updated_at.tzinfo is None:
+            updated_at = updated_at.replace(tzinfo=UTC)
+        age_seconds = (now - updated_at).total_seconds()
+
+        if age_seconds > max_stale_seconds:
+            self.update_background_job(
+                job["job_id"],
+                "failed",
+                error="Job execution timed out or stalled.",
+                error_class="stale",
+            )
+            return None
+
+        return job
 
     def claim_next_background_job(
         self,
@@ -1309,6 +1330,7 @@ class JobStore:
         now = utc_now()
         with self.engine.begin() as connection:
             # Jobs that still have retry budget → back to queued
+            # Keep original updated_at so stale-job detection can identify unclaimed jobs
             connection.execute(
                 update(background_jobs_table)
                 .where(
@@ -1322,7 +1344,6 @@ class JobStore:
                     error_class="retryable",
                     lease_owner=None,
                     lease_expires_at=None,
-                    updated_at=now,
                 )
             )
             # Jobs that exhausted retries → dead letter
@@ -1352,7 +1373,10 @@ class JobStore:
         error_class: str | None = None,
         progress: dict | None = None,
     ) -> None:
-        values: dict = {"status": status, "updated_at": utc_now()}
+        now = utc_now()
+        values: dict = {"status": status, "updated_at": now}
+        if status == "running":
+            values["started_at"] = now
         if result is not None:
             values["result_json"] = result
         if error is not None:

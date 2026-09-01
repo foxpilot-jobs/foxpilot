@@ -224,6 +224,20 @@ export async function getBackgroundJob(jobId: string): Promise<BackgroundJob> {
   return response.json() as Promise<BackgroundJob>;
 }
 
+export async function getActiveJob(
+  kind: "matching" | "profile_generation" | "scan" = "matching",
+): Promise<BackgroundJob | null> {
+  const response = await fetch(`${API_BASE}/api/v1/profile/jobs/active/${kind}`, {
+    credentials: "include",
+  });
+  if (!response.ok) {
+    if (response.status === 404) return null;
+    throw new Error(`Unable to check active job status: ${response.status}`);
+  }
+  const data = (await response.json()) as BackgroundJob | null;
+  return data;
+}
+
 async function request<T>(path: string): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, { credentials: "include" });
   if (!response.ok) {

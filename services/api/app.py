@@ -590,6 +590,21 @@ def create_app() -> FastAPI:
     def get_profile(career_service: CareerService = Depends(user_service)) -> dict:
         return career_service.get_profile()
 
+    @app.get("/api/v1/profile/jobs/active/{kind}")
+    def get_active_profile_job(
+        kind: str, career_service: CareerService = Depends(user_service)
+    ) -> dict | None:
+        if kind not in {"matching", "profile_generation", "scan"}:
+            raise HTTPException(status_code=400, detail=f"Unsupported job kind: {kind}")
+        with career_service._store() as store:
+            active = store.get_active_background_job(kind)
+            if not active:
+                return None
+        job = career_service.get_background_job(active["job_id"])
+        if job is None:
+            return None
+        return job
+
     @app.get("/api/v1/profile/jobs/{job_id}")
     def get_profile_job(
         job_id: str, career_service: CareerService = Depends(user_service)

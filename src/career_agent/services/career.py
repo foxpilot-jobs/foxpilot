@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Callable
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from filter_jobs import classify_job
@@ -187,14 +188,27 @@ class CareerService:
                         job_id, "failed", error=str(error), error_class="permanent"
                     )
 
-    def queue_matching(self) -> str:
+    def queue_matching(self, max_stale_seconds: int = 600) -> str:
         with self._store() as store:
             profile = store.get_profile()
             if not profile or not profile["profile_json"]:
                 raise ValueError("Upload a resume before running matching")
             active = store.get_active_background_job("matching")
             if active:
-                return active["job_id"]
+                now = datetime.now(UTC)
+                updated_at = active.get("updated_at") or active.get("created_at") or now
+                if updated_at.tzinfo is None:
+                    updated_at = updated_at.replace(tzinfo=UTC)
+                age_seconds = (now - updated_at).total_seconds()
+                if age_seconds > max_stale_seconds:
+                    store.update_background_job(
+                        active["job_id"],
+                        "failed",
+                        error="Job execution timed out or stalled.",
+                        error_class="stale",
+                    )
+                else:
+                    return active["job_id"]
             job_id = str(uuid4())
             store.create_background_job(job_id, "matching")
         return job_id
