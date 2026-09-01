@@ -93,13 +93,15 @@ def load_config(path: Path | None = None) -> AppConfig:
         values = json.loads(config_path.read_text(encoding="utf-8"))
 
     data_dir = _path_from_value(values.get("data_dir")) or config_path.parent
+    provider_name = os.getenv("LLM_PROVIDER", values.get("llm_provider", "ollama")).lower()
+    default_model = "gemini-3.6-flash" if provider_name in ("gemini", "google") else "llama3.1:8b"
     return AppConfig(
         data_dir=data_dir,
         resume_path=_path_from_value(values.get("resume_path")),
-        llm_provider=os.getenv("LLM_PROVIDER", values.get("llm_provider", "ollama")),
+        llm_provider=provider_name,
         llm_model=os.getenv(
             "LLM_MODEL",
-            os.getenv("OLLAMA_MODEL", values.get("llm_model", "llama3.1:8b")),
+            os.getenv("OLLAMA_MODEL", values.get("llm_model", default_model)),
         ),
         ollama_base_url=os.getenv(
             "OLLAMA_BASE_URL",

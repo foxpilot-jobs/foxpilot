@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   deleteProfile,
   deleteResume,
+  getActiveJob,
   getBackgroundJob,
   getProfile,
   runMatching,
@@ -24,7 +26,10 @@ import { ProfileSkeleton } from "../components/ProfileSkeleton";
 import { ResumeCard } from "../components/ResumeCard";
 import { WorkspaceManager } from "../components/WorkspaceManager";
 
-const JOB_POLL_DELAYS_MS = [3000, 6000, 12000, 24000, 30000, 30000, 30000, 30000, 30000];
+const JOB_POLL_DELAYS_MS =
+  import.meta.env.MODE === "test"
+    ? [10, 20, 30]
+    : [3000, 6000, 12000, 24000, 30000, 30000, 30000, 30000, 30000];
 
 export function ProfileSetupPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -34,6 +39,10 @@ export function ProfileSetupPage() {
   const [loadError, setLoadError] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [completionResult, setCompletionResult] = useState<{
+    analyzed: number;
+    message: string;
+  } | null>(null);
   const [activeJob, setActiveJob] = useState<BackgroundJob | null>(null);
   const [selectedFileName, setSelectedFileName] = useState<string | undefined>();
   const [retryToken, setRetryToken] = useState(0);
@@ -48,9 +57,17 @@ export function ProfileSetupPage() {
     let active = true;
     setLoading(true);
     setLoadError(false);
-    void getProfile()
-      .then((loadedProfile) => {
-        if (active) setProfile(loadedProfile);
+    void Promise.all([getProfile(), getActiveJob("matching").catch(() => null)])
+      .then(([loadedProfile, activeMatchingJob]) => {
+        if (active) {
+          setProfile(loadedProfile);
+          if (
+            activeMatchingJob &&
+            (activeMatchingJob.status === "queued" || activeMatchingJob.status === "running")
+          ) {
+            setActiveJob(activeMatchingJob);
+          }
+        }
       })
       .catch(() => {
         if (active) setLoadError(true);
@@ -69,13 +86,12 @@ export function ProfileSetupPage() {
     let stopped = false;
     let timer: number | undefined;
     let pollCount = 0;
-    const startedAt = Date.now();
     const poll = async () => {
       try {
         const job = await getBackgroundJob(jobId);
         if (stopped) return;
-        setActiveJob(job);
         if (job.status === "completed" && job.kind === "profile_generation") {
+          setActiveJob(null);
           const loadedProfile = await getProfile();
           if (!stopped) {
             setProfile(loadedProfile);
@@ -84,17 +100,37 @@ export function ProfileSetupPage() {
           return;
         }
         if (job.status === "completed" && job.kind === "matching") {
+          setActiveJob(null);
           const result = job.result as {
             analyzed?: number;
             skipped?: number;
             failed?: number;
           } | null;
-          setMessage(
-            `Matching complete: ${result?.analyzed ?? 0} analyzed, ${result?.skipped ?? 0} already current, ${result?.failed ?? 0} failed.`,
-          );
+          const analyzed = result?.analyzed ?? 0;
+          const skipped = result?.skipped ?? 0;
+          const failed = result?.failed ?? 0;
+
+          let msg = "";
+          if (analyzed > 0) {
+            msg = `${analyzed} new ${analyzed === 1 ? "match" : "matches"} found.`;
+            if (skipped > 0) {
+              msg += ` ${skipped} existing ${skipped === 1 ? "match was" : "matches were"} already current.`;
+            }
+            if (failed > 0) {
+              msg += ` ${failed} ${failed === 1 ? "job" : "jobs"} failed matching.`;
+            }
+          } else {
+            msg = "No new matches found. Your existing matches are up to date.";
+            if (failed > 0) {
+              msg += ` ${failed} ${failed === 1 ? "job" : "jobs"} failed matching.`;
+            }
+          }
+          setCompletionResult({ analyzed, message: msg });
+          setMessage(null);
           return;
         }
         if (job.status === "completed" && job.kind === "scan") {
+          setActiveJob(null);
           const result = job.result as { new_jobs?: number } | null;
           setMessage(
             `Scan complete: ${result?.new_jobs ?? 0} new jobs discovered. Run matching when ready.`,
@@ -102,19 +138,22 @@ export function ProfileSetupPage() {
           return;
         }
         if (job.status === "failed") {
-          setActionError("We couldn't process this background job. You can try again.");
+          setActiveJob(null);
+          const errorMsg = job.error
+            ? `Matching failed: ${job.error}`
+            : "Matching failed: We couldn't complete profile matching. Please try again.";
+          setActionError(errorMsg);
           return;
         }
+        setActiveJob(job);
         const delay = JOB_POLL_DELAYS_MS[pollCount] ?? JOB_POLL_DELAYS_MS.at(-1)!;
         pollCount += 1;
-        if (Date.now() - startedAt + delay > 5 * 60 * 1000) {
-          setActiveJob(null);
-          setActionError("Processing is taking longer than expected. Please try again shortly.");
-          return;
-        }
         timer = window.setTimeout(() => void poll(), delay);
       } catch {
-        if (!stopped) setActionError("We couldn't check the background job. Please try again.");
+        if (!stopped) {
+          const delay = JOB_POLL_DELAYS_MS.at(-1)!;
+          timer = window.setTimeout(() => void poll(), delay);
+        }
       }
     };
     void poll();
@@ -131,6 +170,7 @@ export function ProfileSetupPage() {
     setActiveAction("upload");
     setActionError(null);
     setMessage(null);
+    setCompletionResult(null);
     try {
       setActiveJob(await uploadResume(file));
       setMessage("Resume received. FoxPilot is extracting your profile in the background.");
@@ -147,11 +187,15 @@ export function ProfileSetupPage() {
     setActiveAction("matching");
     setActionError(null);
     setMessage(null);
+    setCompletionResult(null);
     try {
-      setActiveJob(await runMatching());
-      setMessage(
-        "Matching started. FoxPilot is comparing your profile with the current shortlist.",
-      );
+      const job = await runMatching();
+      setActiveJob(job);
+      if (job.status === "queued" || job.status === "running") {
+        setMessage(
+          "Matching started. FoxPilot is comparing your profile with the current shortlist.",
+        );
+      }
     } catch {
       setActionError("We couldn't start matching. Please try again.");
     } finally {
@@ -224,6 +268,28 @@ export function ProfileSetupPage() {
         profile={profile}
         workspaceSlot={<WorkspaceManager onSwitch={() => setRetryToken((t) => t + 1)} />}
       />
+      {completionResult && (
+        <div className="profile-message">
+          <Toast
+            title="Matching complete"
+            variant="success"
+            onDismiss={() => setCompletionResult(null)}
+          >
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              <span>{completionResult.message}</span>
+              {completionResult.analyzed > 0 && (
+                <Link
+                  className="ui-button ui-button-primary ui-button-sm"
+                  to="/app/matches"
+                  style={{ alignSelf: "flex-start", marginTop: "4px" }}
+                >
+                  View matches →
+                </Link>
+              )}
+            </div>
+          </Toast>
+        </div>
+      )}
       {message && (
         <div className="profile-message">
           <Toast title="Profile update" variant="success" onDismiss={() => setMessage(null)}>
@@ -326,13 +392,7 @@ export function ProfileSetupPage() {
 }
 
 function ProfileJobStatus({ job }: { job: BackgroundJob }) {
-  if (job.status === "completed")
-    return (
-      <div className="profile-job-status profile-job-complete" role="status">
-        <strong>Profile workflow complete</strong>
-        <span>FoxPilot has finished the latest {formatJobKind(job.kind)}.</span>
-      </div>
-    );
+  if (job.status === "completed") return null;
   if (job.status === "failed")
     return (
       <div className="profile-job-status profile-job-failed" role="alert">
@@ -340,18 +400,36 @@ function ProfileJobStatus({ job }: { job: BackgroundJob }) {
         <span>Nothing was changed. You can try the action again when ready.</span>
       </div>
     );
+  const isQueued = job.status === "queued";
+  const progress = job.progress as { processed?: number; total?: number } | null;
+  const hasProgress =
+    typeof progress?.processed === "number" && typeof progress?.total === "number";
+
+  const createdAt = job.created_at ? new Date(job.created_at).getTime() : Date.now();
+  const isTakingLonger = Date.now() - createdAt > 3 * 60 * 1000;
+
   return (
     <div className="profile-job-status" role="status" aria-live="polite">
       <Spinner size={18} />
       <div>
-        <strong>{job.status === "queued" ? "Queued" : "Running"}</strong>
+        <strong>{isQueued ? "Matching queued…" : "Matching in progress…"}</strong>
         <span>
           {job.kind === "profile_generation"
             ? "FoxPilot is extracting your experience, skills, and career profile."
             : job.kind === "scan"
               ? "FoxPilot is searching for profile-specific roles."
-              : "FoxPilot is comparing roles against your profile."}
+              : isQueued
+                ? "FoxPilot is preparing to compare roles against your profile."
+                : hasProgress
+                  ? `FoxPilot is comparing roles against your profile (${progress.processed} of ${progress.total} candidates processed).`
+                  : "FoxPilot is comparing roles against your profile."}
         </span>
+        {isTakingLonger && !isQueued && (
+          <span style={{ display: "block", marginTop: "4px", fontSize: "0.85em", opacity: 0.85 }}>
+            Matching is taking a little longer. FoxPilot is still analyzing your jobs. You can leave
+            this page — we'll keep processing in the background.
+          </span>
+        )}
       </div>
     </div>
   );

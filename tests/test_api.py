@@ -500,3 +500,31 @@ def test_auth_me_single_query_and_session_behavior(tmp_path: Path, monkeypatch) 
             assert len(executed_statements) == 1
         finally:
             event.remove(store.engine, "before_cursor_execute", before_cursor_execute)
+
+
+def test_get_active_profile_job_returns_200_with_null_when_no_active_job(tmp_path: Path) -> None:
+    config = AppConfig(data_dir=tmp_path)
+    app = create_app()
+    app.state.service.config = config
+    client = TestClient(app)
+
+    # 1. No active job -> 200 OK with None / null
+    res = client.get("/api/v1/profile/jobs/active/matching")
+    assert res.status_code == 200
+    assert res.json() is None
+
+    # 2. Unsupported kind -> 400 Bad Request
+    unsupported = client.get("/api/v1/profile/jobs/active/invalid_kind")
+    assert unsupported.status_code == 400
+
+    # 3. Active job exists -> 200 OK with job object
+    with JobStore(config.database_path) as store:
+        store.save_profile("Resume text", "resume.pdf", {"skills": ["Python"]})
+        store.create_background_job("test-job-1", "matching")
+
+    active_res = client.get("/api/v1/profile/jobs/active/matching")
+    assert active_res.status_code == 200
+    job = active_res.json()
+    assert job is not None
+    assert job["job_id"] == "test-job-1"
+    assert job["status"] == "queued"

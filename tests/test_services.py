@@ -99,6 +99,34 @@ def test_matching_queue_reuses_active_job(tmp_path: Path) -> None:
     assert first == second
 
 
+def test_matching_queue_recovers_stale_job(tmp_path: Path) -> None:
+    from datetime import UTC, datetime, timedelta
+
+    from sqlalchemy import update
+
+    from career_agent.storage.database import background_jobs_table
+
+    config = AppConfig(data_dir=tmp_path)
+    with JobStore(config.database_path, user_id="user-a") as store:
+        store.save_profile("Resume text", "resume.pdf", {"skills": ["Python"]})
+        stale_time = datetime.now(UTC) - timedelta(minutes=15)
+        store.create_background_job("old-stale-job", "matching")
+        with store.engine.begin() as conn:
+            conn.execute(
+                update(background_jobs_table)
+                .where(background_jobs_table.c.job_id == "old-stale-job")
+                .values(status="running", updated_at=stale_time)
+            )
+
+    service = CareerService(config, user_id="user-a")
+    new_job_id = service.queue_matching(max_stale_seconds=600)
+
+    assert new_job_id != "old-stale-job"
+    old_job = service.get_background_job("old-stale-job")
+    assert old_job["status"] == "failed"
+    assert old_job["error_class"] == "stale"
+
+
 def test_scan_uses_saved_profile_and_persists_result(tmp_path: Path, monkeypatch) -> None:
     config = AppConfig(data_dir=tmp_path)
     with JobStore(config.database_path, user_id="user-a") as store:
