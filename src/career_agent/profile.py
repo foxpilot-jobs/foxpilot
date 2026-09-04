@@ -10,7 +10,14 @@ from pathlib import Path
 from pypdf import PdfReader
 
 from .config import AppConfig
-from .llm import LLMError, LLMProvider, LLMTimeoutError, create_provider
+from .llm import (
+    LLMError,
+    LLMProvider,
+    LLMRateLimitError,
+    LLMTimeoutError,
+    create_provider,
+    is_rate_limit_error,
+)
 
 PROFILE_FIELDS = [
     "summary",
@@ -32,8 +39,8 @@ PROFILE_FIELDS = [
 PROFILE_RESPONSE_SCHEMA = {
     "type": "object",
     "properties": {
-        "summary": {"type": ["string", "null"]},
-        "years_of_experience": {"type": ["number", "null"]},
+        "summary": {"type": "string", "nullable": True},
+        "years_of_experience": {"type": "number", "nullable": True},
         **{field: {"type": "array", "items": {"type": "string"}} for field in PROFILE_FIELDS[2:]},
     },
     "required": PROFILE_FIELDS,
@@ -155,9 +162,11 @@ def create_profile_from_text(
     prompt = build_profile_prompt(resume_text)
     try:
         profile = provider.complete_json(prompt, response_schema=PROFILE_RESPONSE_SCHEMA)
-    except LLMTimeoutError:
+    except (LLMTimeoutError, LLMRateLimitError):
         raise
-    except LLMError:
+    except LLMError as err:
+        if is_rate_limit_error(err):
+            raise
         profile = provider.complete_json(
             prompt
             + "\nReturn only the requested JSON object. Keep every list short and use null or [] when uncertain.",

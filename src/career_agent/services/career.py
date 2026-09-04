@@ -11,10 +11,11 @@ from uuid import uuid4
 from filter_jobs import classify_job
 
 from ..config import AppConfig
-from ..llm import LLMError, create_provider
+from ..llm import LLMError, create_provider, is_rate_limit_error
 from ..matching import match_job
 from ..profile import create_profile_from_text
 from ..storage import JobStore
+from ..storage.database import compute_preference_hash
 from ..worker_errors import classify_error
 from .ingestion import IngestionService
 
@@ -26,6 +27,22 @@ class CareerService:
 
     def _store(self) -> JobStore:
         return JobStore(self.config.resolved_database_url, user_id=self.user_id)
+
+    def get_workspace_preferences(self, workspace_id: str | None = None) -> dict:
+        with self._store() as store:
+            return store.get_workspace_preferences(workspace_id)
+
+    def update_workspace_preferences(
+        self,
+        target_roles: list[str],
+        work_arrangement: str,
+        preferred_locations: list[str],
+        workspace_id: str | None = None,
+    ) -> dict:
+        with self._store() as store:
+            return store.update_workspace_preferences(
+                target_roles, work_arrangement, preferred_locations, workspace_id
+            )
 
     def list_jobs(self, **kwargs) -> dict:
         with self._store() as store:
@@ -152,8 +169,11 @@ class CareerService:
         try:
             with self._store() as store:
                 job = store.get_background_job(job_id)
-                profile_row = store.get_profile()
-                if not job or not profile_row:
+                if not job:
+                    return
+                ws_id = job.get("workspace_id")
+                profile_row = store.get_profile(workspace_id=ws_id)
+                if not profile_row:
                     return
                 if job["status"] == "completed":
                     return
@@ -165,7 +185,7 @@ class CareerService:
             )
             profile = create_profile_from_text(self.config, resume_text, persist=False)
             with self._store() as store:
-                current = store.get_profile()
+                current = store.get_profile(workspace_id=ws_id)
                 if not current or current["resume_text"] != resume_text:
                     store.update_background_job(
                         job_id,
@@ -176,13 +196,19 @@ class CareerService:
                         },
                     )
                     return
-                store.save_profile(resume_text, resume_filename, profile)
+                store.save_profile(
+                    resume_text, resume_filename, profile, workspace_id=ws_id
+                )
                 store.update_background_job(job_id, "completed", {"profile": profile})
         except Exception as error:  # noqa: BLE001 - persist failure for polling clients
             ec = classify_error(error)
             with self._store() as store:
                 if ec == "retryable":
-                    store.fail_background_job_retryable(job_id, str(error))
+                    store.fail_background_job_retryable(
+                        job_id,
+                        str(error),
+                        backoff_seconds=getattr(error, "retry_after_seconds", None),
+                    )
                 else:
                     store.update_background_job(
                         job_id, "failed", error=str(error), error_class="permanent"
@@ -267,7 +293,11 @@ class CareerService:
             ec = classify_error(error)
             with self._store() as store:
                 if ec == "retryable":
-                    store.fail_background_job_retryable(job_id, str(error))
+                    store.fail_background_job_retryable(
+                        job_id,
+                        str(error),
+                        backoff_seconds=getattr(error, "retry_after_seconds", None),
+                    )
                 else:
                     store.update_background_job(
                         job_id, "failed", error=str(error), error_class="permanent"
@@ -314,7 +344,11 @@ class CareerService:
             ec = classify_error(error)
             with self._store() as store:
                 if ec == "retryable":
-                    store.fail_background_job_retryable(job_id, str(error))
+                    store.fail_background_job_retryable(
+                        job_id,
+                        str(error),
+                        backoff_seconds=getattr(error, "retry_after_seconds", None),
+                    )
                 else:
                     store.update_background_job(
                         job_id, "failed", error=str(error), error_class="permanent"
@@ -331,11 +365,23 @@ class CareerService:
             profile_row = store.get_profile()
             if not profile_row:
                 raise ValueError("Upload a resume before running matching")
+            workspace_id = profile_row.get("workspace_id")
+            ws_prefs = store.get_workspace_preferences(workspace_id=workspace_id)
+            current_pref_hash = compute_preference_hash(
+                ws_prefs["target_roles"],
+                ws_prefs["work_arrangement"],
+                ws_prefs["preferred_locations"],
+            )
             all_jobs = store.list_jobs(limit=10000)["items"]
             jobs = [
                 job
                 for job in all_jobs
-                if classify_job(job, profile_row["profile_json"]) == "TARGET"
+                if classify_job(
+                    job,
+                    profile=profile_row["profile_json"],
+                    workspace_preferences=ws_prefs,
+                )
+                == "TARGET"
             ]
             provider = create_provider(self.config)
             analyzed = 0
@@ -352,26 +398,52 @@ class CareerService:
                         "utf-8"
                     )
                 ).hexdigest()
-                cached = store.get_match(job["job_id"])
-                if cached and cached.get("job_hash") == job_hash:
+                cached = store.get_match(
+                    job["job_id"],
+                    preference_hash=current_pref_hash,
+                    workspace_id=workspace_id,
+                )
+                if (
+                    cached
+                    and cached.get("job_hash") == job_hash
+                    and cached.get("preference_hash") == current_pref_hash
+                ):
                     skipped += 1
                     processed += 1
                     if progress:
                         progress({"processed": processed, "total": len(jobs)})
                     continue
                 try:
-                    result = match_job(
-                        self.config, profile_row["profile_json"], job, provider=provider
-                    )
+                    try:
+                        result = match_job(
+                            self.config,
+                            profile_row["profile_json"],
+                            job,
+                            provider=provider,
+                            workspace_preferences=ws_prefs,
+                        )
+                    except TypeError:
+                        result = match_job(
+                            self.config,
+                            profile_row["profile_json"],
+                            job,
+                            provider=provider,
+                        )
                     store.save_match(
                         job["job_id"],
                         job_hash,
                         self.config.llm_provider,
                         self.config.llm_model,
                         result,
+                        preference_hash=current_pref_hash,
+                        workspace_id=workspace_id,
                     )
                     analyzed += 1
-                except (LLMError, ValueError):
+                except LLMError as error:
+                    if is_rate_limit_error(error):
+                        raise
+                    failed += 1
+                except ValueError:
                     failed += 1
                 processed += 1
                 if progress:

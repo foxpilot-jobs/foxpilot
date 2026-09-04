@@ -17,6 +17,7 @@ import { ErrorState } from "../../../shared/ui/ErrorState";
 import { Modal, ModalActions } from "../../../shared/ui/Modal";
 import { Spinner } from "../../../shared/ui/Spinner";
 import { Toast } from "../../../shared/ui/Toast";
+import { JobPreferencesSection } from "../components/JobPreferencesSection";
 import { ProfileActions } from "../components/ProfileActions";
 import { ProfileHeader } from "../components/ProfileHeader";
 import { ProfileInsightsLink } from "../components/ProfileInsightsLink";
@@ -305,6 +306,7 @@ export function ProfileSetupPage() {
       <ProfileReadiness hasProfileData={hasProfileData} profile={profile} />
       <div className="profile-page-layout">
         <div className="profile-page-primary">
+          <JobPreferencesSection reloadKey={retryToken} />
           <ResumeCard
             busy={resumeBusy}
             onDeleteResume={profile?.resume_filename ? () => setShowDeleteResume(true) : undefined}

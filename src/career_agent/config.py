@@ -94,7 +94,7 @@ def load_config(path: Path | None = None) -> AppConfig:
 
     data_dir = _path_from_value(values.get("data_dir")) or config_path.parent
     provider_name = os.getenv("LLM_PROVIDER", values.get("llm_provider", "ollama")).lower()
-    default_model = "gemini-3.6-flash" if provider_name in ("gemini", "google") else "llama3.1:8b"
+    default_model = "gemini-3.5-flash-lite" if provider_name in ("gemini", "google") else "llama3.1:8b"
     return AppConfig(
         data_dir=data_dir,
         resume_path=_path_from_value(values.get("resume_path")),

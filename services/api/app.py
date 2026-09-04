@@ -72,6 +72,41 @@ def _google_configured() -> bool:
     )
 
 
+def _validate_workspace_preferences_payload(body: dict) -> tuple[list[str], str, list[str]]:
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=422, detail="Request body must be a JSON object")
+
+    target_roles_raw = body.get("target_roles", [])
+    if not isinstance(target_roles_raw, list):
+        raise HTTPException(status_code=422, detail="target_roles must be a list")
+    for item in target_roles_raw:
+        if not isinstance(item, str) or not item.strip():
+            raise HTTPException(
+                status_code=422, detail="target_roles items must be non-empty strings"
+            )
+
+    preferred_locations_raw = body.get("preferred_locations", [])
+    if not isinstance(preferred_locations_raw, list):
+        raise HTTPException(status_code=422, detail="preferred_locations must be a list")
+    for item in preferred_locations_raw:
+        if not isinstance(item, str) or not item.strip():
+            raise HTTPException(
+                status_code=422, detail="preferred_locations items must be non-empty strings"
+            )
+
+    work_arrangement_raw = body.get("work_arrangement", "any")
+    if not isinstance(work_arrangement_raw, str):
+        raise HTTPException(status_code=422, detail="work_arrangement must be a string")
+    wa = work_arrangement_raw.strip().lower()
+    if wa not in ("any", "remote", "hybrid", "onsite"):
+        raise HTTPException(
+            status_code=422,
+            detail="work_arrangement must be one of: any, remote, hybrid, onsite",
+        )
+
+    return target_roles_raw, wa, preferred_locations_raw
+
+
 class ApplicationUpdate(BaseModel):
     status: str = Field(pattern="^(saved|applied|interviewing|rejected|offered)$")
     notes: str = Field(default="", max_length=10_000)
@@ -676,6 +711,40 @@ def create_app() -> FastAPI:
         if not career_service.delete_workspace(workspace_id):
             raise HTTPException(status_code=404, detail="Workspace not found")
         return {"deleted": True, "workspace_id": workspace_id}
+
+    @app.get("/api/v1/workspace/preferences")
+    def get_active_workspace_preferences(
+        career_service: CareerService = Depends(user_service),
+    ) -> dict:
+        return career_service.get_workspace_preferences()
+
+    @app.put("/api/v1/workspace/preferences")
+    def update_active_workspace_preferences(
+        body: dict,
+        career_service: CareerService = Depends(user_service),
+    ) -> dict:
+        target_roles, wa, preferred_locations = _validate_workspace_preferences_payload(body)
+        return career_service.update_workspace_preferences(
+            target_roles, wa, preferred_locations
+        )
+
+    @app.get("/api/v1/workspaces/{workspace_id}/preferences")
+    def get_workspace_preferences_by_id(
+        workspace_id: str,
+        career_service: CareerService = Depends(user_service),
+    ) -> dict:
+        return career_service.get_workspace_preferences(workspace_id=workspace_id)
+
+    @app.put("/api/v1/workspaces/{workspace_id}/preferences")
+    def update_workspace_preferences_by_id(
+        workspace_id: str,
+        body: dict,
+        career_service: CareerService = Depends(user_service),
+    ) -> dict:
+        target_roles, wa, preferred_locations = _validate_workspace_preferences_payload(body)
+        return career_service.update_workspace_preferences(
+            target_roles, wa, preferred_locations, workspace_id=workspace_id
+        )
 
     # -- Profile / resume deletion -------------------------------------------
 

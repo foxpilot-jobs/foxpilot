@@ -369,6 +369,7 @@ def test_workspace_lifecycle(tmp_path: Path) -> None:
 
         # Switch back; should see original profile
         store.switch_workspace(default_id)
+        assert store.get_profile()["profile_json"]["name"] == "Alice A"
         profile_a = store.get_profile()
         assert profile_a is not None
         assert profile_a["profile_json"]["name"] == "Alice A"
@@ -390,3 +391,60 @@ def test_workspace_lifecycle(tmp_path: Path) -> None:
         assert len(store.list_workspaces()) == 1
         assert store.list_workspaces()[0]["workspace_id"] == default_id
         assert store.list_workspaces()[0]["is_active"] is True
+
+
+def test_save_profile_reactivates_default_workspace_when_inactive(tmp_path: Path) -> None:
+    """Regression test for save_profile when default workspace exists with is_active=False."""
+    db = tmp_path / "ws_reactivate.sqlite3"
+
+    # 1. New user: save_profile creates active default workspace
+    with JobStore(db, user_id="bob") as store:
+        store.save_profile("Resume 1", "r1.pdf", {"skills": ["Python"]})
+        ws_list = store.list_workspaces()
+        assert len(ws_list) == 1
+        assert ws_list[0]["is_active"] is True
+        default_id = ws_list[0]["workspace_id"]
+        assert default_id == "ws_default_bob"
+
+        # 2. Existing user with active default workspace -> save_profile updates existing
+        store.save_profile("Resume 1 updated", "r1.pdf", {"skills": ["Python", "SQL"]})
+        assert store.get_profile()["profile_json"]["skills"] == ["Python", "SQL"]
+
+        # 3. Deactivate default workspace manually
+        from sqlalchemy import text
+        with store.engine.begin() as conn:
+            conn.execute(text("UPDATE workspaces SET is_active = 0 WHERE workspace_id = 'ws_default_bob'"))
+
+        # Verify _active_workspace_id returns None
+        with store.engine.connect() as conn:
+            assert store._active_workspace_id(conn) is None
+
+        # 4. Save profile when default workspace exists but is_active=False:
+        # Should reactivate default workspace without duplicate INSERT or IntegrityError
+        store.save_profile("Resume 2", "r2.pdf", {"skills": ["Python", "FastAPI"]})
+
+        ws_list_after = store.list_workspaces()
+        assert len(ws_list_after) == 1
+        assert ws_list_after[0]["workspace_id"] == "ws_default_bob"
+        assert ws_list_after[0]["is_active"] is True
+        assert store.get_profile()["profile_json"]["skills"] == ["Python", "FastAPI"]
+
+
+def test_save_profile_preserves_active_custom_workspace(tmp_path: Path) -> None:
+    """Verify that an existing active non-default workspace is preserved during save_profile."""
+    db = tmp_path / "ws_custom_active.sqlite3"
+    with JobStore(db, user_id="charlie") as store:
+        # Create default workspace
+        store.save_profile("Default Resume", "default.pdf", {"label": "default"})
+
+        # Create and switch to a custom workspace
+        custom_ws = store.create_workspace("Custom Active")
+        store.switch_workspace(custom_ws["workspace_id"])
+
+        # Save profile -> must save into custom workspace, NOT replace/reactivate default workspace
+        store.save_profile("Custom Resume", "custom.pdf", {"label": "custom"})
+
+        ws_list = store.list_workspaces()
+        active_ws = next(w for w in ws_list if w["is_active"])
+        assert active_ws["workspace_id"] == custom_ws["workspace_id"]
+        assert store.get_profile()["profile_json"]["label"] == "custom"

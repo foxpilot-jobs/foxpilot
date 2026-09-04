@@ -33,6 +33,12 @@ export function MatchesPage() {
   const [reloadToken, setReloadToken] = useState(0);
 
   useEffect(() => {
+    const handleWorkspaceChange = () => setReloadToken((t) => t + 1);
+    window.addEventListener("workspace-changed", handleWorkspaceChange);
+    return () => window.removeEventListener("workspace-changed", handleWorkspaceChange);
+  }, []);
+
+  useEffect(() => {
     if (!user) return;
     setLoading(true);
     setError(null);
