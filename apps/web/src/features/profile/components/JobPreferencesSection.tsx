@@ -48,11 +48,7 @@ export function JobPreferencesSection({ reloadKey }: { reloadKey?: number }) {
   const handleAddRole = () => {
     const trimmed = newRole.trim();
     if (!trimmed) return;
-    if (
-      preferences.target_roles.some(
-        (r) => r.toLowerCase() === trimmed.toLowerCase(),
-      )
-    ) {
+    if (preferences.target_roles.some((r) => r.toLowerCase() === trimmed.toLowerCase())) {
       setNewRole("");
       setShowAddRoleInput(false);
       return;
@@ -75,11 +71,7 @@ export function JobPreferencesSection({ reloadKey }: { reloadKey?: number }) {
   const handleAddLocation = () => {
     const trimmed = newLocation.trim();
     if (!trimmed) return;
-    if (
-      preferences.preferred_locations.some(
-        (l) => l.toLowerCase() === trimmed.toLowerCase(),
-      )
-    ) {
+    if (preferences.preferred_locations.some((l) => l.toLowerCase() === trimmed.toLowerCase())) {
       setNewLocation("");
       setShowAddLocInput(false);
       return;
@@ -142,13 +134,19 @@ export function JobPreferencesSection({ reloadKey }: { reloadKey?: number }) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <CardTitle>Job preferences</CardTitle>
-            <span className="profile-header-sub" style={{ fontSize: "0.85em", display: "block", marginTop: "2px" }}>
+            <span
+              className="profile-header-sub"
+              style={{ fontSize: "0.85em", display: "block", marginTop: "2px" }}
+            >
               Configure what jobs you want to apply for in this workspace.
             </span>
           </div>
         </div>
       </CardHeader>
-      <CardContent className="job-preferences-content" style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+      <CardContent
+        className="job-preferences-content"
+        style={{ display: "flex", flexDirection: "column", gap: "20px" }}
+      >
         {toastMessage && (
           <Toast variant="success" onDismiss={() => setToastMessage(null)}>
             {toastMessage}
@@ -162,10 +160,16 @@ export function JobPreferencesSection({ reloadKey }: { reloadKey?: number }) {
 
         {/* ── Target Roles ── */}
         <div className="preference-group">
-          <label className="preference-label" style={{ fontWeight: 600, display: "block", marginBottom: "8px" }}>
+          <label
+            className="preference-label"
+            style={{ fontWeight: 600, display: "block", marginBottom: "8px" }}
+          >
             Target roles
           </label>
-          <div className="chip-list-editable" style={{ display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center" }}>
+          <div
+            className="chip-list-editable"
+            style={{ display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center" }}
+          >
             {preferences.target_roles.map((role) => (
               <span
                 key={role}
@@ -256,7 +260,10 @@ export function JobPreferencesSection({ reloadKey }: { reloadKey?: number }) {
 
         {/* ── Work Arrangement ── */}
         <div className="preference-group">
-          <label className="preference-label" style={{ fontWeight: 600, display: "block", marginBottom: "8px" }}>
+          <label
+            className="preference-label"
+            style={{ fontWeight: 600, display: "block", marginBottom: "8px" }}
+          >
             Work arrangement
           </label>
           <div className="work-arrangement-selector" style={{ display: "flex", gap: "8px" }}>
@@ -266,18 +273,14 @@ export function JobPreferencesSection({ reloadKey }: { reloadKey?: number }) {
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() =>
-                    setPreferences((prev) => ({ ...prev, work_arrangement: item.id }))
-                  }
+                  onClick={() => setPreferences((prev) => ({ ...prev, work_arrangement: item.id }))}
                   style={{
                     padding: "6px 16px",
                     borderRadius: "8px",
                     border: active
                       ? "1px solid var(--color-brand)"
                       : "1px solid var(--color-border)",
-                    background: active
-                      ? "var(--color-brand-soft)"
-                      : "var(--color-surface)",
+                    background: active ? "var(--color-brand-soft)" : "var(--color-surface)",
                     color: active ? "var(--color-brand)" : "var(--color-text-primary)",
                     fontWeight: active ? 600 : 400,
                     cursor: "pointer",
@@ -293,10 +296,16 @@ export function JobPreferencesSection({ reloadKey }: { reloadKey?: number }) {
 
         {/* ── Preferred Locations ── */}
         <div className="preference-group">
-          <label className="preference-label" style={{ fontWeight: 600, display: "block", marginBottom: "8px" }}>
+          <label
+            className="preference-label"
+            style={{ fontWeight: 600, display: "block", marginBottom: "8px" }}
+          >
             Preferred locations
           </label>
-          <div className="chip-list-editable" style={{ display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center" }}>
+          <div
+            className="chip-list-editable"
+            style={{ display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center" }}
+          >
             {preferences.preferred_locations.map((loc) => (
               <span
                 key={loc}
