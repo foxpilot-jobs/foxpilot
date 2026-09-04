@@ -35,6 +35,12 @@ export function ApplicationsPage() {
   const [retryToken, setRetryToken] = useState(0);
 
   useEffect(() => {
+    const handleWorkspaceChange = () => setRetryToken((t) => t + 1);
+    window.addEventListener("workspace-changed", handleWorkspaceChange);
+    return () => window.removeEventListener("workspace-changed", handleWorkspaceChange);
+  }, []);
+
+  useEffect(() => {
     if (!user) return;
     setLoading(true);
     setLoadError(false);

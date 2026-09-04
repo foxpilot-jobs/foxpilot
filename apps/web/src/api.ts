@@ -362,6 +362,9 @@ export async function switchWorkspace(workspaceId: string): Promise<void> {
     { method: "POST", credentials: "include" },
   );
   if (!response.ok) throw new Error(`Could not switch workspace: ${response.status}`);
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("workspace-changed", { detail: { workspaceId } }));
+  }
 }
 
 export async function deleteWorkspace(workspaceId: string): Promise<void> {
@@ -405,4 +408,35 @@ export async function updateApplication(
     throw new Error(`Unable to update application: ${response.status}`);
   }
   return response.json() as Promise<Application>;
+}
+
+export type WorkspacePreferences = {
+  target_roles: string[];
+  work_arrangement: "any" | "remote" | "hybrid" | "onsite";
+  preferred_locations: string[];
+};
+
+export async function getWorkspacePreferences(): Promise<WorkspacePreferences> {
+  const response = await fetch(`${API_BASE}/api/v1/workspace/preferences`, {
+    credentials: "include",
+  });
+  if (!response.ok) {
+    throw new Error(`Unable to fetch workspace preferences: ${response.status}`);
+  }
+  return response.json() as Promise<WorkspacePreferences>;
+}
+
+export async function updateWorkspacePreferences(
+  preferences: WorkspacePreferences,
+): Promise<WorkspacePreferences> {
+  const response = await fetch(`${API_BASE}/api/v1/workspace/preferences`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(preferences),
+  });
+  if (!response.ok) {
+    throw new Error(`Unable to update workspace preferences: ${response.status}`);
+  }
+  return response.json() as Promise<WorkspacePreferences>;
 }

@@ -72,112 +72,172 @@ GENERIC_ROLE_WORDS = frozenset(
 )
 
 
-from career_agent.work_arrangement import parse_work_arrangement
+from career_agent.work_arrangement import is_job_location_eligible
+
+PREFIXES_TO_STRIP = (
+    "senior",
+    "jr",
+    "junior",
+    "lead",
+    "staff",
+    "principal",
+    "distinguished",
+    "head of",
+    "head",
+    "director",
+    "vp of",
+    "vp",
+    "associate",
+    "intern",
+    "co-op",
+    "contractor",
+    "freelance",
+    "interim",
+    "chief",
+    "sr.",
+    "sr",
+    "jr.",
+)
+
+SUFFIXES_TO_STRIP = (
+    "i",
+    "ii",
+    "iii",
+    "iv",
+    "v",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "sr",
+    "jr",
+    "lead",
+)
+
+ROLE_ALIASES = {
+    "software development engineer": "software engineer",
+    "sde": "software engineer",
+    "sde i": "software engineer",
+    "sde ii": "software engineer",
+    "sde iii": "software engineer",
+    "swe": "software engineer",
+}
+
+
+def clean_role_title(title: str) -> str:
+    norm = title.lower().strip()
+    norm = re.sub(r"[^a-z0-9\s-]", " ", norm)
+    norm = re.sub(r"\s+", " ", norm).strip()
+
+    if norm in ROLE_ALIASES:
+        return ROLE_ALIASES[norm]
+
+    tokens = norm.split()
+    while tokens and tokens[0] in PREFIXES_TO_STRIP:
+        tokens.pop(0)
+    while tokens and tokens[-1] in SUFFIXES_TO_STRIP:
+        tokens.pop()
+
+    cleaned = " ".join(tokens)
+    return ROLE_ALIASES.get(cleaned, cleaned)
+
+
+def is_target_role_compatible(job_title: str, target_roles: list[str]) -> bool:
+    if not target_roles:
+        return False
+
+    cleaned_job = clean_role_title(job_title)
+
+    for target in target_roles:
+        if not target or not isinstance(target, str) or not target.strip():
+            continue
+        cleaned_target = clean_role_title(target)
+
+        # 1. Exact match on cleaned titles
+        if cleaned_job == cleaned_target:
+            return True
+
+        # 2. Check phrase / sub-role compatibility
+        if cleaned_target in cleaned_job:
+            target_nouns = set(cleaned_target.split())
+            job_nouns = set(cleaned_job.split())
+
+            if "engineer" in target_nouns and "engineer" not in job_nouns:
+                continue
+            if "manager" in target_nouns and "manager" not in job_nouns:
+                continue
+            if "scientist" in target_nouns and "scientist" not in job_nouns:
+                continue
+            if cleaned_target == "data engineer" and "scientist" in job_nouns:
+                continue
+            if cleaned_target == "data engineer" and "analyst" in job_nouns:
+                continue
+            if cleaned_target == "software engineer" and ("manager" in job_nouns or "designer" in job_nouns):
+                continue
+            return True
+
+        # 3. Check reverse: cleaned_job in cleaned_target
+        if cleaned_job in cleaned_target:
+            target_nouns = set(cleaned_target.split())
+            job_nouns = set(cleaned_job.split())
+            if "engineer" in job_nouns and "engineer" in target_nouns:
+                return True
+
+    return False
 
 
 def profile_matches_job(
     job: dict,
     profile: dict,
 ) -> bool:
-    """Return whether a job passes broad recall-oriented deterministic candidate pre-filtering."""
     if not profile:
         return False
-
     if job.get("source") == "hackernews":
         return False
-
-    def profile_values(field: str) -> list[str]:
-        value = profile.get(field) or []
-        if isinstance(value, str):
-            return [value]
-        if isinstance(value, dict):
-            values = []
-            for nested in value.values():
-                if isinstance(nested, list):
-                    values.extend(str(item) for item in nested)
-                elif isinstance(nested, str):
-                    values.append(nested)
-            return values
-        return [str(item) for item in value]
-
-    # Location / Work Mode Eligibility Filter for India-based Candidates
-    loc_vals = [normalize(l) for l in profile_values("locations")]
-    candidate_is_india = any("india" in l or "in" in l for l in loc_vals) or not loc_vals
-    if candidate_is_india:
-        wa = parse_work_arrangement(job)
-        if wa.is_india_eligible is False:
-            return False
-
-    title_norm = normalize(job.get("title", ""))
-    desc_norm = normalize(job.get("description", ""))
-    full_text_norm = f"{title_norm} {desc_norm}"
-
-    def profile_values(field: str) -> list[str]:
-        value = profile.get(field) or []
-        if isinstance(value, str):
-            return [value]
-        if isinstance(value, dict):
-            values = []
-            for nested in value.values():
-                if isinstance(nested, list):
-                    values.extend(str(item) for item in nested)
-                elif isinstance(nested, str):
-                    values.append(nested)
-            return values
-        return [str(item) for item in value]
-
-    target_roles = [
-        normalize(r) for r in profile_values("target_roles") if normalize(r)
-    ]
-    recent_roles = [
-        normalize(r) for r in profile_values("current_or_recent_roles") if normalize(r)
-    ]
-    all_roles = [*target_roles, *recent_roles]
-
-    # 1. Direct role phrase match in title
-    for r in all_roles:
-        if r and r in title_norm:
-            return True
-
-    # 2. Specific role token match in title (excluding generic role words like "engineer")
-    primary_role_sources = target_roles if target_roles else recent_roles
-    specific_role_tokens = set()
-    for role in primary_role_sources:
-        tokens = [
-            t
-            for t in role.split()
-            if t not in STOP_WORDS and len(t) >= 3 and t not in GENERIC_ROLE_WORDS
-        ]
-        specific_role_tokens.update(tokens)
-
-    if specific_role_tokens:
-        title_words = set(title_norm.split())
-        if title_words.intersection(specific_role_tokens):
-            return True
-
-    # 3. Candidate skill overlap in job text (title + description)
-    skills = profile_values("skills")
-    skill_tokens = set()
-    for skill in skills:
-        norm_skill = normalize(skill)
-        if norm_skill and norm_skill not in STOP_WORDS and len(norm_skill) >= 2:
-            skill_tokens.add(norm_skill)
-
-    if skill_tokens:
-        skill_matches = 0
-        for skill_token in skill_tokens:
-            if re.search(r"\b" + re.escape(skill_token) + r"\b", full_text_norm):
-                skill_matches += 1
-                if skill_matches >= 3:
-                    return True
-
+    locs = profile.get("locations") or []
+    if isinstance(locs, str):
+        locs = [locs]
+    if not is_job_location_eligible(job, preferred_locations=locs):
+        return False
+    target_roles = profile.get("target_roles") or []
+    if isinstance(target_roles, str):
+        target_roles = [target_roles]
+    if target_roles:
+        return is_target_role_compatible(job.get("title", ""), target_roles)
     return False
 
 
 def classify_job(
     job: dict,
     profile: dict | None = None,
+    workspace_preferences: dict | None = None,
 ) -> str:
+    """Classify a job as TARGET or OUT_OF_SCOPE/REVIEW based strictly on workspace preferences."""
+    is_implicit_prefs = False
+    if not workspace_preferences and profile:
+        is_implicit_prefs = True
+        target_roles = profile.get("target_roles") or []
+        if isinstance(target_roles, str):
+            target_roles = [target_roles]
+        workspace_preferences = {
+            "target_roles": target_roles,
+            "work_arrangement": "any",
+            "preferred_locations": profile.get("locations") or [],
+        }
+
+    if workspace_preferences:
+        wa_pref = workspace_preferences.get("work_arrangement", "any")
+        loc_pref = workspace_preferences.get("preferred_locations") or []
+        if not is_job_location_eligible(job, wa_pref, loc_pref):
+            return "REVIEW" if is_implicit_prefs else "OUT_OF_SCOPE"
+
+        target_roles = workspace_preferences.get("target_roles") or []
+        if target_roles:
+            if not is_target_role_compatible(job.get("title", ""), target_roles):
+                return "REVIEW" if is_implicit_prefs else "OUT_OF_SCOPE"
+            return "TARGET"
+
     return "TARGET" if profile and profile_matches_job(job, profile) else "REVIEW"
 
 

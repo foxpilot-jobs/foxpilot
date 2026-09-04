@@ -99,10 +99,10 @@ def test_gemini_provider_api_exception_sanitizes_key() -> None:
 def test_factory_creates_gemini_provider(monkeypatch) -> None:
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
     with patch("google.genai.Client"):
-        config = AppConfig(llm_provider="gemini", llm_model="gemini-3.6-flash")
+        config = AppConfig(llm_provider="gemini", llm_model="gemini-3.5-flash-lite")
         provider = create_provider(config)
         assert isinstance(provider, GeminiProvider)
-        assert provider.model == "gemini-3.6-flash"
+        assert provider.model == "gemini-3.5-flash-lite"
 
 
 def test_factory_creates_google_alias_provider(monkeypatch) -> None:

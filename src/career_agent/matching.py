@@ -5,7 +5,14 @@ from __future__ import annotations
 import json
 
 from .config import AppConfig
-from .llm import LLMError, LLMProvider, LLMTimeoutError, create_provider
+from .llm import (
+    LLMError,
+    LLMProvider,
+    LLMRateLimitError,
+    LLMTimeoutError,
+    create_provider,
+    is_rate_limit_error,
+)
 
 MATCH_FIELDS = [
     "match_score",
@@ -37,7 +44,11 @@ MATCH_RESPONSE_SCHEMA = {
 from .work_arrangement import parse_work_arrangement
 
 
-def build_match_prompt(profile: dict, job: dict) -> str:
+def build_match_prompt(
+    profile: dict,
+    job: dict,
+    workspace_preferences: dict | None = None,
+) -> str:
     wa = job.get("work_arrangement") or parse_work_arrangement(job).as_dict()
     compact_job = {
         field: job.get(field, "")
@@ -51,6 +62,23 @@ def build_match_prompt(profile: dict, job: dict) -> str:
             + "\n...[description truncated]...\n"
             + description[-1500:]
         )
+
+    target_roles = (
+        workspace_preferences.get("target_roles", [])
+        if workspace_preferences
+        else profile.get("target_roles", [])
+    )
+    wa_pref = (
+        workspace_preferences.get("work_arrangement", "any")
+        if workspace_preferences
+        else "any"
+    )
+    locations_pref = (
+        workspace_preferences.get("preferred_locations", [])
+        if workspace_preferences
+        else profile.get("locations", [])
+    )
+
     return f"""You are a conservative job-matching assistant.
 
 Compare the candidate profile with the job posting. Do not invent candidate
@@ -71,16 +99,27 @@ Rules:
 - match_score is an integer from 0 to 100.
 - recommendation is APPLY, CONSIDER, or SKIP.
 - Explicitly mention missing mandatory experience or skills.
-- Do not treat similar technology names as equivalent without evidence.
-- AI-assisted development is not machine-learning engineering experience unless the profile says so.
+- The candidate profile describes qualifications and experience. It does not define the candidate's desired role. Evaluate this job only against the explicitly provided target roles.
+- Do NOT infer additional desired roles from candidate's projects, skills, previous responsibilities, or resume wording. A candidate having experience in a role does not mean they want to apply for that role.
 - Location and Work Arrangement: If the job requires on-site or hybrid presence outside the candidate's country, or is restricted to a specific country (e.g. US Only) that differs from candidate location, note it clearly in concerns and reduce recommendation/score accordingly.
 - Keep reasons and concerns concise; return no more than 3 items in each list.
 - For each material missing skill, include gap_analysis entries with severity blocking only when the posting clearly makes it mandatory; use addressable for learnable or adjacent gaps and unknown when the posting is ambiguous.
 - Never claim a gap is bypassable without evidence from the posting; explain what should be verified.
 
-CANDIDATE PROFILE:
+CANDIDATE PROFILE (Extracted from resume):
 ---
 {json.dumps(profile, indent=2)}
+---
+
+USER'S TARGET ROLES (Explicit workspace preferences):
+---
+{json.dumps(target_roles, indent=2)}
+---
+
+USER'S LOCATION PREFERENCES:
+---
+Work Arrangement: {wa_pref}
+Preferred Locations: {json.dumps(locations_pref, indent=2)}
 ---
 
 JOB:
@@ -95,16 +134,19 @@ def match_job(
     profile: dict,
     job: dict,
     provider: LLMProvider | None = None,
+    workspace_preferences: dict | None = None,
 ) -> dict:
     provider = provider or create_provider(config)
-    prompt = build_match_prompt(profile, job)
+    prompt = build_match_prompt(profile, job, workspace_preferences=workspace_preferences)
 
     for attempt in range(2):
         try:
             result = provider.complete_json(prompt, response_schema=MATCH_RESPONSE_SCHEMA)
-        except LLMTimeoutError:
+        except (LLMTimeoutError, LLMRateLimitError):
             raise
-        except LLMError:
+        except LLMError as err:
+            if is_rate_limit_error(err):
+                raise
             if attempt == 1:
                 raise
             prompt += "\nReturn only the requested JSON object with no explanation or markdown."

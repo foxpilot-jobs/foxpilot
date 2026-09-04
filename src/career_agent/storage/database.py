@@ -201,15 +201,99 @@ def get_engine(database: Path | str | Engine) -> Engine:
 
 
 def _initialize_schema(engine: Engine) -> None:
-    if engine.dialect.name != "sqlite":
-        # Hosted/PostgreSQL deployments are Alembic-managed. Do not call
-        # metadata.create_all() here: create_all() creates missing tables but
-        # does not record or apply migrations, which causes schema drift.
-        return
-
     metadata.create_all(engine)
-    if engine.dialect.name == "sqlite":
-        with engine.begin() as connection:
+    is_postgres = engine.dialect.name == "postgresql"
+
+    with engine.begin() as connection:
+        if is_postgres:
+            connection.exec_driver_sql(
+                "INSERT INTO users "
+                "(user_id, email, email_verified, is_active, created_at, updated_at) "
+                "VALUES ('local-user', 'local@foxpilot.local', true, true, "
+                "CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT DO NOTHING"
+            )
+            # Ensure background_jobs has workspace_id populated for legacy jobs
+            connection.exec_driver_sql(
+                "UPDATE background_jobs SET workspace_id = 'ws_default_' || user_id WHERE workspace_id IS NULL"
+            )
+            connection.exec_driver_sql(
+                "ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS target_roles JSONB"
+            )
+            connection.exec_driver_sql(
+                "ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS work_arrangement VARCHAR NOT NULL DEFAULT 'any'"
+            )
+            connection.exec_driver_sql(
+                "ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS preferred_locations JSONB"
+            )
+            connection.exec_driver_sql(
+                "UPDATE workspaces SET work_arrangement = 'any' WHERE work_arrangement IS NULL"
+            )
+            connection.exec_driver_sql(
+                "ALTER TABLE matches ADD COLUMN IF NOT EXISTS workspace_id VARCHAR"
+            )
+            connection.exec_driver_sql(
+                "ALTER TABLE matches ADD COLUMN IF NOT EXISTS preference_hash VARCHAR NOT NULL DEFAULT ''"
+            )
+            connection.exec_driver_sql(
+                "UPDATE matches SET workspace_id = 'ws_default_' || user_id WHERE workspace_id IS NULL"
+            )
+            connection.exec_driver_sql(
+                "UPDATE matches SET preference_hash = '' WHERE preference_hash IS NULL"
+            )
+            connection.exec_driver_sql(
+                "ALTER TABLE applications ADD COLUMN IF NOT EXISTS workspace_id VARCHAR"
+            )
+            connection.exec_driver_sql(
+                "UPDATE applications SET workspace_id = 'ws_default_' || user_id WHERE workspace_id IS NULL"
+            )
+
+            # Drop legacy profiles_pkey if it is defined on user_id alone, and recreate composite primary key
+            pg_pk_cols = [
+                row[0]
+                for row in connection.exec_driver_sql(
+                    "SELECT a.attname FROM pg_index i "
+                    "JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey) "
+                    "WHERE i.indrelid = 'profiles'::regclass AND i.indisprimary"
+                ).fetchall()
+            ]
+            if pg_pk_cols and "workspace_id" not in pg_pk_cols:
+                connection.exec_driver_sql(
+                    "ALTER TABLE profiles DROP CONSTRAINT IF EXISTS profiles_pkey"
+                )
+                connection.exec_driver_sql(
+                    "ALTER TABLE profiles ADD CONSTRAINT profiles_pkey PRIMARY KEY (user_id, workspace_id)"
+                )
+            m_pk_cols = [
+                row[0]
+                for row in connection.exec_driver_sql(
+                    "SELECT a.attname FROM pg_index i "
+                    "JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey) "
+                    "WHERE i.indrelid = 'matches'::regclass AND i.indisprimary"
+                ).fetchall()
+            ]
+            if m_pk_cols and "workspace_id" not in m_pk_cols:
+                connection.exec_driver_sql(
+                    "ALTER TABLE matches DROP CONSTRAINT IF EXISTS matches_pkey"
+                )
+                connection.exec_driver_sql(
+                    "ALTER TABLE matches ADD CONSTRAINT matches_pkey PRIMARY KEY (user_id, workspace_id, job_id)"
+                )
+            app_pk_cols = [
+                row[0]
+                for row in connection.exec_driver_sql(
+                    "SELECT a.attname FROM pg_index i "
+                    "JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey) "
+                    "WHERE i.indrelid = 'applications'::regclass AND i.indisprimary"
+                ).fetchall()
+            ]
+            if app_pk_cols and "workspace_id" not in app_pk_cols:
+                connection.exec_driver_sql(
+                    "ALTER TABLE applications DROP CONSTRAINT IF EXISTS applications_pkey"
+                )
+                connection.exec_driver_sql(
+                    "ALTER TABLE applications ADD CONSTRAINT applications_pkey PRIMARY KEY (user_id, workspace_id, job_id)"
+                )
+        else:
             connection.exec_driver_sql("PRAGMA foreign_keys = ON")
             connection.exec_driver_sql("PRAGMA journal_mode = WAL")
             columns = {
@@ -335,6 +419,7 @@ def _initialize_schema(engine: Engine) -> None:
                     "PRAGMA table_info(background_jobs)"
                 ).fetchall()
             }
+            datetime_type = "DATETIME"
             for col, ddl in (
                 (
                     "attempt",
@@ -350,7 +435,7 @@ def _initialize_schema(engine: Engine) -> None:
                 ),
                 (
                     "lease_expires_at",
-                    "ALTER TABLE background_jobs ADD COLUMN lease_expires_at DATETIME",
+                    f"ALTER TABLE background_jobs ADD COLUMN lease_expires_at {datetime_type}",
                 ),
                 (
                     "error_class",
@@ -358,7 +443,7 @@ def _initialize_schema(engine: Engine) -> None:
                 ),
                 (
                     "started_at",
-                    "ALTER TABLE background_jobs ADD COLUMN started_at DATETIME",
+                    f"ALTER TABLE background_jobs ADD COLUMN started_at {datetime_type}",
                 ),
                 (
                     "idempotency_key",
@@ -368,13 +453,15 @@ def _initialize_schema(engine: Engine) -> None:
                     "progress_json",
                     "ALTER TABLE background_jobs ADD COLUMN progress_json JSON",
                 ),
+                (
+                    "workspace_id",
+                    "ALTER TABLE background_jobs ADD COLUMN workspace_id VARCHAR",
+                ),
             ):
                 if col not in bg_columns:
                     connection.exec_driver_sql(ddl)
-            JobStore._upgrade_user_owned_tables(connection)
 
-            # --- workspaces ------------------------------------------------
-            # Migrate old single-row profiles to workspace-scoped rows.
+            JobStore._upgrade_user_owned_tables(connection)
             profile_cols = {
                 row[1]
                 for row in connection.exec_driver_sql(
@@ -400,6 +487,63 @@ def _initialize_schema(engine: Engine) -> None:
                         "UPDATE profiles SET workspace_id = ? WHERE user_id = ?",
                         (wid, p_user_id),
                     )
+            matches_cols = {
+                row[1]
+                for row in connection.exec_driver_sql(
+                    "PRAGMA table_info(matches)"
+                ).fetchall()
+            }
+            if "workspace_id" not in matches_cols:
+                connection.exec_driver_sql(
+                    "ALTER TABLE matches ADD COLUMN workspace_id VARCHAR"
+                )
+                connection.exec_driver_sql(
+                    "UPDATE matches SET workspace_id = 'ws_default_' || user_id WHERE workspace_id IS NULL"
+                )
+            applications_cols = {
+                row[1]
+                for row in connection.exec_driver_sql(
+                    "PRAGMA table_info(applications)"
+                ).fetchall()
+            }
+            if "workspace_id" not in applications_cols:
+                connection.exec_driver_sql(
+                    "ALTER TABLE applications ADD COLUMN workspace_id VARCHAR"
+                )
+                connection.exec_driver_sql(
+                    "UPDATE applications SET workspace_id = 'ws_default_' || user_id WHERE workspace_id IS NULL"
+                )
+            connection.exec_driver_sql(
+                "UPDATE background_jobs SET workspace_id = 'ws_default_' || user_id WHERE workspace_id IS NULL"
+            )
+            ws_cols = {
+                row[1]
+                for row in connection.exec_driver_sql(
+                    "PRAGMA table_info(workspaces)"
+                ).fetchall()
+            }
+            if "target_roles" not in ws_cols:
+                connection.exec_driver_sql(
+                    "ALTER TABLE workspaces ADD COLUMN target_roles JSON"
+                )
+            if "work_arrangement" not in ws_cols:
+                connection.exec_driver_sql(
+                    "ALTER TABLE workspaces ADD COLUMN work_arrangement VARCHAR NOT NULL DEFAULT 'any'"
+                )
+            if "preferred_locations" not in ws_cols:
+                connection.exec_driver_sql(
+                    "ALTER TABLE workspaces ADD COLUMN preferred_locations JSON"
+                )
+            matches_cols_check = {
+                row[1]
+                for row in connection.exec_driver_sql(
+                    "PRAGMA table_info(matches)"
+                ).fetchall()
+            }
+            if "preference_hash" not in matches_cols_check:
+                connection.exec_driver_sql(
+                    "ALTER TABLE matches ADD COLUMN preference_hash VARCHAR NOT NULL DEFAULT ''"
+                )
 
 
 def initialize_database(database: Path | str | Engine) -> Engine:
@@ -471,6 +615,9 @@ workspaces_table = Table(
     Column("user_id", String, ForeignKey("users.user_id"), nullable=False),
     Column("name", String, nullable=False),
     Column("is_active", Boolean, nullable=False, default=True),
+    Column("target_roles", JSON, nullable=True),
+    Column("work_arrangement", String, nullable=False, default="any"),
+    Column("preferred_locations", JSON, nullable=True),
     Column("created_at", DateTime(timezone=True), nullable=False),
     Column("updated_at", DateTime(timezone=True), nullable=False),
 )
@@ -478,9 +625,9 @@ workspaces_table = Table(
 profiles_table = Table(
     "profiles",
     metadata,
-    Column("user_id", String, nullable=False),
+    Column("user_id", String, primary_key=True),
     Column(
-        "workspace_id", String, ForeignKey("workspaces.workspace_id"), nullable=False
+        "workspace_id", String, ForeignKey("workspaces.workspace_id"), primary_key=True
     ),
     Column("resume_text", Text, nullable=False),
     Column("resume_filename", String, nullable=False),
@@ -495,6 +642,9 @@ background_jobs_table = Table(
     metadata,
     Column("job_id", String, primary_key=True),
     Column("user_id", String, nullable=False),
+    Column(
+        "workspace_id", String, ForeignKey("workspaces.workspace_id")
+    ),
     Column("kind", String, nullable=False),
     Column("status", String, nullable=False),
     Column("result_json", JSON),
@@ -580,8 +730,12 @@ matches_table = Table(
     "matches",
     metadata,
     Column("user_id", String, ForeignKey("users.user_id"), primary_key=True),
+    Column(
+        "workspace_id", String, ForeignKey("workspaces.workspace_id"), primary_key=True
+    ),
     Column("job_id", String, ForeignKey("jobs.job_id"), primary_key=True),
     Column("job_hash", String, nullable=False),
+    Column("preference_hash", String, nullable=False, default=""),
     Column("provider", String, nullable=False),
     Column("model", String, nullable=False),
     Column("result_json", JSON, nullable=False),
@@ -593,6 +747,9 @@ applications_table = Table(
     "applications",
     metadata,
     Column("user_id", String, ForeignKey("users.user_id"), primary_key=True),
+    Column(
+        "workspace_id", String, ForeignKey("workspaces.workspace_id"), primary_key=True
+    ),
     Column("job_id", String, ForeignKey("jobs.job_id"), primary_key=True),
     Column("status", String, nullable=False, default="saved"),
     Column("notes", Text, nullable=False, default=""),
@@ -631,6 +788,23 @@ def _canonical_content_hash(job: dict) -> str:
     ).hexdigest()
 
 
+def compute_preference_hash(
+    target_roles: list[str] | None = None,
+    work_arrangement: str = "any",
+    preferred_locations: list[str] | None = None,
+) -> str:
+    norm_roles = sorted({r.strip().lower() for r in (target_roles or []) if r and r.strip()})
+    norm_arr = (work_arrangement or "any").strip().lower()
+    norm_locs = sorted({l.strip().lower() for l in (preferred_locations or []) if l and l.strip()})
+    payload = {
+        "target_roles": norm_roles,
+        "work_arrangement": norm_arr,
+        "preferred_locations": norm_locs,
+    }
+    encoded = json.dumps(payload, sort_keys=True, ensure_ascii=False).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
 def _description_similarity(left: object, right: object) -> float:
     left_words = set(re.findall(r"[a-z0-9]+", str(left or "").lower()))
     right_words = set(re.findall(r"[a-z0-9]+", str(right or "").lower()))
@@ -666,19 +840,20 @@ class JobStore:
         self.user_id = user_id
         self.engine: Engine = initialize_database(database)
 
-    def _ensure_user_exists(self, user_id: str | None = None) -> None:
+    def _ensure_user_exists(self, user_id: str | None = None, connection=None) -> None:
         target_user_id = user_id or self.user_id
         now = utc_now()
-        with self.engine.begin() as connection:
-            values = {
-                "user_id": target_user_id,
-                "email": f"{target_user_id}@local.invalid",
-                "email_verified": False,
-                "is_active": True,
-                "created_at": now,
-                "updated_at": now,
-            }
-            if connection.dialect.name == "sqlite":
+        values = {
+            "user_id": target_user_id,
+            "email": f"{target_user_id}@local.invalid",
+            "email_verified": False,
+            "is_active": True,
+            "created_at": now,
+            "updated_at": now,
+        }
+
+        def _do_insert(conn):
+            if conn.dialect.name == "sqlite":
                 statement = (
                     sqlite_insert(users_table)
                     .values(**values)
@@ -690,19 +865,41 @@ class JobStore:
                     .values(**values)
                     .on_conflict_do_nothing(index_elements=[users_table.c.user_id])
                 )
-            connection.execute(statement)
+            conn.execute(statement)
+
+        if connection is not None:
+            _do_insert(connection)
+        else:
+            with self.engine.begin() as conn:
+                _do_insert(conn)
 
     @staticmethod
     def _upgrade_user_owned_tables(connection) -> None:
         """Rebuild pre-user-isolation SQLite tables with composite keys."""
+        is_sqlite = connection.dialect.name == "sqlite"
+        if is_sqlite:
+            try:
+                connection.exec_driver_sql("PRAGMA foreign_keys = OFF;")
+                connection.connection.execute("PRAGMA foreign_keys = OFF;")
+            except Exception:  # noqa: BLE001, S110
+                pass
+        connection.exec_driver_sql(
+            "INSERT OR IGNORE INTO users (user_id, email, created_at, updated_at) "
+            "VALUES ('local-user', 'local-user@example.com', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+        )
+        connection.exec_driver_sql(
+            "INSERT OR IGNORE INTO workspaces "
+            "(workspace_id, user_id, name, target_roles, work_arrangement, preferred_locations, is_active, created_at, updated_at) "
+            "VALUES ('ws_default_local-user', 'local-user', 'Default', '[]', 'any', '[]', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+        )
         for table in (matches_table, applications_table):
-            columns = {
+            legacy_columns = {
                 row[1]
                 for row in connection.exec_driver_sql(
                     f'PRAGMA table_info("{table.name}")'
                 ).fetchall()
             }
-            if "user_id" in columns:
+            if "user_id" in legacy_columns:
                 continue
 
             legacy_name = f"{table.name}_legacy"
@@ -710,19 +907,32 @@ class JobStore:
                 f'ALTER TABLE "{table.name}" RENAME TO "{legacy_name}"'
             )
             table.create(connection, checkfirst=False)
-            copied_columns = [
-                column.name for column in table.columns if column.name != "user_id"
-            ]
-            column_list = ", ".join(f'"{column}"' for column in copied_columns)
+            target_cols = []
+            select_exprs = ["'local-user'"]
+            for col in table.columns:
+                if col.name == "user_id":
+                    continue
+                target_cols.append(f'"{col.name}"')
+                if col.name == "workspace_id" and "workspace_id" not in legacy_columns:
+                    select_exprs.append("'ws_default_local-user'")
+                elif col.name == "preference_hash" and "preference_hash" not in legacy_columns:
+                    select_exprs.append("''")
+                else:
+                    select_exprs.append(f'"{col.name}"')
+
+            target_list = ", ".join(target_cols)
+            select_list = ", ".join(select_exprs)
             connection.exec_driver_sql(
-                f'INSERT INTO "{table.name}" ("user_id", {column_list}) '
-                f"SELECT 'local-user', {column_list} FROM \"{legacy_name}\""
+                f'INSERT INTO "{table.name}" ("user_id", {target_list}) '
+                f'SELECT {select_list} FROM "{legacy_name}"'
             )
             connection.exec_driver_sql(f'DROP TABLE "{legacy_name}"')
             connection.exec_driver_sql(
                 f'CREATE INDEX IF NOT EXISTS "idx_{table.name}_user" '
                 f'ON "{table.name}" ("user_id")'
             )
+        if is_sqlite:
+            connection.exec_driver_sql("PRAGMA foreign_keys = ON;")
 
     def close(self) -> None:
         pass
@@ -949,14 +1159,67 @@ class JobStore:
     # Workspaces
     # ------------------------------------------------------------------
 
-    def _active_workspace_id(self, connection) -> str | None:
+    def _active_workspace_id(
+        self, connection, create_default_if_missing: bool = False
+    ) -> str | None:
         row = connection.execute(
             select(workspaces_table.c.workspace_id).where(
                 workspaces_table.c.user_id == self.user_id,
                 workspaces_table.c.is_active.is_(True),
             )
         ).first()
-        return row[0] if row else None
+        if row:
+            return row[0]
+        if not create_default_if_missing:
+            return None
+
+        default_ws_id = f"ws_default_{self.user_id}"
+        now = utc_now()
+        ws_row = connection.execute(
+            select(workspaces_table.c.workspace_id).where(
+                workspaces_table.c.workspace_id == default_ws_id,
+                workspaces_table.c.user_id == self.user_id,
+            )
+        ).first()
+        if ws_row:
+            connection.execute(
+                update(workspaces_table)
+                .where(workspaces_table.c.workspace_id == default_ws_id)
+                .values(is_active=True, updated_at=now)
+            )
+        else:
+            target_user_id = self.user_id
+            values = {
+                "user_id": target_user_id,
+                "email": f"{target_user_id}@local.invalid",
+                "email_verified": False,
+                "is_active": True,
+                "created_at": now,
+                "updated_at": now,
+            }
+            if connection.dialect.name == "sqlite":
+                connection.execute(
+                    sqlite_insert(users_table)
+                    .values(**values)
+                    .on_conflict_do_nothing(index_elements=[users_table.c.user_id])
+                )
+            else:
+                connection.execute(
+                    postgresql_insert(users_table)
+                    .values(**values)
+                    .on_conflict_do_nothing(index_elements=[users_table.c.user_id])
+                )
+            connection.execute(
+                workspaces_table.insert().values(
+                    workspace_id=default_ws_id,
+                    user_id=self.user_id,
+                    name="Default",
+                    is_active=True,
+                    created_at=now,
+                    updated_at=now,
+                )
+            )
+        return default_ws_id
 
     def list_workspaces(self) -> list[dict]:
         with self.engine.connect() as connection:
@@ -975,6 +1238,7 @@ class JobStore:
         now = utc_now()
         workspace_id = f"ws_{uuid4().hex}"
         with self.engine.begin() as connection:
+            self._ensure_user_exists(connection=connection)
             connection.execute(
                 workspaces_table.insert().values(
                     workspace_id=workspace_id,
@@ -1043,6 +1307,20 @@ class JobStore:
                     profiles_table.c.user_id == self.user_id,
                 )
             )
+            # Scrub matches data immediately.
+            connection.execute(
+                delete(matches_table).where(
+                    matches_table.c.workspace_id == workspace_id,
+                    matches_table.c.user_id == self.user_id,
+                )
+            )
+            # Scrub applications data immediately.
+            connection.execute(
+                delete(applications_table).where(
+                    applications_table.c.workspace_id == workspace_id,
+                    applications_table.c.user_id == self.user_id,
+                )
+            )
             # Remove workspace record.
             connection.execute(
                 delete(workspaces_table).where(
@@ -1065,29 +1343,118 @@ class JobStore:
                     )
         return True
 
+    def get_workspace_preferences(self, workspace_id: str | None = None) -> dict:
+        with self.engine.connect() as connection:
+            if not workspace_id:
+                workspace_id = self._active_workspace_id(connection)
+            row = (
+                connection.execute(
+                    select(workspaces_table).where(
+                        workspaces_table.c.workspace_id == workspace_id,
+                        workspaces_table.c.user_id == self.user_id,
+                    )
+                )
+                .mappings()
+                .first()
+            )
+        if not row:
+            return {
+                "target_roles": [],
+                "work_arrangement": "any",
+                "preferred_locations": [],
+            }
+        raw_roles = row.get("target_roles")
+        if raw_roles is None:
+            prof_data = self.get_profile(workspace_id=workspace_id)
+            if prof_data and isinstance(prof_data.get("profile_json"), dict):
+                extracted = prof_data["profile_json"].get("target_roles")
+                if isinstance(extracted, list):
+                    raw_roles = extracted
+        roles = raw_roles or []
+        if isinstance(roles, str):
+            roles = [roles]
+        wa = row.get("work_arrangement") or "any"
+        locations = row.get("preferred_locations") or []
+        if isinstance(locations, str):
+            locations = [locations]
+        return {
+            "target_roles": list(roles),
+            "work_arrangement": str(wa),
+            "preferred_locations": list(locations),
+        }
+
+    def update_workspace_preferences(
+        self,
+        target_roles: list[str],
+        work_arrangement: str,
+        preferred_locations: list[str],
+        workspace_id: str | None = None,
+    ) -> dict:
+        seen_roles = set()
+        clean_roles = []
+        for r in target_roles:
+            if isinstance(r, str):
+                trimmed = r.strip()
+                if trimmed and trimmed.lower() not in seen_roles:
+                    seen_roles.add(trimmed.lower())
+                    clean_roles.append(trimmed)
+
+        wa = (work_arrangement or "any").strip().lower()
+        if wa not in ("any", "remote", "hybrid", "onsite"):
+            wa = "any"
+
+        seen_locs = set()
+        clean_locations = []
+        for l in preferred_locations:
+            if isinstance(l, str):
+                trimmed = l.strip()
+                if trimmed and trimmed.lower() not in seen_locs:
+                    seen_locs.add(trimmed.lower())
+                    clean_locations.append(trimmed)
+
+        now = utc_now()
+        with self.engine.begin() as connection:
+            if not workspace_id:
+                workspace_id = self._active_workspace_id(
+                    connection, create_default_if_missing=True
+                )
+            connection.execute(
+                update(workspaces_table)
+                .where(
+                    workspaces_table.c.workspace_id == workspace_id,
+                    workspaces_table.c.user_id == self.user_id,
+                )
+                .values(
+                    target_roles=clean_roles,
+                    work_arrangement=wa,
+                    preferred_locations=clean_locations,
+                    updated_at=now,
+                )
+            )
+
+        return {
+            "target_roles": clean_roles,
+            "work_arrangement": wa,
+            "preferred_locations": clean_locations,
+        }
+
     # ------------------------------------------------------------------
     # Profiles (workspace-scoped)
     # ------------------------------------------------------------------
 
     def save_profile(
-        self, resume_text: str, resume_filename: str, profile: dict
+        self,
+        resume_text: str,
+        resume_filename: str,
+        profile: dict,
+        workspace_id: str | None = None,
     ) -> None:
         self._ensure_user_exists()
         now = utc_now()
         with self.engine.begin() as connection:
-            workspace_id = self._active_workspace_id(connection)
             if not workspace_id:
-                # Auto-create a Default workspace if none exists yet.
-                workspace_id = f"ws_default_{self.user_id}"
-                connection.execute(
-                    workspaces_table.insert().values(
-                        workspace_id=workspace_id,
-                        user_id=self.user_id,
-                        name="Default",
-                        is_active=True,
-                        created_at=now,
-                        updated_at=now,
-                    )
+                workspace_id = self._active_workspace_id(
+                    connection, create_default_if_missing=True
                 )
             values = {
                 "user_id": self.user_id,
@@ -1117,10 +1484,13 @@ class JobStore:
                     profiles_table.insert().values(created_at=now, **values)
                 )
 
-    def get_profile(self) -> dict | None:
-        """Return the profile for the active workspace."""
+    def get_profile(self, workspace_id: str | None = None) -> dict | None:
+        """Return the profile for the active or specified workspace."""
         with self.engine.connect() as connection:
-            workspace_id = self._active_workspace_id(connection)
+            if not workspace_id:
+                workspace_id = self._active_workspace_id(
+                    connection, create_default_if_missing=False
+                )
             if not workspace_id:
                 return None
             row = (
@@ -1135,10 +1505,11 @@ class JobStore:
             )
         return dict(row) if row else None
 
-    def delete_profile(self) -> bool:
+    def delete_profile(self, workspace_id: str | None = None) -> bool:
         """Scrub resume text and extracted profile for the active workspace."""
         with self.engine.begin() as connection:
-            workspace_id = self._active_workspace_id(connection)
+            if not workspace_id:
+                workspace_id = self._active_workspace_id(connection)
             if not workspace_id:
                 return False
             result = connection.execute(
@@ -1149,11 +1520,12 @@ class JobStore:
             )
         return result.rowcount > 0
 
-    def delete_resume(self) -> bool:
+    def delete_resume(self, workspace_id: str | None = None) -> bool:
         """Clear only resume_text and resume_filename, keep the extracted profile."""
         now = utc_now()
         with self.engine.begin() as connection:
-            workspace_id = self._active_workspace_id(connection)
+            if not workspace_id:
+                workspace_id = self._active_workspace_id(connection)
             if not workspace_id:
                 return False
             result = connection.execute(
@@ -1173,13 +1545,19 @@ class JobStore:
         result: dict | None = None,
         max_attempts: int = 3,
         idempotency_key: str | None = None,
+        workspace_id: str | None = None,
     ) -> None:
         now = utc_now()
         with self.engine.begin() as connection:
+            if not workspace_id:
+                workspace_id = self._active_workspace_id(
+                    connection, create_default_if_missing=True
+                )
             connection.execute(
                 background_jobs_table.insert().values(
                     job_id=job_id,
                     user_id=self.user_id,
+                    workspace_id=workspace_id,
                     kind=kind,
                     status="queued",
                     result_json=result,
@@ -1206,18 +1584,23 @@ class JobStore:
         return dict(row) if row else None
 
     def get_active_background_job(
-        self, kind: str, max_stale_seconds: int = 600
+        self, kind: str, max_stale_seconds: int = 600, workspace_id: str | None = None
     ) -> dict | None:
         now = utc_now()
         with self.engine.connect() as connection:
+            if not workspace_id:
+                workspace_id = self._active_workspace_id(connection)
+            conditions = [
+                background_jobs_table.c.user_id == self.user_id,
+                background_jobs_table.c.kind == kind,
+                background_jobs_table.c.status.in_(("queued", "running")),
+            ]
+            if workspace_id:
+                conditions.append(background_jobs_table.c.workspace_id == workspace_id)
             row = (
                 connection.execute(
                     select(background_jobs_table)
-                    .where(
-                        background_jobs_table.c.user_id == self.user_id,
-                        background_jobs_table.c.kind == kind,
-                        background_jobs_table.c.status.in_(("queued", "running")),
-                    )
+                    .where(*conditions)
                     .order_by(background_jobs_table.c.updated_at.desc())
                 )
                 .mappings()
@@ -1261,7 +1644,11 @@ class JobStore:
                     select(background_jobs_table)
                     .where(
                         or_(
-                            background_jobs_table.c.status == "queued",
+                            (background_jobs_table.c.status == "queued")
+                            & (
+                                background_jobs_table.c.lease_expires_at.is_(None)
+                                | (background_jobs_table.c.lease_expires_at <= now)
+                            ),
                             (background_jobs_table.c.status == "running")
                             & (
                                 background_jobs_table.c.lease_expires_at.is_(None)
@@ -1430,6 +1817,7 @@ class JobStore:
         self,
         job_id: str,
         error: str,
+        backoff_seconds: float | None = None,
     ) -> None:
         """Mark a job as failed with retryable classification.
 
@@ -1456,6 +1844,24 @@ class JobStore:
             attempt = row["attempt"] or 0
             max_attempts = row["max_attempts"] or 3
             if attempt < max_attempts:
+                lease_expires = None
+                if backoff_seconds is not None and backoff_seconds > 0:
+                    lease_expires = now + timedelta(seconds=backoff_seconds)
+                elif any(
+                    hint in str(error).lower()
+                    for hint in (
+                        "429",
+                        "rate limit",
+                        "rate_limit",
+                        "resourceexhausted",
+                        "resource_exhausted",
+                        "too_many_requests",
+                        "quota",
+                    )
+                ):
+                    delay = 5.0 * (2 ** max(0, attempt - 1))
+                    lease_expires = now + timedelta(seconds=delay)
+
                 connection.execute(
                     update(background_jobs_table)
                     .where(
@@ -1467,7 +1873,7 @@ class JobStore:
                         error=error,
                         error_class="retryable",
                         lease_owner=None,
-                        lease_expires_at=None,
+                        lease_expires_at=lease_expires,
                         updated_at=now,
                     )
                 )
@@ -2335,22 +2741,31 @@ class JobStore:
         provider: str,
         model: str,
         result: dict,
+        preference_hash: str = "",
+        workspace_id: str | None = None,
     ) -> None:
         self._ensure_user_exists()
         now = utc_now()
-        values = {
-            "user_id": self.user_id,
-            "job_id": job_id,
-            "job_hash": job_hash,
-            "provider": provider,
-            "model": model,
-            "result_json": result,
-            "updated_at": now,
-        }
         with self.engine.begin() as connection:
+            if not workspace_id:
+                workspace_id = self._active_workspace_id(
+                    connection, create_default_if_missing=True
+                )
+            values = {
+                "user_id": self.user_id,
+                "workspace_id": workspace_id,
+                "job_id": job_id,
+                "job_hash": job_hash,
+                "preference_hash": preference_hash,
+                "provider": provider,
+                "model": model,
+                "result_json": result,
+                "updated_at": now,
+            }
             existing = connection.execute(
                 select(matches_table.c.job_id).where(
                     matches_table.c.user_id == self.user_id,
+                    matches_table.c.workspace_id == workspace_id,
                     matches_table.c.job_id == job_id,
                 )
             ).first()
@@ -2359,6 +2774,7 @@ class JobStore:
                     update(matches_table)
                     .where(
                         matches_table.c.user_id == self.user_id,
+                        matches_table.c.workspace_id == workspace_id,
                         matches_table.c.job_id == job_id,
                     )
                     .values(**values)
@@ -2368,18 +2784,23 @@ class JobStore:
                     matches_table.insert().values(created_at=now, **values)
                 )
 
-    def get_match(self, job_id: str) -> dict | None:
+    def get_match(
+        self,
+        job_id: str,
+        preference_hash: str | None = None,
+        workspace_id: str | None = None,
+    ) -> dict | None:
         with self.engine.connect() as connection:
-            row = (
-                connection.execute(
-                    select(matches_table).where(
-                        matches_table.c.user_id == self.user_id,
-                        matches_table.c.job_id == job_id,
-                    )
-                )
-                .mappings()
-                .first()
+            if not workspace_id:
+                workspace_id = self._active_workspace_id(connection)
+            query = select(matches_table).where(
+                matches_table.c.user_id == self.user_id,
+                matches_table.c.workspace_id == workspace_id,
+                matches_table.c.job_id == job_id,
             )
+            if preference_hash is not None:
+                query = query.where(matches_table.c.preference_hash == preference_hash)
+            row = connection.execute(query).mappings().first()
         return self._match_from_row(row) if row else None
 
     def list_matches(
@@ -2390,34 +2811,36 @@ class JobStore:
         query_text: str | None = None,
         recommendation: str | None = None,
         sort: str = "score",
+        workspace_id: str | None = None,
     ) -> dict:
         """Return ``{items, next_cursor, total}`` for matches."""
-        base = (
-            select(
-                matches_table,
-                jobs_table.c.payload_json,
-                jobs_table.c.title,
-                jobs_table.c.company,
-                jobs_table.c.location,
-            )
-            .join(jobs_table, jobs_table.c.job_id == matches_table.c.job_id)
-            .where(matches_table.c.user_id == self.user_id)
-        )
-        if query_text:
-            pattern = f"%{query_text}%"
-            base = base.where(
-                or_(
-                    jobs_table.c.title.ilike(pattern),
-                    jobs_table.c.company.ilike(pattern),
-                    jobs_table.c.location.ilike(pattern),
+        with self.engine.connect() as connection:
+            if not workspace_id:
+                workspace_id = self._active_workspace_id(connection)
+            base = (
+                select(
+                    matches_table,
+                    jobs_table.c.payload_json,
+                    jobs_table.c.title,
+                    jobs_table.c.company,
+                    jobs_table.c.location,
+                )
+                .join(jobs_table, jobs_table.c.job_id == matches_table.c.job_id)
+                .where(
+                    matches_table.c.user_id == self.user_id,
+                    matches_table.c.workspace_id == workspace_id,
                 )
             )
-        # Note: recommendation is stored inside result_json. For databases
-        # that support JSON path operators we could push this down, but for
-        # SQLite compatibility we filter in Python after fetch.  The cursor
-        # window fetches limit * 4 rows to account for filtering.
+            if query_text:
+                pattern = f"%{query_text}%"
+                base = base.where(
+                    or_(
+                        jobs_table.c.title.ilike(pattern),
+                        jobs_table.c.company.ilike(pattern),
+                        jobs_table.c.location.ilike(pattern),
+                    )
+                )
 
-        with self.engine.connect() as connection:
             # Sorting — score lives in result_json so we sort in Python.
             data_query = base.order_by(matches_table.c.updated_at.desc())
             all_rows = connection.execute(data_query).mappings().all()
@@ -2453,8 +2876,7 @@ class JobStore:
                 reverse=True,
             )
 
-        # Apply cursor (offset-based within the sorted list for simplicity,
-        # since the full match set is bounded by user-specific matching runs).
+        # Apply cursor
         start = 0
         if cursor:
             parts = decode_cursor(cursor)
@@ -2473,23 +2895,33 @@ class JobStore:
         return {"items": page, "next_cursor": next_cursor, "total": total}
 
     def save_application(
-        self, job_id: str, status: str = "saved", notes: str = ""
+        self,
+        job_id: str,
+        status: str = "saved",
+        notes: str = "",
+        workspace_id: str | None = None,
     ) -> None:
         self._ensure_user_exists()
         if status not in {"saved", "applied", "interviewing", "rejected", "offered"}:
             raise ValueError(f"Unsupported application status: {status}")
         now = utc_now()
-        values = {
-            "user_id": self.user_id,
-            "job_id": job_id,
-            "status": status,
-            "notes": notes,
-            "updated_at": now,
-        }
         with self.engine.begin() as connection:
+            if not workspace_id:
+                workspace_id = self._active_workspace_id(
+                    connection, create_default_if_missing=True
+                )
+            values = {
+                "user_id": self.user_id,
+                "workspace_id": workspace_id,
+                "job_id": job_id,
+                "status": status,
+                "notes": notes,
+                "updated_at": now,
+            }
             existing = connection.execute(
                 select(applications_table.c.job_id).where(
                     applications_table.c.user_id == self.user_id,
+                    applications_table.c.workspace_id == workspace_id,
                     applications_table.c.job_id == job_id,
                 )
             ).first()
@@ -2498,6 +2930,7 @@ class JobStore:
                     update(applications_table)
                     .where(
                         applications_table.c.user_id == self.user_id,
+                        applications_table.c.workspace_id == workspace_id,
                         applications_table.c.job_id == job_id,
                     )
                     .values(**values)
@@ -2505,12 +2938,17 @@ class JobStore:
             else:
                 connection.execute(applications_table.insert().values(**values))
 
-    def get_application(self, job_id: str) -> dict | None:
+    def get_application(
+        self, job_id: str, workspace_id: str | None = None
+    ) -> dict | None:
         with self.engine.connect() as connection:
+            if not workspace_id:
+                workspace_id = self._active_workspace_id(connection)
             row = (
                 connection.execute(
                     select(applications_table).where(
                         applications_table.c.user_id == self.user_id,
+                        applications_table.c.workspace_id == workspace_id,
                         applications_table.c.job_id == job_id,
                     )
                 )
@@ -2527,25 +2965,31 @@ class JobStore:
         query_text: str | None = None,
         status_filter: str | None = None,
         sort: str = "updated_at",
+        workspace_id: str | None = None,
     ) -> dict:
         """Return ``{items, next_cursor, total}`` for applications."""
-        base = (
-            select(applications_table, jobs_table.c.title, jobs_table.c.company)
-            .join(jobs_table, jobs_table.c.job_id == applications_table.c.job_id)
-            .where(applications_table.c.user_id == self.user_id)
-        )
-        if status_filter:
-            base = base.where(applications_table.c.status == status_filter)
-        if query_text:
-            pattern = f"%{query_text}%"
-            base = base.where(
-                or_(
-                    jobs_table.c.title.ilike(pattern),
-                    jobs_table.c.company.ilike(pattern),
+        with self.engine.connect() as connection:
+            if not workspace_id:
+                workspace_id = self._active_workspace_id(connection)
+            base = (
+                select(applications_table, jobs_table.c.title, jobs_table.c.company)
+                .join(jobs_table, jobs_table.c.job_id == applications_table.c.job_id)
+                .where(
+                    applications_table.c.user_id == self.user_id,
+                    applications_table.c.workspace_id == workspace_id,
                 )
             )
+            if status_filter:
+                base = base.where(applications_table.c.status == status_filter)
+            if query_text:
+                pattern = f"%{query_text}%"
+                base = base.where(
+                    or_(
+                        jobs_table.c.title.ilike(pattern),
+                        jobs_table.c.company.ilike(pattern),
+                    )
+                )
 
-        with self.engine.connect() as connection:
             total = (
                 connection.execute(
                     select(func.count()).select_from(base.alias())
@@ -2594,6 +3038,7 @@ class JobStore:
         return {
             "job_id": row["job_id"],
             "job_hash": row["job_hash"],
+            "preference_hash": row.get("preference_hash", ""),
             "provider": row["provider"],
             "model": row["model"],
             "match": row["result_json"],

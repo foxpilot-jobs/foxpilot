@@ -8,11 +8,17 @@ from typing import Any
 from google import genai
 from google.genai import types
 
-from .base import LLMError, LLMProvider, parse_json_response
+from .base import (
+    LLMError,
+    LLMProvider,
+    LLMRateLimitError,
+    is_rate_limit_error,
+    parse_json_response,
+)
 
 
 class GeminiProvider(LLMProvider):
-    def __init__(self, model: str = "gemini-3.6-flash", api_key: str | None = None) -> None:
+    def __init__(self, model: str = "gemini-3.5-flash-lite", api_key: str | None = None) -> None:
         key = api_key or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
         if not key:
             raise LLMError("GEMINI_API_KEY is required when LLM_PROVIDER=gemini.")
@@ -41,6 +47,8 @@ class GeminiProvider(LLMProvider):
             error_msg = str(error)
             if self._api_key and self._api_key in error_msg:
                 error_msg = error_msg.replace(self._api_key, "[REDACTED_API_KEY]")
+            if is_rate_limit_error(error):
+                raise LLMRateLimitError(f"Gemini request failed: {error_msg}") from None
             raise LLMError(f"Gemini request failed: {error_msg}") from None
 
         text = response.text or ""
