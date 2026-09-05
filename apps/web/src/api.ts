@@ -182,8 +182,24 @@ export async function uploadResume(file: File): Promise<BackgroundJob> {
   return response.json() as Promise<BackgroundJob>;
 }
 
+export async function retryResumeExtraction(): Promise<BackgroundJob> {
+  const response = await fetch(`${API_BASE}/api/v1/profile/resume/retry`, {
+    method: "POST",
+    credentials: "include",
+  });
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
+    throw new Error(payload?.detail ?? `Resume analysis retry failed: ${response.status}`);
+  }
+  return response.json() as Promise<BackgroundJob>;
+}
+
 export async function getProfile(): Promise<Profile> {
-  const response = await fetch(`${API_BASE}/api/v1/profile`, { credentials: "include" });
+  const cacheBuster = `_t=${Date.now()}`;
+  const response = await fetch(`${API_BASE}/api/v1/profile?${cacheBuster}`, {
+    credentials: "include",
+    headers: { "Cache-Control": "no-cache" },
+  });
   if (!response.ok) {
     throw new Error(`Unable to load profile: ${response.status}`);
   }

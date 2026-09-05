@@ -6,6 +6,7 @@ import {
   getActiveJob,
   getBackgroundJob,
   getProfile,
+  retryResumeExtraction,
   runMatching,
   uploadResume,
   type BackgroundJob,
@@ -21,7 +22,7 @@ import { JobPreferencesSection } from "../components/JobPreferencesSection";
 import { ProfileActions } from "../components/ProfileActions";
 import { ProfileHeader } from "../components/ProfileHeader";
 import { ProfileInsightsLink } from "../components/ProfileInsightsLink";
-import { ProfileOverview } from "../components/ProfileOverview";
+import { ProfileOverview, type ExtractionPhase } from "../components/ProfileOverview";
 import { ProfileReadiness } from "../components/ProfileReadiness";
 import { ProfileSkeleton } from "../components/ProfileSkeleton";
 import { ResumeCard } from "../components/ResumeCard";
@@ -45,6 +46,7 @@ export function ProfileSetupPage() {
     message: string;
   } | null>(null);
   const [activeJob, setActiveJob] = useState<BackgroundJob | null>(null);
+  const [extractionPhase, setExtractionPhase] = useState<ExtractionPhase>("idle");
   const [selectedFileName, setSelectedFileName] = useState<string | undefined>();
   const [retryToken, setRetryToken] = useState(0);
 
@@ -58,15 +60,40 @@ export function ProfileSetupPage() {
     let active = true;
     setLoading(true);
     setLoadError(false);
-    void Promise.all([getProfile(), getActiveJob("matching").catch(() => null)])
-      .then(([loadedProfile, activeMatchingJob]) => {
+    void Promise.all([
+      getProfile(),
+      getActiveJob("matching").catch(() => null),
+      getActiveJob("profile_generation").catch(() => null),
+    ])
+      .then(([loadedProfile, activeMatchingJob, activeProfileGenJob]) => {
         if (active) {
           setProfile(loadedProfile);
-          if (
-            activeMatchingJob &&
-            (activeMatchingJob.status === "queued" || activeMatchingJob.status === "running")
-          ) {
-            setActiveJob(activeMatchingJob);
+          const pendingJob =
+            activeProfileGenJob &&
+            (activeProfileGenJob.status === "queued" || activeProfileGenJob.status === "running")
+              ? activeProfileGenJob
+              : activeMatchingJob &&
+                  (activeMatchingJob.status === "queued" || activeMatchingJob.status === "running")
+                ? activeMatchingJob
+                : null;
+          if (pendingJob) {
+            setActiveJob(pendingJob);
+            if (pendingJob.kind === "profile_generation") {
+              setExtractionPhase("analyzing");
+            }
+          } else {
+            const hasFields = Boolean(
+              loadedProfile &&
+              loadedProfile.profile &&
+              Object.keys(loadedProfile.profile).length > 0,
+            );
+            if (hasFields) {
+              setExtractionPhase("completed_with_fields");
+            } else if (loadedProfile?.resume_filename) {
+              setExtractionPhase("completed_empty");
+            } else {
+              setExtractionPhase("idle");
+            }
           }
         }
       })
@@ -81,6 +108,42 @@ export function ProfileSetupPage() {
     };
   }, [retryToken]);
 
+  async function finalizeProfileFetch(maxAttempts = 5, delayMs = 500): Promise<Profile | null> {
+    setExtractionPhase("finalizing");
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const freshProfile = await getProfile().catch(() => null);
+      const hasFields = Boolean(
+        freshProfile && freshProfile.profile && Object.keys(freshProfile.profile).length > 0,
+      );
+      if (hasFields && freshProfile) {
+        setProfile(freshProfile);
+        setExtractionPhase("completed_with_fields");
+        setActiveJob(null);
+        setMessage("Profile extracted. Review the fields below, then run matching when ready.");
+        return freshProfile;
+      }
+      if (attempt < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+
+    const finalProfile = await getProfile().catch(() => null);
+    const finalHasFields = Boolean(
+      finalProfile && finalProfile.profile && Object.keys(finalProfile.profile).length > 0,
+    );
+    if (finalProfile) {
+      setProfile(finalProfile);
+    }
+    if (finalHasFields) {
+      setExtractionPhase("completed_with_fields");
+      setMessage("Profile extracted. Review the fields below, then run matching when ready.");
+    } else {
+      setExtractionPhase("completed_empty");
+    }
+    setActiveJob(null);
+    return finalProfile;
+  }
+
   useEffect(() => {
     const jobId = activeJob?.job_id;
     if (!jobId) return;
@@ -92,12 +155,7 @@ export function ProfileSetupPage() {
         const job = await getBackgroundJob(jobId);
         if (stopped) return;
         if (job.status === "completed" && job.kind === "profile_generation") {
-          setActiveJob(null);
-          const loadedProfile = await getProfile();
-          if (!stopped) {
-            setProfile(loadedProfile);
-            setMessage("Profile extracted. Review the fields below, then run matching when ready.");
-          }
+          await finalizeProfileFetch();
           return;
         }
         if (job.status === "completed" && job.kind === "matching") {
@@ -140,13 +198,22 @@ export function ProfileSetupPage() {
         }
         if (job.status === "failed") {
           setActiveJob(null);
-          const errorMsg = job.error
-            ? `Matching failed: ${job.error}`
+          const isProfileGen = job.kind === "profile_generation";
+          if (isProfileGen) {
+            setExtractionPhase("failed");
+          }
+          const defaultError = isProfileGen
+            ? "Resume analysis failed. Please try again or re-upload your resume."
             : "Matching failed: We couldn't complete profile matching. Please try again.";
+          const prefix = isProfileGen ? "Resume analysis failed: " : "Matching failed: ";
+          const errorMsg = job.error ? `${prefix}${job.error}` : defaultError;
           setActionError(errorMsg);
           return;
         }
         setActiveJob(job);
+        if (job.kind === "profile_generation") {
+          setExtractionPhase("analyzing");
+        }
         const delay = JOB_POLL_DELAYS_MS[pollCount] ?? JOB_POLL_DELAYS_MS.at(-1)!;
         pollCount += 1;
         timer = window.setTimeout(() => void poll(), delay);
@@ -172,11 +239,56 @@ export function ProfileSetupPage() {
     setActionError(null);
     setMessage(null);
     setCompletionResult(null);
+    setExtractionPhase("uploading");
     try {
-      setActiveJob(await uploadResume(file));
+      const job = await uploadResume(file);
+      setActiveJob(job);
       setMessage("Resume received. FoxPilot is extracting your profile in the background.");
+      const updatedProfile = await getProfile().catch(() => null);
+      if (updatedProfile) {
+        setProfile(updatedProfile);
+      }
+      if (job.status === "completed" && job.kind === "profile_generation") {
+        await finalizeProfileFetch();
+      } else {
+        setExtractionPhase("analyzing");
+      }
     } catch {
+      setExtractionPhase("failed");
       setActionError("We couldn't upload your resume. Please check that it is a PDF under 10 MB.");
+    } finally {
+      setBusy(false);
+      setActiveAction(null);
+    }
+  }
+
+  async function handleRetryExtraction() {
+    setBusy(true);
+    setActiveAction("upload");
+    setActionError(null);
+    setMessage(null);
+    setCompletionResult(null);
+    setExtractionPhase("analyzing");
+    try {
+      const job = await retryResumeExtraction();
+      setActiveJob(job);
+      setMessage(
+        "Resume re-analysis queued. FoxPilot is extracting your profile in the background.",
+      );
+      const updatedProfile = await getProfile().catch(() => null);
+      if (updatedProfile) {
+        setProfile(updatedProfile);
+      }
+      if (job.status === "completed" && job.kind === "profile_generation") {
+        await finalizeProfileFetch();
+      } else {
+        setExtractionPhase("analyzing");
+      }
+    } catch (err: unknown) {
+      setExtractionPhase("failed");
+      const msg =
+        err instanceof Error ? err.message : "Could not re-analyze resume. Please try again.";
+      setActionError(msg);
     } finally {
       setBusy(false);
       setActiveAction(null);
@@ -260,7 +372,11 @@ export function ProfileSetupPage() {
   const jobProcessing = activeJob?.status === "queued" || activeJob?.status === "running";
   const processing = busy || jobProcessing;
   const resumeBusy =
-    activeAction === "upload" || (jobProcessing && activeJob?.kind === "profile_generation");
+    activeAction === "upload" ||
+    (jobProcessing && activeJob?.kind === "profile_generation") ||
+    extractionPhase === "uploading" ||
+    extractionPhase === "analyzing" ||
+    extractionPhase === "finalizing";
 
   return (
     <main className="profile-page">
@@ -311,10 +427,21 @@ export function ProfileSetupPage() {
             busy={resumeBusy}
             onDeleteResume={profile?.resume_filename ? () => setShowDeleteResume(true) : undefined}
             onFile={handleUpload}
+            onRetryExtraction={
+              profile?.resume_filename ? () => void handleRetryExtraction() : undefined
+            }
             profile={profile}
             selectedFileName={selectedFileName}
           />
-          {profile && <ProfileOverview profile={profile} />}
+          {profile && (
+            <ProfileOverview
+              extractionPhase={extractionPhase}
+              onRetryExtraction={
+                profile.resume_filename ? () => void handleRetryExtraction() : undefined
+              }
+              profile={profile}
+            />
+          )}
         </div>
         <aside className="profile-page-secondary">
           {activeJob && <ProfileJobStatus job={activeJob} />}
@@ -414,7 +541,15 @@ function ProfileJobStatus({ job }: { job: BackgroundJob }) {
     <div className="profile-job-status" role="status" aria-live="polite">
       <Spinner size={18} />
       <div>
-        <strong>{isQueued ? "Matching queued…" : "Matching in progress…"}</strong>
+        <strong>
+          {isQueued
+            ? job.kind === "profile_generation"
+              ? "Resume analysis queued…"
+              : "Matching queued…"
+            : job.kind === "profile_generation"
+              ? "Analyzing resume…"
+              : "Matching in progress…"}
+        </strong>
         <span>
           {job.kind === "profile_generation"
             ? "FoxPilot is extracting your experience, skills, and career profile."
@@ -428,8 +563,9 @@ function ProfileJobStatus({ job }: { job: BackgroundJob }) {
         </span>
         {isTakingLonger && !isQueued && (
           <span style={{ display: "block", marginTop: "4px", fontSize: "0.85em", opacity: 0.85 }}>
-            Matching is taking a little longer. FoxPilot is still analyzing your jobs. You can leave
-            this page — we'll keep processing in the background.
+            {job.kind === "profile_generation" ? "Resume analysis" : "Matching"} is taking a little
+            longer. FoxPilot is still working. You can leave this page — we'll keep processing in
+            the background.
           </span>
         )}
       </div>
