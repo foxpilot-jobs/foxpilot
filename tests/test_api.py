@@ -528,3 +528,166 @@ def test_get_active_profile_job_returns_200_with_null_when_no_active_job(tmp_pat
     assert job is not None
     assert job["job_id"] == "test-job-1"
     assert job["status"] == "queued"
+
+
+def test_resume_extraction_processing_and_completion_flow(tmp_path: Path, monkeypatch) -> None:
+    extracted_data = {
+        "summary": "Experienced Operations & Supply Chain Analyst.",
+        "years_of_experience": 4,
+        "current_or_recent_roles": ["Supply Chain Analyst"],
+        "skills": ["SQL", "Excel", "Python"],
+        "education": ["BS Industrial Engineering"],
+        "target_roles": ["Operations Analyst", "Supply Chain Analyst"],
+    }
+    monkeypatch.setattr(
+        "services.api.app.extract_resume_text_from_bytes",
+        lambda _content, _filename: "Sample Resume Text for Testing",
+    )
+    monkeypatch.setattr(
+        "career_agent.services.career.create_profile_from_text",
+        lambda *_args, **_kwargs: extracted_data,
+    )
+
+    config = AppConfig(data_dir=tmp_path)
+    app = create_app()
+    app.state.service.config = config
+    client = TestClient(app)
+
+    # 1. Successful Upload
+    upload_res = client.post(
+        "/api/v1/profile/resume",
+        files={"file": ("resume.pdf", b"%PDF-1.4 test bytes", "application/pdf")},
+    )
+    assert upload_res.status_code == 202
+    job_id = upload_res.json()["job_id"]
+    assert job_id
+
+    # 2. Check profile output after inline completion
+    profile_res = client.get("/api/v1/profile")
+    assert profile_res.status_code == 200
+    pdata = profile_res.json()
+    assert pdata["resume_filename"] == "resume.pdf"
+    assert pdata["profile"]["summary"] == "Experienced Operations & Supply Chain Analyst."
+    assert pdata["profile"]["skills"] == ["SQL", "Excel", "Python"]
+
+    # 3. Check active job status endpoint with a queued job
+    with JobStore(config.database_path) as store:
+        store.create_background_job("bg-active-1", "profile_generation")
+
+    active_job = client.get("/api/v1/profile/jobs/active/profile_generation").json()
+    assert active_job is not None
+    assert active_job["job_id"] == "bg-active-1"
+    assert active_job["status"] == "queued"
+
+
+def test_resume_extraction_failure_and_retry(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(
+        "services.api.app.extract_resume_text_from_bytes",
+        lambda _content, _filename: "Sample Resume Text for Failure Test",
+    )
+    
+    # First attempt fails with LLM Error
+    def fail_llm(*_args, **_kwargs):
+        raise ValueError("Simulated LLM Extraction Failure")
+
+    monkeypatch.setattr("career_agent.services.career.create_profile_from_text", fail_llm)
+
+    config = AppConfig(data_dir=tmp_path)
+    app = create_app()
+    app.state.service.config = config
+    client = TestClient(app)
+
+    upload_res = client.post(
+        "/api/v1/profile/resume",
+        files={"file": ("failed_resume.pdf", b"%PDF-1.4 failed bytes", "application/pdf")},
+    )
+    assert upload_res.status_code == 202
+    job_id = upload_res.json()["job_id"]
+
+    # Job status should be failed with error
+    job_info = client.get(f"/api/v1/profile/jobs/{job_id}").json()
+    assert job_info["status"] == "failed"
+    assert "Simulated LLM Extraction Failure" in job_info["error"]
+
+    # Retry extraction with working mock LLM
+    success_data = {
+        "summary": "Recovered profile.",
+        "skills": ["Python"],
+        "target_roles": ["Software Engineer"],
+    }
+    monkeypatch.setattr(
+        "career_agent.services.career.create_profile_from_text",
+        lambda *_args, **_kwargs: success_data,
+    )
+
+    retry_res = client.post("/api/v1/profile/resume/retry")
+    assert retry_res.status_code == 202
+    retry_job_id = retry_res.json()["job_id"]
+    assert retry_job_id != job_id
+
+    # Verify profile updated after retry
+    profile_after = client.get("/api/v1/profile").json()
+    assert profile_after["profile"]["summary"] == "Recovered profile."
+
+
+def test_resume_extraction_empty_result(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(
+        "services.api.app.extract_resume_text_from_bytes",
+        lambda _content, _filename: "Minimal text",
+    )
+    monkeypatch.setattr(
+        "career_agent.services.career.create_profile_from_text",
+        lambda *_args, **_kwargs: {},
+    )
+
+    config = AppConfig(data_dir=tmp_path)
+    app = create_app()
+    app.state.service.config = config
+    client = TestClient(app)
+
+    upload_res = client.post(
+        "/api/v1/profile/resume",
+        files={"file": ("empty.pdf", b"%PDF-1.4 empty", "application/pdf")},
+    )
+    assert upload_res.status_code == 202
+
+    profile_res = client.get("/api/v1/profile").json()
+    assert profile_res["resume_filename"] == "empty.pdf"
+    assert profile_res["profile"] == {}
+
+
+def test_resume_profile_workspace_user_isolation(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(
+        "services.api.app.extract_resume_text_from_bytes",
+        lambda _content, _filename: "User A text",
+    )
+    monkeypatch.setattr(
+        "career_agent.services.career.create_profile_from_text",
+        lambda *_args, **_kwargs: {"summary": "User A secret summary"},
+    )
+
+    config = AppConfig(data_dir=tmp_path)
+    app = create_app()
+    app.state.service.config = config
+
+    # Client A in Workspace 1
+    client_a = TestClient(app)
+    upload_res = client_a.post(
+        "/api/v1/profile/resume",
+        files={"file": ("usera.pdf", b"%PDF-1.4 A", "application/pdf")},
+    )
+    assert upload_res.status_code == 202
+
+    prof_a = client_a.get("/api/v1/profile").json()
+    assert prof_a["resume_filename"] == "usera.pdf"
+    assert prof_a["profile"]["summary"] == "User A secret summary"
+
+    # Create and switch to Workspace 2 for Client A
+    ws2 = client_a.post("/api/v1/workspaces", json={"name": "Workspace 2"}).json()
+    client_a.post(f"/api/v1/workspaces/{ws2['workspace_id']}/activate")
+
+    # In Workspace 2, profile should be empty (isolated)
+    prof_ws2 = client_a.get("/api/v1/profile").json()
+    assert prof_ws2["resume_filename"] == ""
+    assert prof_ws2["profile"] == {}
+

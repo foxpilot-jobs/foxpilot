@@ -1,120 +1,142 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<coverage generated="1788113936737" clover="3.2.0">
-  <project timestamp="1788113936738" name="All files">
-    <metrics statements="1198" coveredstatements="143" conditionals="1272" coveredconditionals="116" methods="485" coveredmethods="58" elements="2955" coveredelements="317" complexity="0" loc="1198" ncloc="1198" packages="17" files="83" classes="83"/>
+<coverage generated="1788603348825" clover="3.2.0">
+  <project timestamp="1788603348825" name="All files">
+    <metrics statements="1415" coveredstatements="397" conditionals="1465" coveredconditionals="392" methods="549" coveredmethods="117" elements="3429" coveredelements="906" complexity="0" loc="1415" ncloc="1415" packages="17" files="84" classes="84"/>
     <package name="src">
-      <metrics statements="104" coveredstatements="1" conditionals="109" coveredconditionals="2" methods="34" coveredmethods="0"/>
-      <file name="api.ts" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/api.ts">
-        <metrics statements="104" coveredstatements="1" conditionals="109" coveredconditionals="2" methods="34" coveredmethods="0"/>
-        <line num="34" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="35" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="102" count="1" type="cond" truecount="2" falsecount="0"/>
-        <line num="105" count="0" type="stmt"/>
-        <line num="111" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="112" count="0" type="stmt"/>
-        <line num="113" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="115" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="119" count="0" type="stmt"/>
-        <line num="120" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="121" count="0" type="stmt"/>
+      <metrics statements="126" coveredstatements="10" conditionals="124" coveredconditionals="7" methods="39" coveredmethods="4"/>
+      <file name="api.ts" path="/Users/siddanthmacherla/career-agent/apps/web/src/api.ts">
+        <metrics statements="126" coveredstatements="10" conditionals="124" coveredconditionals="7" methods="39" coveredmethods="4"/>
+        <line num="44" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="45" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="112" count="3" type="cond" truecount="2" falsecount="0"/>
+        <line num="115" count="0" type="stmt"/>
+        <line num="121" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="122" count="0" type="stmt"/>
         <line num="123" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="124" count="0" type="stmt"/>
-        <line num="126" count="0" type="stmt"/>
-        <line num="130" count="0" type="stmt"/>
+        <line num="125" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="129" count="0" type="stmt"/>
+        <line num="130" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="131" count="0" type="stmt"/>
+        <line num="133" count="0" type="cond" truecount="0" falsecount="2"/>
         <line num="134" count="0" type="stmt"/>
-        <line num="138" count="0" type="stmt"/>
-        <line num="142" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="143" count="0" type="stmt"/>
-        <line num="149" count="0" type="stmt"/>
+        <line num="136" count="0" type="stmt"/>
+        <line num="140" count="0" type="stmt"/>
+        <line num="144" count="0" type="stmt"/>
+        <line num="148" count="0" type="stmt"/>
+        <line num="152" count="0" type="cond" truecount="0" falsecount="2"/>
         <line num="153" count="0" type="stmt"/>
-        <line num="157" count="0" type="stmt"/>
-        <line num="161" count="0" type="stmt"/>
-        <line num="162" count="0" type="stmt"/>
+        <line num="159" count="0" type="stmt"/>
         <line num="163" count="0" type="stmt"/>
-        <line num="168" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="169" count="0" type="stmt"/>
-        <line num="170" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="167" count="0" type="stmt"/>
+        <line num="171" count="0" type="stmt"/>
         <line num="172" count="0" type="stmt"/>
-        <line num="176" count="0" type="stmt"/>
-        <line num="177" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="178" count="0" type="stmt"/>
-        <line num="180" count="0" type="stmt"/>
-        <line num="184" count="0" type="stmt"/>
-        <line num="188" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="189" count="0" type="stmt"/>
+        <line num="173" count="0" type="stmt"/>
+        <line num="178" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="179" count="0" type="stmt"/>
+        <line num="180" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="182" count="0" type="stmt"/>
+        <line num="186" count="0" type="stmt"/>
         <line num="190" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="192" count="0" type="stmt"/>
-        <line num="196" count="0" type="stmt"/>
-        <line num="200" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="201" count="0" type="stmt"/>
-        <line num="202" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="191" count="0" type="stmt"/>
+        <line num="192" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="194" count="0" type="stmt"/>
+        <line num="198" count="0" type="stmt"/>
+        <line num="199" count="0" type="stmt"/>
+        <line num="203" count="0" type="cond" truecount="0" falsecount="2"/>
         <line num="204" count="0" type="stmt"/>
-        <line num="208" count="0" type="stmt"/>
-        <line num="211" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="212" count="0" type="stmt"/>
-        <line num="214" count="0" type="stmt"/>
+        <line num="206" count="0" type="stmt"/>
+        <line num="210" count="0" type="stmt"/>
+        <line num="214" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="215" count="0" type="stmt"/>
+        <line num="216" count="0" type="cond" truecount="0" falsecount="2"/>
         <line num="218" count="0" type="stmt"/>
-        <line num="219" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="220" count="0" type="stmt"/>
         <line num="222" count="0" type="stmt"/>
+        <line num="226" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="227" count="0" type="stmt"/>
+        <line num="228" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="230" count="0" type="stmt"/>
+        <line num="234" count="0" type="stmt"/>
+        <line num="237" count="0" type="cond" truecount="0" falsecount="2"/>
         <line num="238" count="0" type="stmt"/>
-        <line num="239" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="240" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="241" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="242" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="243" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="244" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="245" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="246" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="247" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="248" count="0" type="stmt"/>
-        <line num="249" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="253" count="0" type="stmt"/>
-        <line num="256" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="257" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="258" count="0" type="stmt"/>
-        <line num="270" count="0" type="stmt"/>
-        <line num="271" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="272" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="273" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="274" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="275" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="276" count="0" type="stmt"/>
-        <line num="277" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="289" count="0" type="stmt"/>
-        <line num="290" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="291" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="292" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="293" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="294" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="295" count="0" type="stmt"/>
+        <line num="240" count="0" type="stmt"/>
+        <line num="246" count="4" type="stmt"/>
+        <line num="249" count="4" type="cond" truecount="2" falsecount="0"/>
+        <line num="250" count="2" type="cond" truecount="2" falsecount="0"/>
+        <line num="251" count="1" type="stmt"/>
+        <line num="253" count="2" type="stmt"/>
+        <line num="254" count="2" type="stmt"/>
+        <line num="258" count="14" type="stmt"/>
+        <line num="259" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="260" count="0" type="stmt"/>
+        <line num="262" count="0" type="stmt"/>
+        <line num="278" count="0" type="stmt"/>
+        <line num="279" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="280" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="281" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="282" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="283" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="284" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="285" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="286" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="287" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="288" count="0" type="stmt"/>
+        <line num="289" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="293" count="0" type="stmt"/>
         <line num="296" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="297" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="298" count="0" type="stmt"/>
         <line num="310" count="0" type="stmt"/>
-        <line num="311" count="0" type="stmt"/>
-        <line num="315" count="0" type="stmt"/>
-        <line num="321" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="322" count="0" type="stmt"/>
-        <line num="326" count="0" type="stmt"/>
+        <line num="311" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="312" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="313" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="314" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="315" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="316" count="0" type="stmt"/>
+        <line num="317" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="329" count="0" type="stmt"/>
+        <line num="330" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="331" count="0" type="cond" truecount="0" falsecount="2"/>
         <line num="332" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="336" count="0" type="stmt"/>
-        <line num="340" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="344" count="0" type="stmt"/>
-        <line num="348" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="349" count="0" type="stmt"/>
-        <line num="350" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="333" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="334" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="335" count="0" type="stmt"/>
+        <line num="336" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="350" count="14" type="stmt"/>
+        <line num="351" count="0" type="stmt"/>
         <line num="355" count="0" type="stmt"/>
-        <line num="359" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="363" count="0" type="stmt"/>
-        <line num="367" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="374" count="0" type="stmt"/>
+        <line num="361" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="362" count="0" type="stmt"/>
+        <line num="366" count="0" type="stmt"/>
+        <line num="372" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="376" count="0" type="stmt"/>
         <line num="380" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="381" count="0" type="stmt"/>
-        <line num="383" count="0" type="stmt"/>
+        <line num="381" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="382" count="0" type="stmt"/>
+        <line num="387" count="0" type="stmt"/>
+        <line num="391" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="392" count="0" type="stmt"/>
+        <line num="393" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="398" count="0" type="stmt"/>
+        <line num="402" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="406" count="0" type="stmt"/>
+        <line num="410" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="417" count="0" type="stmt"/>
+        <line num="423" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="424" count="0" type="stmt"/>
+        <line num="426" count="0" type="stmt"/>
+        <line num="436" count="14" type="stmt"/>
+        <line num="439" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="440" count="0" type="stmt"/>
+        <line num="442" count="0" type="stmt"/>
+        <line num="448" count="0" type="stmt"/>
+        <line num="454" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="455" count="0" type="stmt"/>
+        <line num="457" count="0" type="stmt"/>
       </file>
     </package>
     <package name="src.app">
       <metrics statements="10" coveredstatements="5" conditionals="8" coveredconditionals="1" methods="4" coveredmethods="3"/>
-      <file name="router.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/app/router.tsx">
+      <file name="router.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/app/router.tsx">
         <metrics statements="10" coveredstatements="5" conditionals="8" coveredconditionals="1" methods="4" coveredmethods="3"/>
         <line num="15" count="1" type="stmt"/>
         <line num="41" count="1" type="stmt"/>
@@ -130,7 +152,7 @@
     </package>
     <package name="src.features.auth">
       <metrics statements="79" coveredstatements="1" conditionals="103" coveredconditionals="0" methods="14" coveredmethods="0"/>
-      <file name="AuthPage.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/auth/AuthPage.tsx">
+      <file name="AuthPage.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/auth/AuthPage.tsx">
         <metrics statements="70" coveredstatements="0" conditionals="97" coveredconditionals="0" methods="12" coveredmethods="0"/>
         <line num="20" count="0" type="stmt"/>
         <line num="21" count="0" type="stmt"/>
@@ -203,7 +225,7 @@
         <line num="209" count="0" type="stmt"/>
         <line num="210" count="0" type="stmt"/>
       </file>
-      <file name="validation.ts" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/auth/validation.ts">
+      <file name="validation.ts" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/auth/validation.ts">
         <metrics statements="9" coveredstatements="1" conditionals="6" coveredconditionals="0" methods="2" coveredmethods="0"/>
         <line num="1" count="1" type="stmt"/>
         <line num="9" count="0" type="cond" truecount="0" falsecount="2"/>
@@ -218,20 +240,20 @@
     </package>
     <package name="src.features.auth.components">
       <metrics statements="12" coveredstatements="1" conditionals="26" coveredconditionals="2" methods="7" coveredmethods="0"/>
-      <file name="AuthDivider.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/auth/components/AuthDivider.tsx">
+      <file name="AuthDivider.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/auth/components/AuthDivider.tsx">
         <metrics statements="1" coveredstatements="0" conditionals="0" coveredconditionals="0" methods="1" coveredmethods="0"/>
         <line num="2" count="0" type="stmt"/>
       </file>
-      <file name="AuthLayout.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/auth/components/AuthLayout.tsx">
+      <file name="AuthLayout.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/auth/components/AuthLayout.tsx">
         <metrics statements="1" coveredstatements="0" conditionals="7" coveredconditionals="0" methods="1" coveredmethods="0"/>
         <line num="20" count="0" type="stmt"/>
       </file>
-      <file name="OAuthButton.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/auth/components/OAuthButton.tsx">
+      <file name="OAuthButton.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/auth/components/OAuthButton.tsx">
         <metrics statements="2" coveredstatements="1" conditionals="4" coveredconditionals="2" methods="1" coveredmethods="0"/>
         <line num="3" count="1" type="cond" truecount="2" falsecount="0"/>
         <line num="6" count="0" type="stmt"/>
       </file>
-      <file name="PasswordField.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/auth/components/PasswordField.tsx">
+      <file name="PasswordField.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/auth/components/PasswordField.tsx">
         <metrics statements="8" coveredstatements="0" conditionals="15" coveredconditionals="0" methods="4" coveredmethods="0"/>
         <line num="19" count="0" type="stmt"/>
         <line num="20" count="0" type="stmt"/>
@@ -245,15 +267,15 @@
     </package>
     <package name="src.features.dashboard">
       <metrics statements="2" coveredstatements="2" conditionals="0" coveredconditionals="0" methods="1" coveredmethods="1"/>
-      <file name="constants.ts" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/dashboard/constants.ts">
+      <file name="constants.ts" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/dashboard/constants.ts">
         <metrics statements="2" coveredstatements="2" conditionals="0" coveredconditionals="0" methods="1" coveredmethods="1"/>
         <line num="3" count="2" type="stmt"/>
         <line num="12" count="10" type="stmt"/>
       </file>
     </package>
     <package name="src.features.dashboard.components">
-      <metrics statements="75" coveredstatements="26" conditionals="137" coveredconditionals="25" methods="42" coveredmethods="12"/>
-      <file name="ApplicationStatusSelect.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/dashboard/components/ApplicationStatusSelect.tsx">
+      <metrics statements="75" coveredstatements="26" conditionals="139" coveredconditionals="25" methods="42" coveredmethods="12"/>
+      <file name="ApplicationStatusSelect.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/dashboard/components/ApplicationStatusSelect.tsx">
         <metrics statements="27" coveredstatements="23" conditionals="32" coveredconditionals="20" methods="12" coveredmethods="11"/>
         <line num="13" count="2" type="stmt"/>
         <line num="15" count="10" type="stmt"/>
@@ -283,14 +305,14 @@
         <line num="85" count="6" type="stmt"/>
         <line num="91" count="1" type="stmt"/>
       </file>
-      <file name="DashboardActions.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/dashboard/components/DashboardActions.tsx">
+      <file name="DashboardActions.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/dashboard/components/DashboardActions.tsx">
         <metrics statements="4" coveredstatements="0" conditionals="11" coveredconditionals="0" methods="2" coveredmethods="0"/>
         <line num="13" count="0" type="stmt"/>
         <line num="52" count="0" type="cond" truecount="0" falsecount="2"/>
         <line num="53" count="0" type="stmt"/>
         <line num="63" count="0" type="stmt"/>
       </file>
-      <file name="DashboardHeader.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/dashboard/components/DashboardHeader.tsx">
+      <file name="DashboardHeader.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/dashboard/components/DashboardHeader.tsx">
         <metrics statements="11" coveredstatements="0" conditionals="2" coveredconditionals="0" methods="7" coveredmethods="0"/>
         <line num="7" count="0" type="stmt"/>
         <line num="8" count="0" type="stmt"/>
@@ -304,37 +326,37 @@
         <line num="39" count="0" type="stmt"/>
         <line num="41" count="0" type="stmt"/>
       </file>
-      <file name="DashboardMetricCard.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/dashboard/components/DashboardMetricCard.tsx">
+      <file name="DashboardMetricCard.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/dashboard/components/DashboardMetricCard.tsx">
         <metrics statements="2" coveredstatements="0" conditionals="2" coveredconditionals="0" methods="1" coveredmethods="0"/>
         <line num="18" count="0" type="stmt"/>
         <line num="29" count="0" type="cond" truecount="0" falsecount="2"/>
       </file>
-      <file name="DashboardMetrics.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/dashboard/components/DashboardMetrics.tsx">
+      <file name="DashboardMetrics.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/dashboard/components/DashboardMetrics.tsx">
         <metrics statements="3" coveredstatements="0" conditionals="14" coveredconditionals="0" methods="2" coveredmethods="0"/>
         <line num="14" count="0" type="stmt"/>
         <line num="15" count="0" type="stmt"/>
         <line num="17" count="0" type="stmt"/>
       </file>
-      <file name="FilterToolbar.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/dashboard/components/FilterToolbar.tsx">
+      <file name="FilterToolbar.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/dashboard/components/FilterToolbar.tsx">
         <metrics statements="4" coveredstatements="0" conditionals="4" coveredconditionals="0" methods="4" coveredmethods="0"/>
         <line num="16" count="0" type="stmt"/>
         <line num="22" count="0" type="stmt"/>
         <line num="26" count="0" type="stmt"/>
         <line num="30" count="0" type="stmt"/>
       </file>
-      <file name="JobCard.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/dashboard/components/JobCard.tsx">
-        <metrics statements="5" coveredstatements="0" conditionals="38" coveredconditionals="0" methods="3" coveredmethods="0"/>
+      <file name="JobCard.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/dashboard/components/JobCard.tsx">
+        <metrics statements="5" coveredstatements="0" conditionals="40" coveredconditionals="0" methods="3" coveredmethods="0"/>
         <line num="13" count="0" type="stmt"/>
         <line num="15" count="0" type="cond" truecount="0" falsecount="4"/>
         <line num="20" count="0" type="stmt"/>
-        <line num="57" count="0" type="stmt"/>
-        <line num="72" count="0" type="stmt"/>
+        <line num="64" count="0" type="stmt"/>
+        <line num="79" count="0" type="stmt"/>
       </file>
-      <file name="ProfilePrompt.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/dashboard/components/ProfilePrompt.tsx">
+      <file name="ProfilePrompt.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/dashboard/components/ProfilePrompt.tsx">
         <metrics statements="1" coveredstatements="0" conditionals="10" coveredconditionals="0" methods="1" coveredmethods="0"/>
         <line num="11" count="0" type="stmt"/>
       </file>
-      <file name="RecentApplications.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/dashboard/components/RecentApplications.tsx">
+      <file name="RecentApplications.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/dashboard/components/RecentApplications.tsx">
         <metrics statements="8" coveredstatements="0" conditionals="8" coveredconditionals="0" methods="5" coveredmethods="0"/>
         <line num="18" count="0" type="stmt"/>
         <line num="19" count="0" type="stmt"/>
@@ -345,7 +367,7 @@
         <line num="65" count="0" type="stmt"/>
         <line num="75" count="0" type="stmt"/>
       </file>
-      <file name="TopMatches.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/dashboard/components/TopMatches.tsx">
+      <file name="TopMatches.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/dashboard/components/TopMatches.tsx">
         <metrics statements="7" coveredstatements="0" conditionals="11" coveredconditionals="0" methods="4" coveredmethods="0"/>
         <line num="8" count="0" type="stmt"/>
         <line num="9" count="0" type="stmt"/>
@@ -355,7 +377,7 @@
         <line num="41" count="0" type="cond" truecount="0" falsecount="4"/>
         <line num="42" count="0" type="stmt"/>
       </file>
-      <file name="greeting.ts" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/dashboard/components/greeting.ts">
+      <file name="greeting.ts" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/dashboard/components/greeting.ts">
         <metrics statements="3" coveredstatements="3" conditionals="5" coveredconditionals="5" methods="1" coveredmethods="1"/>
         <line num="2" count="6" type="cond" truecount="2" falsecount="0"/>
         <line num="3" count="4" type="cond" truecount="2" falsecount="0"/>
@@ -364,28 +386,28 @@
     </package>
     <package name="src.features.dashboard.components.applications">
       <metrics statements="23" coveredstatements="3" conditionals="14" coveredconditionals="0" methods="18" coveredmethods="0"/>
-      <file name="ApplicationCard.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/dashboard/components/applications/ApplicationCard.tsx">
+      <file name="ApplicationCard.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/dashboard/components/applications/ApplicationCard.tsx">
         <metrics statements="3" coveredstatements="0" conditionals="10" coveredconditionals="0" methods="1" coveredmethods="0"/>
         <line num="20" count="0" type="cond" truecount="0" falsecount="3"/>
         <line num="21" count="0" type="cond" truecount="0" falsecount="3"/>
         <line num="22" count="0" type="stmt"/>
       </file>
-      <file name="ApplicationFilters.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/dashboard/components/applications/ApplicationFilters.tsx">
+      <file name="ApplicationFilters.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/dashboard/components/applications/ApplicationFilters.tsx">
         <metrics statements="3" coveredstatements="1" conditionals="0" coveredconditionals="0" methods="2" coveredmethods="0"/>
         <line num="5" count="1" type="stmt"/>
         <line num="25" count="0" type="stmt"/>
         <line num="33" count="0" type="stmt"/>
       </file>
-      <file name="ApplicationHeader.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/dashboard/components/applications/ApplicationHeader.tsx">
+      <file name="ApplicationHeader.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/dashboard/components/applications/ApplicationHeader.tsx">
         <metrics statements="1" coveredstatements="0" conditionals="0" coveredconditionals="0" methods="1" coveredmethods="0"/>
         <line num="4" count="0" type="stmt"/>
       </file>
-      <file name="ApplicationListSkeleton.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/dashboard/components/applications/ApplicationListSkeleton.tsx">
+      <file name="ApplicationListSkeleton.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/dashboard/components/applications/ApplicationListSkeleton.tsx">
         <metrics statements="2" coveredstatements="0" conditionals="0" coveredconditionals="0" methods="2" coveredmethods="0"/>
         <line num="4" count="0" type="stmt"/>
         <line num="7" count="0" type="stmt"/>
       </file>
-      <file name="ApplicationPipeline.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/dashboard/components/applications/ApplicationPipeline.tsx">
+      <file name="ApplicationPipeline.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/dashboard/components/applications/ApplicationPipeline.tsx">
         <metrics statements="9" coveredstatements="1" conditionals="4" coveredconditionals="0" methods="8" coveredmethods="0"/>
         <line num="4" count="1" type="stmt"/>
         <line num="28" count="0" type="cond" truecount="0" falsecount="2"/>
@@ -397,7 +419,7 @@
         <line num="50" count="0" type="stmt"/>
         <line num="56" count="0" type="stmt"/>
       </file>
-      <file name="ApplicationSummary.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/dashboard/components/applications/ApplicationSummary.tsx">
+      <file name="ApplicationSummary.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/dashboard/components/applications/ApplicationSummary.tsx">
         <metrics statements="5" coveredstatements="1" conditionals="0" coveredconditionals="0" methods="4" coveredmethods="0"/>
         <line num="3" count="1" type="stmt"/>
         <line num="11" count="0" type="stmt"/>
@@ -407,22 +429,22 @@
       </file>
     </package>
     <package name="src.features.dashboard.components.matches">
-      <metrics statements="60" coveredstatements="32" conditionals="74" coveredconditionals="25" methods="27" coveredmethods="14"/>
-      <file name="MatchCard.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/dashboard/components/matches/MatchCard.tsx">
-        <metrics statements="6" coveredstatements="0" conditionals="16" coveredconditionals="0" methods="2" coveredmethods="0"/>
+      <metrics statements="60" coveredstatements="32" conditionals="78" coveredconditionals="25" methods="27" coveredmethods="14"/>
+      <file name="MatchCard.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/dashboard/components/matches/MatchCard.tsx">
+        <metrics statements="6" coveredstatements="0" conditionals="20" coveredconditionals="0" methods="2" coveredmethods="0"/>
         <line num="22" count="0" type="stmt"/>
         <line num="24" count="0" type="cond" truecount="0" falsecount="2"/>
         <line num="29" count="0" type="stmt"/>
         <line num="30" count="0" type="cond" truecount="0" falsecount="2"/>
         <line num="31" count="0" type="stmt"/>
-        <line num="59" count="0" type="stmt"/>
+        <line num="74" count="0" type="stmt"/>
       </file>
-      <file name="MatchFilters.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/dashboard/components/matches/MatchFilters.tsx">
+      <file name="MatchFilters.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/dashboard/components/matches/MatchFilters.tsx">
         <metrics statements="2" coveredstatements="1" conditionals="0" coveredconditionals="0" methods="1" coveredmethods="0"/>
         <line num="5" count="1" type="stmt"/>
         <line num="23" count="0" type="stmt"/>
       </file>
-      <file name="MatchGapAnalysis.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/dashboard/components/matches/MatchGapAnalysis.tsx">
+      <file name="MatchGapAnalysis.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/dashboard/components/matches/MatchGapAnalysis.tsx">
         <metrics statements="14" coveredstatements="9" conditionals="28" coveredconditionals="15" methods="5" coveredmethods="4"/>
         <line num="6" count="1" type="cond" truecount="1" falsecount="1"/>
         <line num="7" count="1" type="cond" truecount="2" falsecount="3"/>
@@ -439,26 +461,26 @@
         <line num="75" count="0" type="stmt"/>
         <line num="76" count="0" type="stmt"/>
       </file>
-      <file name="MatchListSkeleton.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/dashboard/components/matches/MatchListSkeleton.tsx">
+      <file name="MatchListSkeleton.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/dashboard/components/matches/MatchListSkeleton.tsx">
         <metrics statements="2" coveredstatements="0" conditionals="0" coveredconditionals="0" methods="2" coveredmethods="0"/>
         <line num="4" count="0" type="stmt"/>
         <line num="7" count="0" type="stmt"/>
       </file>
-      <file name="MatchReasons.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/dashboard/components/matches/MatchReasons.tsx">
+      <file name="MatchReasons.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/dashboard/components/matches/MatchReasons.tsx">
         <metrics statements="4" coveredstatements="0" conditionals="6" coveredconditionals="0" methods="2" coveredmethods="0"/>
         <line num="5" count="0" type="stmt"/>
         <line num="6" count="0" type="cond" truecount="0" falsecount="4"/>
         <line num="7" count="0" type="stmt"/>
         <line num="12" count="0" type="stmt"/>
       </file>
-      <file name="MatchScore.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/dashboard/components/matches/MatchScore.tsx">
+      <file name="MatchScore.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/dashboard/components/matches/MatchScore.tsx">
         <metrics statements="4" coveredstatements="0" conditionals="10" coveredconditionals="0" methods="1" coveredmethods="0"/>
         <line num="6" count="0" type="cond" truecount="0" falsecount="2"/>
         <line num="13" count="0" type="cond" truecount="0" falsecount="4"/>
         <line num="14" count="0" type="stmt"/>
         <line num="15" count="0" type="stmt"/>
       </file>
-      <file name="MatchSortSelect.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/dashboard/components/matches/MatchSortSelect.tsx">
+      <file name="MatchSortSelect.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/dashboard/components/matches/MatchSortSelect.tsx">
         <metrics statements="25" coveredstatements="22" conditionals="14" coveredconditionals="10" methods="11" coveredmethods="10"/>
         <line num="4" count="2" type="stmt"/>
         <line num="18" count="3" type="stmt"/>
@@ -486,20 +508,20 @@
         <line num="65" count="4" type="stmt"/>
         <line num="71" count="1" type="stmt"/>
       </file>
-      <file name="MatchSummary.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/dashboard/components/matches/MatchSummary.tsx">
+      <file name="MatchSummary.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/dashboard/components/matches/MatchSummary.tsx">
         <metrics statements="1" coveredstatements="0" conditionals="0" coveredconditionals="0" methods="1" coveredmethods="0"/>
         <line num="10" count="0" type="stmt"/>
       </file>
-      <file name="MatchesHeader.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/dashboard/components/matches/MatchesHeader.tsx">
+      <file name="MatchesHeader.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/dashboard/components/matches/MatchesHeader.tsx">
         <metrics statements="2" coveredstatements="0" conditionals="0" coveredconditionals="0" methods="2" coveredmethods="0"/>
         <line num="12" count="0" type="stmt"/>
         <line num="28" count="0" type="stmt"/>
       </file>
     </package>
     <package name="src.features.dashboard.pages">
-      <metrics statements="244" coveredstatements="1" conditionals="236" coveredconditionals="0" methods="76" coveredmethods="0"/>
-      <file name="ApplicationsPage.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/dashboard/pages/ApplicationsPage.tsx">
-        <metrics statements="52" coveredstatements="0" conditionals="42" coveredconditionals="0" methods="13" coveredmethods="0"/>
+      <metrics statements="252" coveredstatements="1" conditionals="236" coveredconditionals="0" methods="84" coveredmethods="0"/>
+      <file name="ApplicationsPage.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/dashboard/pages/ApplicationsPage.tsx">
+        <metrics statements="56" coveredstatements="0" conditionals="42" coveredconditionals="0" methods="17" coveredmethods="0"/>
         <line num="24" count="0" type="stmt"/>
         <line num="25" count="0" type="stmt"/>
         <line num="26" count="0" type="stmt"/>
@@ -513,47 +535,51 @@
         <line num="34" count="0" type="stmt"/>
         <line num="35" count="0" type="stmt"/>
         <line num="37" count="0" type="stmt"/>
-        <line num="38" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="38" count="0" type="stmt"/>
         <line num="39" count="0" type="stmt"/>
         <line num="40" count="0" type="stmt"/>
-        <line num="41" count="0" type="stmt"/>
-        <line num="46" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="43" count="0" type="stmt"/>
+        <line num="44" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="45" count="0" type="stmt"/>
+        <line num="46" count="0" type="stmt"/>
         <line num="47" count="0" type="stmt"/>
-        <line num="48" count="0" type="stmt"/>
-        <line num="49" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="50" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="51" count="0" type="stmt"/>
-        <line num="55" count="0" type="stmt"/>
-        <line num="56" count="0" type="stmt"/>
+        <line num="52" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="53" count="0" type="stmt"/>
+        <line num="54" count="0" type="stmt"/>
+        <line num="55" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="56" count="0" type="cond" truecount="0" falsecount="2"/>
         <line num="57" count="0" type="stmt"/>
-        <line num="58" count="0" type="stmt"/>
-        <line num="59" count="0" type="cond" truecount="0" falsecount="3"/>
-        <line num="60" count="0" type="cond" truecount="0" falsecount="3"/>
-        <line num="61" count="0" type="cond" truecount="0" falsecount="4"/>
-        <line num="68" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="69" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="70" count="0" type="stmt"/>
-        <line num="76" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="77" count="0" type="stmt"/>
-        <line num="81" count="0" type="stmt"/>
-        <line num="90" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="91" count="0" type="stmt"/>
-        <line num="107" count="0" type="stmt"/>
-        <line num="108" count="0" type="stmt"/>
-        <line num="109" count="0" type="stmt"/>
-        <line num="110" count="0" type="stmt"/>
-        <line num="111" count="0" type="stmt"/>
-        <line num="112" count="0" type="stmt"/>
-        <line num="113" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="61" count="0" type="stmt"/>
+        <line num="62" count="0" type="stmt"/>
+        <line num="63" count="0" type="stmt"/>
+        <line num="64" count="0" type="stmt"/>
+        <line num="65" count="0" type="cond" truecount="0" falsecount="3"/>
+        <line num="66" count="0" type="cond" truecount="0" falsecount="3"/>
+        <line num="67" count="0" type="cond" truecount="0" falsecount="4"/>
+        <line num="74" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="75" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="76" count="0" type="stmt"/>
+        <line num="82" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="83" count="0" type="stmt"/>
+        <line num="87" count="0" type="stmt"/>
+        <line num="96" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="97" count="0" type="stmt"/>
+        <line num="113" count="0" type="stmt"/>
+        <line num="114" count="0" type="stmt"/>
         <line num="115" count="0" type="stmt"/>
+        <line num="116" count="0" type="stmt"/>
         <line num="117" count="0" type="stmt"/>
-        <line num="119" count="0" type="stmt"/>
+        <line num="118" count="0" type="stmt"/>
+        <line num="119" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="121" count="0" type="stmt"/>
         <line num="123" count="0" type="stmt"/>
-        <line num="124" count="0" type="stmt"/>
-        <line num="153" count="0" type="stmt"/>
-        <line num="154" count="0" type="stmt"/>
+        <line num="125" count="0" type="stmt"/>
+        <line num="129" count="0" type="stmt"/>
+        <line num="130" count="0" type="stmt"/>
+        <line num="159" count="0" type="stmt"/>
+        <line num="160" count="0" type="stmt"/>
       </file>
-      <file name="DashboardPage.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/dashboard/pages/DashboardPage.tsx">
+      <file name="DashboardPage.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/dashboard/pages/DashboardPage.tsx">
         <metrics statements="64" coveredstatements="0" conditionals="63" coveredconditionals="0" methods="21" coveredmethods="0"/>
         <line num="27" count="0" type="stmt"/>
         <line num="28" count="0" type="stmt"/>
@@ -620,7 +646,7 @@
         <line num="227" count="0" type="stmt"/>
         <line num="231" count="0" type="stmt"/>
       </file>
-      <file name="JobDetailPage.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/dashboard/pages/JobDetailPage.tsx">
+      <file name="JobDetailPage.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/dashboard/pages/JobDetailPage.tsx">
         <metrics statements="69" coveredstatements="1" conditionals="74" coveredconditionals="0" methods="24" coveredmethods="0"/>
         <line num="27" count="0" type="cond" truecount="0" falsecount="1"/>
         <line num="28" count="0" type="stmt"/>
@@ -692,8 +718,8 @@
         <line num="443" count="0" type="cond" truecount="0" falsecount="2"/>
         <line num="444" count="0" type="stmt"/>
       </file>
-      <file name="MatchesPage.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/dashboard/pages/MatchesPage.tsx">
-        <metrics statements="59" coveredstatements="0" conditionals="57" coveredconditionals="0" methods="18" coveredmethods="0"/>
+      <file name="MatchesPage.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/dashboard/pages/MatchesPage.tsx">
+        <metrics statements="63" coveredstatements="0" conditionals="57" coveredconditionals="0" methods="22" coveredmethods="0"/>
         <line num="23" count="0" type="stmt"/>
         <line num="24" count="0" type="stmt"/>
         <line num="25" count="0" type="stmt"/>
@@ -706,153 +732,249 @@
         <line num="32" count="0" type="stmt"/>
         <line num="33" count="0" type="stmt"/>
         <line num="35" count="0" type="stmt"/>
-        <line num="36" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="36" count="0" type="stmt"/>
         <line num="37" count="0" type="stmt"/>
         <line num="38" count="0" type="stmt"/>
-        <line num="39" count="0" type="stmt"/>
+        <line num="41" count="0" type="stmt"/>
+        <line num="42" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="43" count="0" type="stmt"/>
         <line num="44" count="0" type="stmt"/>
-        <line num="45" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="46" count="0" type="stmt"/>
-        <line num="47" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="48" count="0" type="stmt"/>
+        <line num="45" count="0" type="stmt"/>
         <line num="50" count="0" type="stmt"/>
-        <line num="53" count="0" type="stmt"/>
-        <line num="54" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="55" count="0" type="stmt"/>
-        <line num="56" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="57" count="0" type="stmt"/>
+        <line num="51" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="52" count="0" type="stmt"/>
+        <line num="53" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="54" count="0" type="stmt"/>
+        <line num="56" count="0" type="stmt"/>
+        <line num="59" count="0" type="stmt"/>
+        <line num="60" count="0" type="cond" truecount="0" falsecount="2"/>
         <line num="61" count="0" type="stmt"/>
-        <line num="62" count="0" type="stmt"/>
+        <line num="62" count="0" type="cond" truecount="0" falsecount="2"/>
         <line num="63" count="0" type="stmt"/>
-        <line num="66" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="67" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="68" count="0" type="cond" truecount="0" falsecount="3"/>
-        <line num="71" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="72" count="0" type="stmt"/>
-        <line num="76" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="67" count="0" type="stmt"/>
+        <line num="68" count="0" type="stmt"/>
+        <line num="69" count="0" type="stmt"/>
+        <line num="72" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="73" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="74" count="0" type="cond" truecount="0" falsecount="3"/>
         <line num="77" count="0" type="cond" truecount="0" falsecount="2"/>
         <line num="78" count="0" type="stmt"/>
         <line num="82" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="85" count="0" type="stmt"/>
-        <line num="86" count="0" type="stmt"/>
-        <line num="87" count="0" type="stmt"/>
-        <line num="88" count="0" type="stmt"/>
-        <line num="89" count="0" type="stmt"/>
-        <line num="91" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="83" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="84" count="0" type="stmt"/>
+        <line num="88" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="91" count="0" type="stmt"/>
+        <line num="92" count="0" type="stmt"/>
         <line num="93" count="0" type="stmt"/>
-        <line num="97" count="0" type="stmt"/>
-        <line num="98" count="0" type="stmt"/>
-        <line num="99" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="101" count="0" type="stmt"/>
-        <line num="111" count="0" type="stmt"/>
-        <line num="138" count="0" type="stmt"/>
-        <line num="139" count="0" type="stmt"/>
-        <line num="146" count="0" type="stmt"/>
-        <line num="151" count="0" type="stmt"/>
-        <line num="169" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="170" count="0" type="stmt"/>
-        <line num="196" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="197" count="0" type="stmt"/>
+        <line num="94" count="0" type="stmt"/>
+        <line num="95" count="0" type="stmt"/>
+        <line num="97" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="99" count="0" type="stmt"/>
+        <line num="103" count="0" type="stmt"/>
+        <line num="104" count="0" type="stmt"/>
+        <line num="105" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="107" count="0" type="stmt"/>
+        <line num="117" count="0" type="stmt"/>
+        <line num="144" count="0" type="stmt"/>
+        <line num="145" count="0" type="stmt"/>
+        <line num="152" count="0" type="stmt"/>
+        <line num="157" count="0" type="stmt"/>
+        <line num="175" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="176" count="0" type="stmt"/>
+        <line num="202" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="203" count="0" type="stmt"/>
       </file>
     </package>
     <package name="src.features.profile.components">
-      <metrics statements="144" coveredstatements="1" conditionals="132" coveredconditionals="0" methods="66" coveredmethods="1"/>
-      <file name="ProfileActions.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/profile/components/ProfileActions.tsx">
-        <metrics statements="1" coveredstatements="1" conditionals="0" coveredconditionals="0" methods="1" coveredmethods="1"/>
-        <line num="13" count="2" type="stmt"/>
-      </file>
-      <file name="ProfileHeader.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/profile/components/ProfileHeader.tsx">
-        <metrics statements="3" coveredstatements="0" conditionals="10" coveredconditionals="0" methods="1" coveredmethods="0"/>
-        <line num="14" count="0" type="cond" truecount="0" falsecount="4"/>
-        <line num="16" count="0" type="cond" truecount="0" falsecount="4"/>
-        <line num="17" count="0" type="stmt"/>
-      </file>
-      <file name="ProfileInsightsLink.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/profile/components/ProfileInsightsLink.tsx">
-        <metrics statements="1" coveredstatements="0" conditionals="0" coveredconditionals="0" methods="1" coveredmethods="0"/>
-        <line num="5" count="0" type="stmt"/>
-      </file>
-      <file name="ProfileOverview.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/profile/components/ProfileOverview.tsx">
-        <metrics statements="24" coveredstatements="0" conditionals="29" coveredconditionals="0" methods="12" coveredmethods="0"/>
-        <line num="7" count="0" type="stmt"/>
-        <line num="8" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="9" count="0" type="stmt"/>
-        <line num="10" count="0" type="stmt"/>
-        <line num="15" count="0" type="stmt"/>
-        <line num="21" count="0" type="stmt"/>
-        <line num="44" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="48" count="0" type="stmt"/>
-        <line num="68" count="0" type="stmt"/>
-        <line num="71" count="0" type="stmt"/>
-        <line num="79" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="80" count="0" type="stmt"/>
-        <line num="84" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="85" count="0" type="stmt"/>
-        <line num="86" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="87" count="0" type="cond" truecount="0" falsecount="4"/>
+      <metrics statements="233" coveredstatements="84" conditionals="195" coveredconditionals="110" methods="104" coveredmethods="30"/>
+      <file name="JobPreferencesSection.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/profile/components/JobPreferencesSection.tsx">
+        <metrics statements="85" coveredstatements="29" conditionals="42" coveredconditionals="18" methods="37" coveredmethods="6"/>
+        <line num="12" count="39" type="stmt"/>
+        <line num="17" count="39" type="stmt"/>
+        <line num="18" count="39" type="stmt"/>
+        <line num="19" count="39" type="stmt"/>
+        <line num="20" count="39" type="stmt"/>
+        <line num="21" count="39" type="stmt"/>
+        <line num="22" count="39" type="stmt"/>
+        <line num="23" count="39" type="stmt"/>
+        <line num="24" count="39" type="stmt"/>
+        <line num="26" count="39" type="stmt"/>
+        <line num="27" count="14" type="stmt"/>
+        <line num="28" count="14" type="stmt"/>
+        <line num="29" count="14" type="stmt"/>
+        <line num="31" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="32" count="0" type="stmt"/>
+        <line num="36" count="14" type="cond" truecount="1" falsecount="1"/>
+        <line num="37" count="14" type="stmt"/>
+        <line num="41" count="14" type="cond" truecount="1" falsecount="1"/>
+        <line num="43" count="14" type="stmt"/>
+        <line num="44" count="14" type="stmt"/>
+        <line num="48" count="39" type="stmt"/>
+        <line num="49" count="0" type="stmt"/>
+        <line num="50" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="51" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="52" count="0" type="stmt"/>
+        <line num="53" count="0" type="stmt"/>
+        <line num="54" count="0" type="stmt"/>
+        <line num="56" count="0" type="stmt"/>
+        <line num="60" count="0" type="stmt"/>
+        <line num="61" count="0" type="stmt"/>
+        <line num="64" count="39" type="stmt"/>
+        <line num="65" count="0" type="stmt"/>
+        <line num="67" count="0" type="stmt"/>
+        <line num="71" count="39" type="stmt"/>
+        <line num="72" count="0" type="stmt"/>
+        <line num="73" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="74" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="75" count="0" type="stmt"/>
+        <line num="76" count="0" type="stmt"/>
+        <line num="77" count="0" type="stmt"/>
+        <line num="79" count="0" type="stmt"/>
+        <line num="83" count="0" type="stmt"/>
+        <line num="84" count="0" type="stmt"/>
+        <line num="87" count="39" type="stmt"/>
         <line num="88" count="0" type="stmt"/>
-        <line num="89" count="0" type="stmt"/>
         <line num="90" count="0" type="stmt"/>
-        <line num="92" count="0" type="stmt"/>
-        <line num="93" count="0" type="stmt"/>
-        <line num="95" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="96" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="94" count="39" type="stmt"/>
+        <line num="95" count="0" type="stmt"/>
+        <line num="96" count="0" type="stmt"/>
+        <line num="97" count="0" type="stmt"/>
+        <line num="98" count="0" type="stmt"/>
+        <line num="99" count="0" type="stmt"/>
         <line num="100" count="0" type="stmt"/>
+        <line num="102" count="0" type="stmt"/>
+        <line num="104" count="0" type="stmt"/>
+        <line num="108" count="39" type="cond" truecount="2" falsecount="0"/>
+        <line num="109" count="14" type="stmt"/>
+        <line num="124" count="25" type="stmt"/>
+        <line num="131" count="25" type="stmt"/>
+        <line num="151" count="0" type="stmt"/>
+        <line num="156" count="0" type="stmt"/>
+        <line num="174" count="0" type="stmt"/>
+        <line num="194" count="0" type="stmt"/>
+        <line num="216" count="0" type="stmt"/>
+        <line num="218" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="219" count="0" type="stmt"/>
+        <line num="220" count="0" type="stmt"/>
+        <line num="221" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="222" count="0" type="stmt"/>
+        <line num="236" count="0" type="stmt"/>
+        <line num="244" count="0" type="stmt"/>
+        <line num="271" count="100" type="stmt"/>
+        <line num="272" count="100" type="stmt"/>
+        <line num="276" count="0" type="stmt"/>
+        <line num="310" count="0" type="stmt"/>
+        <line num="330" count="0" type="stmt"/>
+        <line num="352" count="0" type="stmt"/>
+        <line num="354" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="355" count="0" type="stmt"/>
+        <line num="356" count="0" type="stmt"/>
+        <line num="357" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="358" count="0" type="stmt"/>
+        <line num="372" count="0" type="stmt"/>
+        <line num="380" count="0" type="stmt"/>
+        <line num="399" count="0" type="stmt"/>
       </file>
-      <file name="ProfileReadiness.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/profile/components/ProfileReadiness.tsx">
-        <metrics statements="3" coveredstatements="0" conditionals="12" coveredconditionals="0" methods="1" coveredmethods="0"/>
-        <line num="13" count="0" type="cond" truecount="0" falsecount="2"/>
+      <file name="ProfileActions.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/profile/components/ProfileActions.tsx">
+        <metrics statements="1" coveredstatements="1" conditionals="0" coveredconditionals="0" methods="1" coveredmethods="1"/>
+        <line num="13" count="31" type="stmt"/>
+      </file>
+      <file name="ProfileHeader.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/profile/components/ProfileHeader.tsx">
+        <metrics statements="3" coveredstatements="3" conditionals="10" coveredconditionals="8" methods="1" coveredmethods="1"/>
+        <line num="14" count="29" type="cond" truecount="3" falsecount="1"/>
+        <line num="16" count="29" type="cond" truecount="3" falsecount="1"/>
+        <line num="17" count="29" type="stmt"/>
+      </file>
+      <file name="ProfileInsightsLink.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/profile/components/ProfileInsightsLink.tsx">
+        <metrics statements="1" coveredstatements="1" conditionals="0" coveredconditionals="0" methods="1" coveredmethods="1"/>
+        <line num="5" count="29" type="stmt"/>
+      </file>
+      <file name="ProfileOverview.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/profile/components/ProfileOverview.tsx">
+        <metrics statements="28" coveredstatements="17" conditionals="45" coveredconditionals="33" methods="13" coveredmethods="9"/>
+        <line num="26" count="29" type="stmt"/>
+        <line num="27" count="29" type="cond" truecount="2" falsecount="0"/>
+        <line num="28" count="29" type="stmt"/>
+        <line num="29" count="29" type="stmt"/>
+        <line num="37" count="29" type="cond" truecount="2" falsecount="0"/>
+        <line num="38" count="29" type="stmt"/>
+        <line num="47" count="29" type="cond" truecount="4" falsecount="0"/>
+        <line num="50" count="54" type="stmt"/>
+        <line num="53" count="29" type="cond" truecount="3" falsecount="0"/>
+        <line num="57" count="29" type="stmt"/>
+        <line num="94" count="132" type="cond" truecount="1" falsecount="1"/>
+        <line num="98" count="0" type="stmt"/>
+        <line num="133" count="21" type="stmt"/>
+        <line num="136" count="25" type="stmt"/>
+        <line num="144" count="290" type="cond" truecount="2" falsecount="0"/>
+        <line num="145" count="26" type="stmt"/>
+        <line num="149" count="87" type="cond" truecount="1" falsecount="1"/>
+        <line num="150" count="0" type="stmt"/>
+        <line num="151" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="152" count="0" type="cond" truecount="0" falsecount="4"/>
+        <line num="153" count="0" type="stmt"/>
+        <line num="154" count="0" type="stmt"/>
+        <line num="155" count="0" type="stmt"/>
+        <line num="157" count="0" type="stmt"/>
+        <line num="158" count="0" type="stmt"/>
+        <line num="160" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="161" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="165" count="29" type="stmt"/>
+      </file>
+      <file name="ProfileReadiness.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/profile/components/ProfileReadiness.tsx">
+        <metrics statements="3" coveredstatements="2" conditionals="12" coveredconditionals="11" methods="1" coveredmethods="1"/>
+        <line num="13" count="29" type="cond" truecount="1" falsecount="1"/>
         <line num="14" count="0" type="stmt"/>
-        <line num="30" count="0" type="stmt"/>
+        <line num="30" count="29" type="stmt"/>
       </file>
-      <file name="ProfileSection.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/profile/components/ProfileSection.tsx">
-        <metrics statements="1" coveredstatements="0" conditionals="2" coveredconditionals="0" methods="1" coveredmethods="0"/>
-        <line num="12" count="0" type="stmt"/>
+      <file name="ProfileSection.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/profile/components/ProfileSection.tsx">
+        <metrics statements="1" coveredstatements="1" conditionals="2" coveredconditionals="2" methods="1" coveredmethods="1"/>
+        <line num="12" count="40" type="stmt"/>
       </file>
-      <file name="ProfileSkeleton.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/profile/components/ProfileSkeleton.tsx">
-        <metrics statements="1" coveredstatements="0" conditionals="0" coveredconditionals="0" methods="1" coveredmethods="0"/>
-        <line num="4" count="0" type="stmt"/>
+      <file name="ProfileSkeleton.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/profile/components/ProfileSkeleton.tsx">
+        <metrics statements="1" coveredstatements="1" conditionals="0" coveredconditionals="0" methods="1" coveredmethods="1"/>
+        <line num="4" count="14" type="stmt"/>
       </file>
-      <file name="ResumeCard.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/profile/components/ResumeCard.tsx">
-        <metrics statements="4" coveredstatements="0" conditionals="10" coveredconditionals="0" methods="2" coveredmethods="0"/>
-        <line num="20" count="0" type="stmt"/>
-        <line num="62" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="63" count="0" type="stmt"/>
-        <line num="64" count="0" type="cond" truecount="0" falsecount="2"/>
+      <file name="ResumeCard.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/profile/components/ResumeCard.tsx">
+        <metrics statements="4" coveredstatements="4" conditionals="15" coveredconditionals="14" methods="2" coveredmethods="2"/>
+        <line num="22" count="29" type="stmt"/>
+        <line num="79" count="27" type="cond" truecount="2" falsecount="0"/>
+        <line num="80" count="26" type="stmt"/>
+        <line num="81" count="26" type="cond" truecount="1" falsecount="1"/>
       </file>
-      <file name="ResumeUpload.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/profile/components/ResumeUpload.tsx">
-        <metrics statements="12" coveredstatements="0" conditionals="13" coveredconditionals="0" methods="7" coveredmethods="0"/>
-        <line num="13" count="0" type="stmt"/>
-        <line num="14" count="0" type="stmt"/>
-        <line num="15" count="0" type="stmt"/>
-        <line num="16" count="0" type="stmt"/>
-        <line num="18" count="0" type="stmt"/>
+      <file name="ResumeUpload.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/profile/components/ResumeUpload.tsx">
+        <metrics statements="12" coveredstatements="7" conditionals="13" coveredconditionals="12" methods="7" coveredmethods="3"/>
+        <line num="13" count="29" type="stmt"/>
+        <line num="14" count="29" type="stmt"/>
+        <line num="15" count="2" type="stmt"/>
+        <line num="16" count="2" type="stmt"/>
+        <line num="18" count="29" type="stmt"/>
         <line num="19" count="0" type="stmt"/>
         <line num="20" count="0" type="stmt"/>
-        <line num="22" count="0" type="stmt"/>
+        <line num="22" count="29" type="stmt"/>
         <line num="25" count="0" type="stmt"/>
         <line num="26" count="0" type="stmt"/>
         <line num="27" count="0" type="stmt"/>
-        <line num="54" count="0" type="stmt"/>
+        <line num="54" count="2" type="stmt"/>
       </file>
-      <file name="WorkspaceManager.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/profile/components/WorkspaceManager.tsx">
-        <metrics statements="94" coveredstatements="0" conditionals="56" coveredconditionals="0" methods="39" coveredmethods="0"/>
-        <line num="20" count="0" type="stmt"/>
-        <line num="21" count="0" type="stmt"/>
-        <line num="22" count="0" type="stmt"/>
-        <line num="25" count="0" type="stmt"/>
-        <line num="26" count="0" type="stmt"/>
-        <line num="27" count="0" type="stmt"/>
-        <line num="30" count="0" type="stmt"/>
-        <line num="31" count="0" type="stmt"/>
-        <line num="32" count="0" type="stmt"/>
-        <line num="35" count="0" type="stmt"/>
-        <line num="36" count="0" type="stmt"/>
-        <line num="38" count="0" type="stmt"/>
-        <line num="39" count="0" type="stmt"/>
-        <line num="41" count="0" type="stmt"/>
-        <line num="42" count="0" type="stmt"/>
-        <line num="47" count="0" type="stmt"/>
-        <line num="48" count="0" type="cond" truecount="0" falsecount="2"/>
+      <file name="WorkspaceManager.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/profile/components/WorkspaceManager.tsx">
+        <metrics statements="94" coveredstatements="18" conditionals="56" coveredconditionals="12" methods="39" coveredmethods="4"/>
+        <line num="20" count="29" type="stmt"/>
+        <line num="21" count="29" type="stmt"/>
+        <line num="22" count="29" type="stmt"/>
+        <line num="25" count="29" type="stmt"/>
+        <line num="26" count="29" type="stmt"/>
+        <line num="27" count="29" type="stmt"/>
+        <line num="30" count="29" type="stmt"/>
+        <line num="31" count="29" type="stmt"/>
+        <line num="32" count="29" type="stmt"/>
+        <line num="35" count="29" type="stmt"/>
+        <line num="36" count="29" type="stmt"/>
+        <line num="38" count="29" type="stmt"/>
+        <line num="39" count="29" type="stmt"/>
+        <line num="41" count="29" type="stmt"/>
+        <line num="42" count="14" type="stmt"/>
+        <line num="47" count="29" type="stmt"/>
+        <line num="48" count="14" type="cond" truecount="1" falsecount="1"/>
         <line num="49" count="0" type="stmt"/>
         <line num="50" count="0" type="cond" truecount="0" falsecount="2"/>
         <line num="52" count="0" type="stmt"/>
@@ -906,7 +1028,7 @@
         <line num="127" count="0" type="stmt"/>
         <line num="129" count="0" type="cond" truecount="0" falsecount="2"/>
         <line num="131" count="0" type="stmt"/>
-        <line num="135" count="0" type="stmt"/>
+        <line num="135" count="29" type="stmt"/>
         <line num="144" count="0" type="stmt"/>
         <line num="153" count="0" type="stmt"/>
         <line num="159" count="0" type="stmt"/>
@@ -921,12 +1043,12 @@
         <line num="227" count="0" type="stmt"/>
         <line num="229" count="0" type="cond" truecount="0" falsecount="2"/>
         <line num="234" count="0" type="stmt"/>
-        <line num="237" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="237" count="0" type="cond" truecount="1" falsecount="1"/>
         <line num="247" count="0" type="stmt"/>
         <line num="259" count="0" type="stmt"/>
         <line num="261" count="0" type="cond" truecount="0" falsecount="2"/>
         <line num="266" count="0" type="stmt"/>
-        <line num="269" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="269" count="0" type="cond" truecount="1" falsecount="1"/>
         <line num="279" count="0" type="stmt"/>
         <line num="287" count="0" type="stmt"/>
         <line num="290" count="0" type="stmt"/>
@@ -934,27 +1056,27 @@
     </package>
     <package name="src.features.profile.components.insights">
       <metrics statements="20" coveredstatements="0" conditionals="30" coveredconditionals="0" methods="16" coveredmethods="0"/>
-      <file name="CareerSnapshot.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/profile/components/insights/CareerSnapshot.tsx">
+      <file name="CareerSnapshot.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/profile/components/insights/CareerSnapshot.tsx">
         <metrics statements="3" coveredstatements="0" conditionals="6" coveredconditionals="0" methods="3" coveredmethods="0"/>
         <line num="7" count="0" type="stmt"/>
         <line num="28" count="0" type="stmt"/>
         <line num="40" count="0" type="stmt"/>
       </file>
-      <file name="InsightsHeader.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/profile/components/insights/InsightsHeader.tsx">
+      <file name="InsightsHeader.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/profile/components/insights/InsightsHeader.tsx">
         <metrics statements="1" coveredstatements="0" conditionals="0" coveredconditionals="0" methods="1" coveredmethods="0"/>
         <line num="5" count="0" type="stmt"/>
       </file>
-      <file name="InsightsRecommendations.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/profile/components/insights/InsightsRecommendations.tsx">
+      <file name="InsightsRecommendations.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/profile/components/insights/InsightsRecommendations.tsx">
         <metrics statements="3" coveredstatements="0" conditionals="2" coveredconditionals="0" methods="2" coveredmethods="0"/>
         <line num="11" count="0" type="cond" truecount="0" falsecount="2"/>
         <line num="12" count="0" type="stmt"/>
         <line num="20" count="0" type="stmt"/>
       </file>
-      <file name="InsightsSkeleton.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/profile/components/insights/InsightsSkeleton.tsx">
+      <file name="InsightsSkeleton.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/profile/components/insights/InsightsSkeleton.tsx">
         <metrics statements="1" coveredstatements="0" conditionals="0" coveredconditionals="0" methods="1" coveredmethods="0"/>
         <line num="4" count="0" type="stmt"/>
       </file>
-      <file name="MatchEvidence.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/profile/components/insights/MatchEvidence.tsx">
+      <file name="MatchEvidence.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/profile/components/insights/MatchEvidence.tsx">
         <metrics statements="5" coveredstatements="0" conditionals="8" coveredconditionals="0" methods="3" coveredmethods="0"/>
         <line num="8" count="0" type="stmt"/>
         <line num="9" count="0" type="stmt"/>
@@ -962,18 +1084,18 @@
         <line num="12" count="0" type="stmt"/>
         <line num="20" count="0" type="stmt"/>
       </file>
-      <file name="MatchPatterns.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/profile/components/insights/MatchPatterns.tsx">
+      <file name="MatchPatterns.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/profile/components/insights/MatchPatterns.tsx">
         <metrics statements="3" coveredstatements="0" conditionals="2" coveredconditionals="0" methods="2" coveredmethods="0"/>
         <line num="5" count="0" type="cond" truecount="0" falsecount="2"/>
         <line num="6" count="0" type="stmt"/>
         <line num="14" count="0" type="stmt"/>
       </file>
-      <file name="SkillGapsSection.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/profile/components/insights/SkillGapsSection.tsx">
+      <file name="SkillGapsSection.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/profile/components/insights/SkillGapsSection.tsx">
         <metrics statements="2" coveredstatements="0" conditionals="10" coveredconditionals="0" methods="2" coveredmethods="0"/>
         <line num="13" count="0" type="stmt"/>
         <line num="30" count="0" type="stmt"/>
       </file>
-      <file name="StrengthsSection.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/profile/components/insights/StrengthsSection.tsx">
+      <file name="StrengthsSection.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/profile/components/insights/StrengthsSection.tsx">
         <metrics statements="2" coveredstatements="0" conditionals="2" coveredconditionals="0" methods="2" coveredmethods="0"/>
         <line num="7" count="0" type="stmt"/>
         <line num="21" count="0" type="stmt"/>
@@ -981,7 +1103,7 @@
     </package>
     <package name="src.features.profile.insights">
       <metrics statements="41" coveredstatements="0" conditionals="36" coveredconditionals="0" methods="22" coveredmethods="0"/>
-      <file name="deriveInsights.ts" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/profile/insights/deriveInsights.ts">
+      <file name="deriveInsights.ts" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/profile/insights/deriveInsights.ts">
         <metrics statements="41" coveredstatements="0" conditionals="36" coveredconditionals="0" methods="22" coveredmethods="0"/>
         <line num="34" count="0" type="stmt"/>
         <line num="35" count="0" type="stmt"/>
@@ -1027,8 +1149,8 @@
       </file>
     </package>
     <package name="src.features.profile.pages">
-      <metrics statements="165" coveredstatements="1" conditionals="120" coveredconditionals="0" methods="40" coveredmethods="0"/>
-      <file name="ProfileInsightsPage.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/profile/pages/ProfileInsightsPage.tsx">
+      <metrics statements="263" coveredstatements="150" conditionals="229" coveredconditionals="141" methods="53" coveredmethods="15"/>
+      <file name="ProfileInsightsPage.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/profile/pages/ProfileInsightsPage.tsx">
         <metrics statements="33" coveredstatements="0" conditionals="22" coveredconditionals="0" methods="8" coveredmethods="0"/>
         <line num="27" count="0" type="stmt"/>
         <line num="28" count="0" type="stmt"/>
@@ -1064,145 +1186,243 @@
         <line num="148" count="0" type="stmt"/>
         <line num="149" count="0" type="stmt"/>
       </file>
-      <file name="ProfileSetupPage.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/profile/pages/ProfileSetupPage.tsx">
-        <metrics statements="132" coveredstatements="1" conditionals="98" coveredconditionals="0" methods="32" coveredmethods="0"/>
-        <line num="27" count="1" type="stmt"/>
-        <line num="30" count="0" type="stmt"/>
-        <line num="31" count="0" type="stmt"/>
-        <line num="32" count="0" type="stmt"/>
-        <line num="33" count="0" type="stmt"/>
-        <line num="34" count="0" type="stmt"/>
-        <line num="35" count="0" type="stmt"/>
-        <line num="36" count="0" type="stmt"/>
-        <line num="37" count="0" type="stmt"/>
-        <line num="38" count="0" type="stmt"/>
-        <line num="39" count="0" type="stmt"/>
-        <line num="42" count="0" type="stmt"/>
-        <line num="43" count="0" type="stmt"/>
-        <line num="44" count="0" type="stmt"/>
-        <line num="45" count="0" type="stmt"/>
-        <line num="47" count="0" type="stmt"/>
-        <line num="48" count="0" type="stmt"/>
-        <line num="49" count="0" type="stmt"/>
-        <line num="50" count="0" type="stmt"/>
-        <line num="51" count="0" type="stmt"/>
-        <line num="53" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="56" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="59" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="61" count="0" type="stmt"/>
-        <line num="62" count="0" type="stmt"/>
+      <file name="ProfileSetupPage.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/profile/pages/ProfileSetupPage.tsx">
+        <metrics statements="230" coveredstatements="150" conditionals="207" coveredconditionals="141" methods="45" coveredmethods="15"/>
+        <line num="32" count="2" type="cond" truecount="1" falsecount="1"/>
+        <line num="37" count="48" type="stmt"/>
+        <line num="38" count="48" type="stmt"/>
+        <line num="39" count="48" type="stmt"/>
+        <line num="40" count="48" type="stmt"/>
+        <line num="41" count="48" type="stmt"/>
+        <line num="42" count="48" type="stmt"/>
+        <line num="43" count="48" type="stmt"/>
+        <line num="44" count="48" type="stmt"/>
+        <line num="48" count="48" type="stmt"/>
+        <line num="49" count="48" type="stmt"/>
+        <line num="50" count="48" type="stmt"/>
+        <line num="51" count="48" type="stmt"/>
+        <line num="54" count="48" type="stmt"/>
+        <line num="55" count="48" type="stmt"/>
+        <line num="56" count="48" type="stmt"/>
+        <line num="57" count="48" type="stmt"/>
+        <line num="59" count="48" type="stmt"/>
+        <line num="60" count="14" type="stmt"/>
+        <line num="61" count="14" type="stmt"/>
+        <line num="62" count="14" type="stmt"/>
+        <line num="63" count="14" type="stmt"/>
+        <line num="65" count="0" type="stmt"/>
         <line num="66" count="0" type="stmt"/>
-        <line num="67" count="0" type="stmt"/>
-        <line num="68" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="69" count="0" type="stmt"/>
-        <line num="71" count="0" type="stmt"/>
-        <line num="72" count="0" type="stmt"/>
-        <line num="73" count="0" type="stmt"/>
-        <line num="74" count="0" type="stmt"/>
-        <line num="75" count="0" type="stmt"/>
-        <line num="76" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="77" count="0" type="stmt"/>
-        <line num="78" count="0" type="cond" truecount="0" falsecount="4"/>
-        <line num="79" count="0" type="stmt"/>
-        <line num="80" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="81" count="0" type="stmt"/>
-        <line num="82" count="0" type="stmt"/>
-        <line num="84" count="0" type="stmt"/>
-        <line num="86" count="0" type="cond" truecount="0" falsecount="4"/>
-        <line num="87" count="0" type="stmt"/>
-        <line num="92" count="0" type="stmt"/>
-        <line num="95" count="0" type="stmt"/>
-        <line num="97" count="0" type="cond" truecount="0" falsecount="4"/>
-        <line num="98" count="0" type="stmt"/>
-        <line num="99" count="0" type="stmt"/>
-        <line num="102" count="0" type="stmt"/>
-        <line num="104" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="105" count="0" type="stmt"/>
-        <line num="106" count="0" type="stmt"/>
-        <line num="108" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="109" count="0" type="stmt"/>
-        <line num="110" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="111" count="0" type="stmt"/>
-        <line num="112" count="0" type="stmt"/>
-        <line num="113" count="0" type="stmt"/>
-        <line num="115" count="0" type="stmt"/>
-        <line num="117" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="120" count="0" type="stmt"/>
-        <line num="121" count="0" type="stmt"/>
-        <line num="122" count="0" type="stmt"/>
-        <line num="123" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="128" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="129" count="0" type="stmt"/>
-        <line num="130" count="0" type="stmt"/>
+        <line num="69" count="14" type="cond" truecount="1" falsecount="1"/>
+        <line num="70" count="14" type="stmt"/>
+        <line num="72" count="14" type="cond" truecount="5" falsecount="0"/>
+        <line num="79" count="14" type="cond" truecount="2" falsecount="0"/>
+        <line num="80" count="6" type="stmt"/>
+        <line num="81" count="6" type="cond" truecount="2" falsecount="0"/>
+        <line num="82" count="2" type="stmt"/>
+        <line num="85" count="8" type="stmt"/>
+        <line num="90" count="8" type="cond" truecount="2" falsecount="0"/>
+        <line num="91" count="5" type="stmt"/>
+        <line num="92" count="3" type="cond" truecount="2" falsecount="0"/>
+        <line num="93" count="2" type="stmt"/>
+        <line num="95" count="1" type="stmt"/>
+        <line num="101" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="104" count="14" type="cond" truecount="1" falsecount="1"/>
+        <line num="106" count="14" type="stmt"/>
+        <line num="107" count="14" type="stmt"/>
+        <line num="112" count="2" type="stmt"/>
+        <line num="113" count="2" type="stmt"/>
+        <line num="114" count="3" type="stmt"/>
+        <line num="115" count="3" type="stmt"/>
+        <line num="118" count="3" type="cond" truecount="4" falsecount="0"/>
+        <line num="119" count="2" type="stmt"/>
+        <line num="120" count="2" type="stmt"/>
+        <line num="121" count="2" type="stmt"/>
+        <line num="122" count="2" type="stmt"/>
+        <line num="123" count="2" type="stmt"/>
+        <line num="125" count="1" type="cond" truecount="1" falsecount="1"/>
+        <line num="126" count="1" type="stmt"/>
+        <line num="130" count="1" type="stmt"/>
         <line num="131" count="0" type="stmt"/>
-        <line num="132" count="0" type="stmt"/>
-        <line num="133" count="0" type="stmt"/>
-        <line num="134" count="0" type="stmt"/>
+        <line num="134" count="2" type="cond" truecount="1" falsecount="1"/>
         <line num="135" count="0" type="stmt"/>
-        <line num="136" count="0" type="stmt"/>
+        <line num="137" count="0" type="cond" truecount="0" falsecount="2"/>
         <line num="138" count="0" type="stmt"/>
-        <line num="140" count="0" type="stmt"/>
+        <line num="139" count="0" type="stmt"/>
         <line num="141" count="0" type="stmt"/>
-        <line num="146" count="0" type="stmt"/>
-        <line num="147" count="0" type="stmt"/>
-        <line num="148" count="0" type="stmt"/>
-        <line num="149" count="0" type="stmt"/>
-        <line num="150" count="0" type="stmt"/>
-        <line num="151" count="0" type="stmt"/>
-        <line num="152" count="0" type="stmt"/>
-        <line num="156" count="0" type="stmt"/>
-        <line num="158" count="0" type="stmt"/>
-        <line num="159" count="0" type="stmt"/>
-        <line num="164" count="0" type="stmt"/>
-        <line num="165" count="0" type="stmt"/>
-        <line num="166" count="0" type="stmt"/>
-        <line num="167" count="0" type="stmt"/>
-        <line num="168" count="0" type="stmt"/>
-        <line num="169" count="0" type="stmt"/>
-        <line num="170" count="0" type="stmt"/>
-        <line num="172" count="0" type="stmt"/>
-        <line num="174" count="0" type="stmt"/>
-        <line num="179" count="0" type="stmt"/>
-        <line num="180" count="0" type="stmt"/>
-        <line num="181" count="0" type="stmt"/>
-        <line num="182" count="0" type="stmt"/>
-        <line num="183" count="0" type="stmt"/>
-        <line num="184" count="0" type="stmt"/>
-        <line num="185" count="0" type="stmt"/>
-        <line num="187" count="0" type="stmt"/>
-        <line num="189" count="0" type="stmt"/>
-        <line num="193" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="194" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="195" count="0" type="stmt"/>
-        <line num="202" count="0" type="stmt"/>
-        <line num="213" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="214" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="215" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="216" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="218" count="0" type="cond" truecount="0" falsecount="3"/>
-        <line num="220" count="0" type="stmt"/>
-        <line num="225" count="0" type="stmt"/>
-        <line num="229" count="0" type="stmt"/>
-        <line num="244" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="256" count="0" type="stmt"/>
-        <line num="276" count="0" type="stmt"/>
-        <line num="286" count="0" type="stmt"/>
+        <line num="143" count="0" type="stmt"/>
+        <line num="144" count="0" type="stmt"/>
+        <line num="147" count="48" type="stmt"/>
+        <line num="148" count="30" type="stmt"/>
+        <line num="149" count="30" type="cond" truecount="2" falsecount="0"/>
+        <line num="150" count="10" type="stmt"/>
+        <line num="152" count="10" type="stmt"/>
+        <line num="153" count="10" type="stmt"/>
+        <line num="154" count="13" type="stmt"/>
+        <line num="155" count="13" type="stmt"/>
+        <line num="156" count="13" type="cond" truecount="1" falsecount="1"/>
+        <line num="157" count="13" type="cond" truecount="4" falsecount="0"/>
+        <line num="158" count="2" type="stmt"/>
+        <line num="159" count="2" type="stmt"/>
+        <line num="161" count="11" type="cond" truecount="4" falsecount="0"/>
+        <line num="162" count="2" type="stmt"/>
+        <line num="163" count="2" type="stmt"/>
+        <line num="168" count="2" type="cond" truecount="1" falsecount="1"/>
+        <line num="169" count="2" type="cond" truecount="1" falsecount="1"/>
+        <line num="170" count="2" type="cond" truecount="1" falsecount="1"/>
+        <line num="172" count="2" type="stmt"/>
+        <line num="173" count="2" type="cond" truecount="2" falsecount="0"/>
+        <line num="174" count="1" type="cond" truecount="1" falsecount="1"/>
+        <line num="175" count="1" type="cond" truecount="1" falsecount="1"/>
+        <line num="176" count="1" type="cond" truecount="1" falsecount="1"/>
+        <line num="178" count="1" type="cond" truecount="1" falsecount="1"/>
+        <line num="179" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="182" count="1" type="stmt"/>
+        <line num="183" count="1" type="cond" truecount="1" falsecount="1"/>
+        <line num="184" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="187" count="2" type="stmt"/>
+        <line num="188" count="2" type="stmt"/>
+        <line num="189" count="2" type="stmt"/>
+        <line num="191" count="9" type="cond" truecount="2" falsecount="2"/>
+        <line num="192" count="0" type="stmt"/>
+        <line num="193" count="0" type="stmt"/>
+        <line num="194" count="0" type="stmt"/>
+        <line num="197" count="0" type="stmt"/>
+        <line num="199" count="9" type="cond" truecount="2" falsecount="0"/>
+        <line num="200" count="2" type="stmt"/>
+        <line num="201" count="2" type="stmt"/>
+        <line num="202" count="2" type="cond" truecount="2" falsecount="0"/>
+        <line num="203" count="1" type="stmt"/>
+        <line num="205" count="2" type="cond" truecount="2" falsecount="0"/>
+        <line num="208" count="2" type="cond" truecount="2" falsecount="0"/>
+        <line num="209" count="2" type="cond" truecount="1" falsecount="1"/>
+        <line num="210" count="2" type="stmt"/>
+        <line num="211" count="2" type="stmt"/>
+        <line num="213" count="7" type="stmt"/>
+        <line num="214" count="7" type="cond" truecount="2" falsecount="0"/>
+        <line num="215" count="3" type="stmt"/>
+        <line num="217" count="7" type="cond" truecount="1" falsecount="1"/>
+        <line num="218" count="13" type="stmt"/>
+        <line num="219" count="13" type="stmt"/>
+        <line num="221" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="222" count="0" type="stmt"/>
+        <line num="223" count="0" type="stmt"/>
+        <line num="227" count="10" type="stmt"/>
+        <line num="228" count="10" type="stmt"/>
+        <line num="229" count="10" type="stmt"/>
+        <line num="230" count="10" type="cond" truecount="2" falsecount="0"/>
+        <line num="235" count="2" type="cond" truecount="1" falsecount="1"/>
+        <line num="236" count="2" type="stmt"/>
+        <line num="237" count="2" type="stmt"/>
+        <line num="238" count="2" type="stmt"/>
+        <line num="239" count="2" type="stmt"/>
+        <line num="240" count="2" type="stmt"/>
+        <line num="241" count="2" type="stmt"/>
+        <line num="242" count="2" type="stmt"/>
+        <line num="243" count="2" type="stmt"/>
+        <line num="244" count="2" type="stmt"/>
+        <line num="245" count="2" type="stmt"/>
+        <line num="246" count="2" type="stmt"/>
+        <line num="247" count="2" type="stmt"/>
+        <line num="248" count="2" type="cond" truecount="1" falsecount="1"/>
+        <line num="249" count="2" type="stmt"/>
+        <line num="251" count="2" type="cond" truecount="2" falsecount="2"/>
+        <line num="252" count="0" type="stmt"/>
+        <line num="254" count="2" type="stmt"/>
+        <line num="257" count="0" type="stmt"/>
+        <line num="258" count="0" type="stmt"/>
+        <line num="260" count="2" type="stmt"/>
+        <line num="261" count="2" type="stmt"/>
+        <line num="266" count="0" type="stmt"/>
+        <line num="267" count="0" type="stmt"/>
+        <line num="268" count="0" type="stmt"/>
+        <line num="269" count="0" type="stmt"/>
+        <line num="270" count="0" type="stmt"/>
+        <line num="271" count="0" type="stmt"/>
+        <line num="272" count="0" type="stmt"/>
+        <line num="273" count="0" type="stmt"/>
+        <line num="274" count="0" type="stmt"/>
+        <line num="275" count="0" type="stmt"/>
+        <line num="278" count="0" type="stmt"/>
+        <line num="279" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="280" count="0" type="stmt"/>
+        <line num="282" count="0" type="cond" truecount="0" falsecount="4"/>
+        <line num="283" count="0" type="stmt"/>
+        <line num="285" count="0" type="stmt"/>
+        <line num="288" count="0" type="stmt"/>
+        <line num="290" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="291" count="0" type="stmt"/>
+        <line num="293" count="0" type="stmt"/>
         <line num="294" count="0" type="stmt"/>
-        <line num="297" count="0" type="stmt"/>
-        <line num="307" count="0" type="stmt"/>
-        <line num="316" count="0" type="stmt"/>
-        <line num="319" count="0" type="stmt"/>
-        <line num="329" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="330" count="0" type="stmt"/>
-        <line num="336" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="299" count="2" type="stmt"/>
+        <line num="300" count="2" type="stmt"/>
+        <line num="301" count="2" type="stmt"/>
+        <line num="302" count="2" type="stmt"/>
+        <line num="303" count="2" type="stmt"/>
+        <line num="304" count="2" type="stmt"/>
+        <line num="305" count="2" type="stmt"/>
+        <line num="306" count="2" type="stmt"/>
+        <line num="307" count="2" type="cond" truecount="3" falsecount="1"/>
+        <line num="308" count="2" type="stmt"/>
+        <line num="313" count="0" type="stmt"/>
+        <line num="315" count="2" type="stmt"/>
+        <line num="316" count="2" type="stmt"/>
+        <line num="321" count="0" type="stmt"/>
+        <line num="322" count="0" type="stmt"/>
+        <line num="323" count="0" type="stmt"/>
+        <line num="324" count="0" type="stmt"/>
+        <line num="325" count="0" type="stmt"/>
+        <line num="326" count="0" type="stmt"/>
+        <line num="327" count="0" type="stmt"/>
+        <line num="329" count="0" type="stmt"/>
+        <line num="331" count="0" type="stmt"/>
+        <line num="336" count="0" type="stmt"/>
         <line num="337" count="0" type="stmt"/>
-        <line num="343" count="0" type="stmt"/>
-        <line num="361" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="338" count="0" type="stmt"/>
+        <line num="339" count="0" type="stmt"/>
+        <line num="340" count="0" type="stmt"/>
+        <line num="341" count="0" type="stmt"/>
+        <line num="342" count="0" type="stmt"/>
+        <line num="344" count="0" type="stmt"/>
+        <line num="346" count="0" type="stmt"/>
+        <line num="350" count="48" type="cond" truecount="2" falsecount="0"/>
+        <line num="351" count="34" type="cond" truecount="1" falsecount="1"/>
+        <line num="352" count="0" type="stmt"/>
+        <line num="359" count="0" type="stmt"/>
+        <line num="370" count="34" type="cond" truecount="1" falsecount="1"/>
+        <line num="371" count="48" type="cond" truecount="2" falsecount="0"/>
+        <line num="372" count="48" type="cond" truecount="2" falsecount="0"/>
+        <line num="373" count="48" type="cond" truecount="2" falsecount="0"/>
+        <line num="375" count="48" type="cond" truecount="6" falsecount="0"/>
+        <line num="381" count="48" type="stmt"/>
+        <line num="386" count="0" type="stmt"/>
+        <line num="393" count="0" type="stmt"/>
+        <line num="412" count="0" type="stmt"/>
+        <line num="428" count="0" type="cond" truecount="1" falsecount="1"/>
+        <line num="431" count="0" type="cond" truecount="1" falsecount="1"/>
+        <line num="440" count="0" type="cond" truecount="1" falsecount="1"/>
+        <line num="451" count="2" type="stmt"/>
+        <line num="471" count="0" type="stmt"/>
+        <line num="481" count="0" type="stmt"/>
+        <line num="489" count="0" type="stmt"/>
+        <line num="492" count="0" type="stmt"/>
+        <line num="502" count="0" type="stmt"/>
+        <line num="511" count="0" type="stmt"/>
+        <line num="514" count="0" type="stmt"/>
+        <line num="524" count="11" type="cond" truecount="1" falsecount="1"/>
+        <line num="525" count="11" type="cond" truecount="1" falsecount="1"/>
+        <line num="526" count="0" type="stmt"/>
+        <line num="532" count="11" type="stmt"/>
+        <line num="533" count="11" type="stmt"/>
+        <line num="535" count="11" type="cond" truecount="2" falsecount="0"/>
+        <line num="537" count="11" type="cond" truecount="1" falsecount="1"/>
+        <line num="538" count="11" type="stmt"/>
+        <line num="540" count="11" type="stmt"/>
+        <line num="577" count="0" type="cond" truecount="0" falsecount="2"/>
       </file>
     </package>
     <package name="src.features.settings.pages">
       <metrics statements="17" coveredstatements="0" conditionals="8" coveredconditionals="0" methods="8" coveredmethods="0"/>
-      <file name="SettingsPage.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/features/settings/pages/SettingsPage.tsx">
+      <file name="SettingsPage.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/features/settings/pages/SettingsPage.tsx">
         <metrics statements="17" coveredstatements="0" conditionals="8" coveredconditionals="0" methods="8" coveredmethods="0"/>
         <line num="14" count="0" type="stmt"/>
         <line num="15" count="0" type="stmt"/>
@@ -1225,11 +1445,11 @@
     </package>
     <package name="src.shared.components">
       <metrics statements="3" coveredstatements="0" conditionals="11" coveredconditionals="0" methods="2" coveredmethods="0"/>
-      <file name="Alert.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/shared/components/Alert.tsx">
+      <file name="Alert.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/shared/components/Alert.tsx">
         <metrics statements="1" coveredstatements="0" conditionals="5" coveredconditionals="0" methods="1" coveredmethods="0"/>
         <line num="8" count="0" type="stmt"/>
       </file>
-      <file name="Button.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/shared/components/Button.tsx">
+      <file name="Button.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/shared/components/Button.tsx">
         <metrics statements="2" coveredstatements="0" conditionals="6" coveredconditionals="0" methods="1" coveredmethods="0"/>
         <line num="9" count="0" type="cond" truecount="0" falsecount="4"/>
         <line num="10" count="0" type="stmt"/>
@@ -1237,7 +1457,7 @@
     </package>
     <package name="src.shared.layouts">
       <metrics statements="55" coveredstatements="3" conditionals="58" coveredconditionals="0" methods="31" coveredmethods="0"/>
-      <file name="AppLayout.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/shared/layouts/AppLayout.tsx">
+      <file name="AppLayout.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/shared/layouts/AppLayout.tsx">
         <metrics statements="55" coveredstatements="3" conditionals="58" coveredconditionals="0" methods="31" coveredmethods="0"/>
         <line num="33" count="1" type="stmt"/>
         <line num="39" count="1" type="stmt"/>
@@ -1297,14 +1517,14 @@
       </file>
     </package>
     <package name="src.shared.ui">
-      <metrics statements="144" coveredstatements="66" conditionals="170" coveredconditionals="61" methods="77" coveredmethods="27"/>
-      <file name="Alert.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/shared/ui/Alert.tsx">
-        <metrics statements="3" coveredstatements="1" conditionals="5" coveredconditionals="0" methods="1" coveredmethods="0"/>
-        <line num="4" count="1" type="stmt"/>
-        <line num="20" count="0" type="stmt"/>
-        <line num="21" count="0" type="stmt"/>
+      <metrics statements="144" coveredstatements="79" conditionals="170" coveredconditionals="81" methods="77" coveredmethods="38"/>
+      <file name="Alert.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/shared/ui/Alert.tsx">
+        <metrics statements="3" coveredstatements="3" conditionals="5" coveredconditionals="3" methods="1" coveredmethods="1"/>
+        <line num="4" count="2" type="stmt"/>
+        <line num="20" count="2" type="stmt"/>
+        <line num="21" count="2" type="stmt"/>
       </file>
-      <file name="AppShell.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/shared/ui/AppShell.tsx">
+      <file name="AppShell.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/shared/ui/AppShell.tsx">
         <metrics statements="43" coveredstatements="33" conditionals="43" coveredconditionals="30" methods="24" coveredmethods="14"/>
         <line num="5" count="2" type="stmt"/>
         <line num="6" count="2" type="stmt"/>
@@ -1350,30 +1570,30 @@
         <line num="185" count="0" type="stmt"/>
         <line num="189" count="0" type="stmt"/>
       </file>
-      <file name="Avatar.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/shared/ui/Avatar.tsx">
+      <file name="Avatar.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/shared/ui/Avatar.tsx">
         <metrics statements="1" coveredstatements="0" conditionals="5" coveredconditionals="0" methods="1" coveredmethods="0"/>
         <line num="10" count="0" type="cond" truecount="0" falsecount="2"/>
       </file>
-      <file name="Badge.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/shared/ui/Badge.tsx">
+      <file name="Badge.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/shared/ui/Badge.tsx">
         <metrics statements="1" coveredstatements="1" conditionals="1" coveredconditionals="1" methods="1" coveredmethods="1"/>
-        <line num="10" count="1" type="stmt"/>
+        <line num="10" count="111" type="stmt"/>
       </file>
-      <file name="Button.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/shared/ui/Button.tsx">
+      <file name="Button.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/shared/ui/Button.tsx">
         <metrics statements="2" coveredstatements="2" conditionals="18" coveredconditionals="17" methods="1" coveredmethods="1"/>
-        <line num="28" count="4" type="stmt"/>
-        <line num="39" count="4" type="stmt"/>
+        <line num="28" count="115" type="stmt"/>
+        <line num="39" count="115" type="stmt"/>
       </file>
-      <file name="Card.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/shared/ui/Card.tsx">
-        <metrics statements="7" coveredstatements="0" conditionals="7" coveredconditionals="0" methods="7" coveredmethods="0"/>
-        <line num="8" count="0" type="stmt"/>
-        <line num="12" count="0" type="stmt"/>
-        <line num="16" count="0" type="stmt"/>
-        <line num="23" count="0" type="stmt"/>
-        <line num="27" count="0" type="stmt"/>
+      <file name="Card.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/shared/ui/Card.tsx">
+        <metrics statements="7" coveredstatements="5" conditionals="7" coveredconditionals="6" methods="7" coveredmethods="5"/>
+        <line num="8" count="97" type="stmt"/>
+        <line num="12" count="97" type="stmt"/>
+        <line num="16" count="97" type="stmt"/>
+        <line num="23" count="29" type="stmt"/>
+        <line num="27" count="97" type="stmt"/>
         <line num="31" count="0" type="stmt"/>
         <line num="35" count="0" type="stmt"/>
       </file>
-      <file name="Dropdown.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/shared/ui/Dropdown.tsx">
+      <file name="Dropdown.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/shared/ui/Dropdown.tsx">
         <metrics statements="16" coveredstatements="0" conditionals="6" coveredconditionals="0" methods="9" coveredmethods="0"/>
         <line num="5" count="0" type="stmt"/>
         <line num="6" count="0" type="stmt"/>
@@ -1392,15 +1612,15 @@
         <line num="42" count="0" type="stmt"/>
         <line num="50" count="0" type="stmt"/>
       </file>
-      <file name="EmptyState.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/shared/ui/EmptyState.tsx">
+      <file name="EmptyState.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/shared/ui/EmptyState.tsx">
         <metrics statements="1" coveredstatements="0" conditionals="7" coveredconditionals="0" methods="1" coveredmethods="0"/>
         <line num="18" count="0" type="stmt"/>
       </file>
-      <file name="ErrorState.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/shared/ui/ErrorState.tsx">
+      <file name="ErrorState.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/shared/ui/ErrorState.tsx">
         <metrics statements="1" coveredstatements="0" conditionals="2" coveredconditionals="0" methods="1" coveredmethods="0"/>
         <line num="14" count="0" type="stmt"/>
       </file>
-      <file name="Input.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/shared/ui/Input.tsx">
+      <file name="Input.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/shared/ui/Input.tsx">
         <metrics statements="5" coveredstatements="0" conditionals="25" coveredconditionals="0" methods="1" coveredmethods="0"/>
         <line num="20" count="0" type="stmt"/>
         <line num="21" count="0" type="cond" truecount="0" falsecount="2"/>
@@ -1408,12 +1628,12 @@
         <line num="23" count="0" type="cond" truecount="0" falsecount="5"/>
         <line num="25" count="0" type="stmt"/>
       </file>
-      <file name="Modal.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/shared/ui/Modal.tsx">
+      <file name="Modal.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/shared/ui/Modal.tsx">
         <metrics statements="17" coveredstatements="17" conditionals="8" coveredconditionals="6" methods="6" coveredmethods="6"/>
-        <line num="16" count="2" type="stmt"/>
-        <line num="17" count="2" type="stmt"/>
-        <line num="19" count="2" type="stmt"/>
-        <line num="20" count="2" type="cond" truecount="2" falsecount="0"/>
+        <line num="16" count="147" type="stmt"/>
+        <line num="17" count="147" type="stmt"/>
+        <line num="19" count="147" type="stmt"/>
+        <line num="20" count="147" type="cond" truecount="2" falsecount="0"/>
         <line num="21" count="1" type="stmt"/>
         <line num="22" count="1" type="cond" truecount="1" falsecount="1"/>
         <line num="24" count="1" type="stmt"/>
@@ -1423,25 +1643,25 @@
         <line num="32" count="1" type="stmt"/>
         <line num="33" count="1" type="stmt"/>
         <line num="34" count="1" type="stmt"/>
-        <line num="38" count="2" type="cond" truecount="2" falsecount="0"/>
+        <line num="38" count="147" type="cond" truecount="2" falsecount="0"/>
         <line num="40" count="1" type="stmt"/>
         <line num="49" count="1" type="stmt"/>
         <line num="71" count="1" type="stmt"/>
       </file>
-      <file name="Skeleton.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/shared/ui/Skeleton.tsx">
-        <metrics statements="6" coveredstatements="0" conditionals="4" coveredconditionals="0" methods="6" coveredmethods="0"/>
-        <line num="2" count="0" type="stmt"/>
-        <line num="6" count="0" type="stmt"/>
-        <line num="9" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="16" count="0" type="stmt"/>
+      <file name="Skeleton.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/shared/ui/Skeleton.tsx">
+        <metrics statements="6" coveredstatements="4" conditionals="4" coveredconditionals="4" methods="6" coveredmethods="4"/>
+        <line num="2" count="322" type="stmt"/>
+        <line num="6" count="56" type="stmt"/>
+        <line num="9" count="168" type="cond" truecount="2" falsecount="0"/>
+        <line num="16" count="56" type="stmt"/>
         <line num="26" count="0" type="stmt"/>
         <line num="30" count="0" type="stmt"/>
       </file>
-      <file name="Spinner.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/shared/ui/Spinner.tsx">
+      <file name="Spinner.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/shared/ui/Spinner.tsx">
         <metrics statements="1" coveredstatements="1" conditionals="1" coveredconditionals="1" methods="1" coveredmethods="1"/>
-        <line num="4" count="1" type="stmt"/>
+        <line num="4" count="19" type="stmt"/>
       </file>
-      <file name="Tabs.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/shared/ui/Tabs.tsx">
+      <file name="Tabs.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/shared/ui/Tabs.tsx">
         <metrics statements="16" coveredstatements="0" conditionals="16" coveredconditionals="0" methods="6" coveredmethods="0"/>
         <line num="14" count="0" type="stmt"/>
         <line num="17" count="0" type="stmt"/>
@@ -1460,7 +1680,7 @@
         <line num="50" count="0" type="stmt"/>
         <line num="51" count="0" type="stmt"/>
       </file>
-      <file name="ThemeProvider.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/shared/ui/ThemeProvider.tsx">
+      <file name="ThemeProvider.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/shared/ui/ThemeProvider.tsx">
         <metrics statements="9" coveredstatements="9" conditionals="7" coveredconditionals="6" methods="4" coveredmethods="4"/>
         <line num="6" count="1" type="stmt"/>
         <line num="9" count="3" type="cond" truecount="1" falsecount="1"/>
@@ -1472,13 +1692,13 @@
         <line num="25" count="3" type="stmt"/>
         <line num="28" count="3" type="stmt"/>
       </file>
-      <file name="Toast.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/shared/ui/Toast.tsx">
-        <metrics statements="3" coveredstatements="1" conditionals="7" coveredconditionals="0" methods="1" coveredmethods="0"/>
-        <line num="5" count="1" type="stmt"/>
-        <line num="23" count="0" type="stmt"/>
-        <line num="24" count="0" type="stmt"/>
+      <file name="Toast.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/shared/ui/Toast.tsx">
+        <metrics statements="3" coveredstatements="3" conditionals="7" coveredconditionals="7" methods="1" coveredmethods="1"/>
+        <line num="5" count="2" type="stmt"/>
+        <line num="23" count="35" type="stmt"/>
+        <line num="24" count="35" type="stmt"/>
       </file>
-      <file name="UserMenu.tsx" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/shared/ui/UserMenu.tsx">
+      <file name="UserMenu.tsx" path="/Users/siddanthmacherla/career-agent/apps/web/src/shared/ui/UserMenu.tsx">
         <metrics statements="8" coveredstatements="0" conditionals="6" coveredconditionals="0" methods="5" coveredmethods="0"/>
         <line num="21" count="0" type="cond" truecount="0" falsecount="2"/>
         <line num="22" count="0" type="stmt"/>
@@ -1489,11 +1709,11 @@
         <line num="61" count="0" type="stmt"/>
         <line num="62" count="0" type="stmt"/>
       </file>
-      <file name="theme-context.ts" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/shared/ui/theme-context.ts">
+      <file name="theme-context.ts" path="/Users/siddanthmacherla/career-agent/apps/web/src/shared/ui/theme-context.ts">
         <metrics statements="1" coveredstatements="1" conditionals="0" coveredconditionals="0" methods="0" coveredmethods="0"/>
         <line num="5" count="2" type="stmt"/>
       </file>
-      <file name="useTheme.ts" path="/Users/nalla/Documents/Per/Dev/career-agent/apps/web/src/shared/ui/useTheme.ts">
+      <file name="useTheme.ts" path="/Users/siddanthmacherla/career-agent/apps/web/src/shared/ui/useTheme.ts">
         <metrics statements="3" coveredstatements="0" conditionals="2" coveredconditionals="0" methods="1" coveredmethods="0"/>
         <line num="5" count="0" type="stmt"/>
         <line num="6" count="0" type="cond" truecount="0" falsecount="2"/>

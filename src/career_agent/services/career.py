@@ -138,22 +138,26 @@ class CareerService:
         with self._store() as store:
             return store.delete_resume()
 
-    def queue_profile_generation(self, resume_text: str, resume_filename: str) -> str:
+    def queue_profile_generation(
+        self, resume_text: str, resume_filename: str, force: bool = False
+    ) -> str:
         job_id = str(uuid4())
         resume_hash = hashlib.sha256(resume_text.encode("utf-8")).hexdigest()
         with self._store() as store:
             existing = store.get_profile()
             if (
-                existing
-                and existing["resume_text"] == resume_text
-                and existing["profile_json"]
+                not force
+                and existing
+                and existing.get("resume_text") == resume_text
+                and existing.get("profile_json")
             ):
                 store.create_background_job(job_id, "profile_generation")
                 store.update_background_job(
                     job_id, "completed", {"profile": existing["profile_json"]}
                 )
                 return job_id
-            store.save_profile(resume_text, resume_filename, {})
+            existing_json = existing.get("profile_json") if (existing and not force) else {}
+            store.save_profile(resume_text, resume_filename, existing_json or {})
             store.create_background_job(
                 job_id,
                 "profile_generation",

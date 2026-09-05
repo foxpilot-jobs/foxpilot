@@ -1,4 +1,4 @@
-import { FileText, Trash2 } from "lucide-react";
+import { FileText, RefreshCw, Trash2 } from "lucide-react";
 import type { Profile } from "../../../api";
 import { Badge } from "../../../shared/ui/Badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../shared/ui/Card";
@@ -8,12 +8,14 @@ export function ResumeCard({
   busy,
   onFile,
   onDeleteResume,
+  onRetryExtraction,
   profile,
   selectedFileName,
 }: {
   busy: boolean;
   onFile: (file: File | undefined) => void;
   onDeleteResume?: () => void;
+  onRetryExtraction?: () => void;
   profile: Profile | null;
   selectedFileName?: string;
 }) {
@@ -38,7 +40,22 @@ export function ResumeCard({
               <strong>{profile.resume_filename}</strong>
               <span>Updated {formatDate(profile.updated_at)}</span>
             </div>
-            <Badge variant="success">Uploaded</Badge>
+            {busy ? (
+              <Badge variant="warning">Analyzing resume…</Badge>
+            ) : (
+              <Badge variant="success">Uploaded</Badge>
+            )}
+            {!busy && onRetryExtraction && (
+              <button
+                aria-label="Re-analyze resume"
+                className="profile-resume-delete"
+                title="Re-analyze resume"
+                type="button"
+                onClick={onRetryExtraction}
+              >
+                <RefreshCw size={15} aria-hidden="true" />
+              </button>
+            )}
             {onDeleteResume && (
               <button
                 aria-label="Remove resume"

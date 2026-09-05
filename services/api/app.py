@@ -621,6 +621,37 @@ def create_app() -> FastAPI:
             "resume_filename": filename,
         }
 
+    @app.post("/api/v1/profile/resume/retry", status_code=202)
+    def retry_resume_extraction(
+        background_tasks: BackgroundTasks,
+        request: Request,
+        career_service: CareerService = Depends(user_service),
+    ) -> dict:
+        enforce_rate_limit(request, "resume-retry", 5)
+        prof = career_service.get_profile()
+        if not prof or not prof.get("resume_filename"):
+            raise HTTPException(
+                status_code=400, detail="No resume uploaded to analyze"
+            )
+        with career_service._store() as store:
+            row = store.get_profile()
+            if not row or not row.get("resume_text"):
+                raise HTTPException(
+                    status_code=400, detail="No readable resume text available"
+                )
+            resume_text = row["resume_text"]
+            resume_filename = row.get("resume_filename", "resume.pdf")
+
+        job_id = career_service.queue_profile_generation(resume_text, resume_filename, force=True)
+        if run_in_process():
+            background_tasks.add_task(career_service.run_profile_generation, job_id)
+        return {
+            "job_id": job_id,
+            "kind": "profile_generation",
+            "status": "queued",
+            "resume_filename": resume_filename,
+        }
+
     @app.get("/api/v1/profile")
     def get_profile(career_service: CareerService = Depends(user_service)) -> dict:
         return career_service.get_profile()
